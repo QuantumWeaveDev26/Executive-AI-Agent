@@ -21,6 +21,7 @@ for(const item of manifest.files){
  const data=await fs.readFile(source);if(data.length!==item.bytes||crypto.createHash('sha256').update(data).digest('hex')!==item.sha256)throw Error('Release checksum mismatch: '+item.path);
  verified.push({name:item.path,data});
 }
+await fs.mkdir(path.dirname(output),{recursive:true,mode:0o700});
 await fs.mkdir(output,{recursive:false,mode:0o700});
 for(const item of verified){const dest=inside(output,item.name);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,item.data,{flag:'wx',mode:0o600});}
 console.log(JSON.stringify({status:'verified_release_staged',release:manifest.release,files:verified.length,productionChanged:false,servicesStarted:false}));

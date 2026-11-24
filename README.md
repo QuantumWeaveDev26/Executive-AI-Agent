@@ -4,6 +4,8 @@
 
 **New developer / new computer:** follow [DEVELOPER.md](DEVELOPER.md) for the current local setup, database initialization, architecture, integration boundaries and secure data-transfer requirements. This source snapshot does not include production data or credentials; historical verification below is not a fresh verification of this snapshot.
 
+For an authorized existing database copy, use the [private-data recovery instructions](docs/recovery/restore-existing-database.md). The backup and unlock key are obtained separately; only non-secret instructions belong in Git.
+
 Thaara V2 is a secure, production-oriented, multi-tenant **Executive AI Partner** for Quantum Weave. It transforms executive intent into governed multi-step plans, drafts, two-person approvals, verified execution receipts, and context-aware conversations across chat, voice, memory, and approved business connectors.
 
 V2 is a clean build engineered with strict zero-trust boundaries: PostgreSQL Row-Level Security (RLS) on every business table, multi-role database privilege isolation, deterministic policy validation before any external execution, and truthful failure reporting without simulated success.

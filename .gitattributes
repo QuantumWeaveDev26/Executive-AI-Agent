@@ -1,4 +1,9 @@
 # Checksum-pinned deployment artifacts must keep LF so pinned sha256 values stay valid on any checkout.
 deploy/hostinger-pilot/** text eol=lf
 docs/migrations/*.sql text eol=lf
-# Note: packages/db/src/migrations keep the checkout default; their pinned manifest and applied ledgers were computed from this CRLF Windows checkout.
+# Core migration files retain their committed bytes to preserve existing SQL hashes.
+
+# Immutable release overlays must retain their Git blob bytes on Windows and Unix.
+deploy/releases/**/overlay/** -text
+# Existing migration ledgers and pinned SQL use the committed bytes, not OS conversion.
+packages/db/src/migrations/*.sql -text

@@ -25,6 +25,8 @@ The requested `bulk-auto-followup-consolidated-20261124` source changes and unch
 
 ## Fresh local installation
 
+Clone into a short private folder on your own computer. All commands run from the repository root; do not copy paths beginning with another developer's `C:\Users\Admin`. Git checkout rules preserve immutable release/SQL bytes, and TypeScript output uses LF on every platform so the release checksum verifier is portable.
+
 Use a new private folder and a terminal without production credentials. The commands below work in PowerShell and POSIX shells. They create only a fresh local database; never run the migration/bootstrap commands against production.
 
 ```sh
@@ -121,3 +123,7 @@ A separately owner-approved encrypted real database backup was privately exporte
 | Port already in use | Stop the conflicting local program or coordinate changes to local ports and matching URLs; do not stop production services. |
 
 Do not run historical scripts named `deploy`, `activate`, `restart`, `live`, or `provision` against a VPS merely to get local development running. This guide does not authorize a production operation.
+
+## Authorized real-database recovery
+
+The non-secret, portable [existing-database restore guide](docs/recovery/restore-existing-database.md) is included in Git. Obtain its encrypted archive and separate unlock key privately from the owner. The guide distinguishes verified historical restore evidence from destination setup still requiring validation. Provider credentials, existing customer access and full n8n/Redis/file recovery are not granted by cloning this repository.
