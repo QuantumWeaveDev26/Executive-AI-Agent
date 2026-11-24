@@ -1,0 +1,35 @@
+{
+  "name": "@thaara/worker",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "start": "node ./dist/worker.js",
+    "dev": "node ./dist/worker.js"
+  },
+  "dependencies": {
+    "@thaara/config": "workspace:*",
+    "@thaara/contracts": "workspace:*",
+    "@thaara/db": "workspace:*",
+    "@thaara/observability": "workspace:*",
+    "@thaara/policy": "workspace:*",
+    "@sinclair/typebox": "^0.34.14",
+    "bullmq": "^5.21.0",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.3"
+  }
+}

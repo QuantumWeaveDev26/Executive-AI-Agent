@@ -1,0 +1,31 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Read-only V4 outbound profile activation preflight. No change, source export, provider request or call.",
+  "scope": {
+    "vpsId": 1871828,
+    "sshSessions": 1,
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "profileBytesExported": false,
+    "profilePath": "/run/secrets/sarvam_profile",
+    "profileReads": 2,
+    "compatibility": "Local parser only, synthetic v19/v21 fixture",
+    "marker": "node_modules/.cache/phone-sarvam-v19-mount-preflight-20261108.used.json",
+    "receipt": "node_modules/.cache/phone-sarvam-v19-mount-preflight-20261108.result.json",
+    "expectedImage": "sha256:da0cf28a92658a89498693e8b1724377be8a399c5c693f31db506f3d64b12d81",
+    "verifyExistingRelay": true,
+    "verifyExactReadOnlyProfileMount": true
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-v19-mount-preflight-20261108.readonly.ps1",
+      "sha256": "5b35534f87561f727d7c72d73b76474942a89feba30c52303cc9fb8e01d6903e"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-v19-mount-preflight-20261108.readonly.py",
+      "sha256": "86d49a6e61464e870ec01718a97c4c8369268ffaa2faa9ef268354ca4c91e825"
+    }
+  ]
+}

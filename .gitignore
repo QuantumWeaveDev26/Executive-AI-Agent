@@ -1,0 +1,65 @@
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System and IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local databases and runtime data
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+postgres-data/
+redis-data/
+
+# October and agent metadata
+.codex/
+.agents/
+
+# Python bytecode caches
+__pycache__/
+
+# Public source snapshot: keep runtime/private/generated files out of Git.
+artifacts/
+output/
+scratch/
+.cache/
+secrets/
+credentials/
+backups/
+*.pem
+*.key
+*.p12
+*.pfx
+*.clixml
+*.dump
+*.bak
+*.result.json
+
+deploy/hostinger-pilot/phone-n8n-sync-release/
+deploy/hostinger-pilot/reconciled-phone115/
+deploy/hostinger-pilot/ui-cleanup-release/
+*build-evidence.json

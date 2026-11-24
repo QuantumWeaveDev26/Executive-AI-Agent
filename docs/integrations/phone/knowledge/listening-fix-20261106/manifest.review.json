@@ -1,0 +1,56 @@
+{
+  "reviewOnly": true,
+  "providerMutationAuthorized": false,
+  "liveSwitchAuthorized": false,
+  "paidTestAuthorized": false,
+  "baseCommittedVersion": 11,
+  "liveInboundVersionLastVerified": 5,
+  "preserveOutboundCommittedVersion": 12,
+  "basePromptSha256": "5e001e4fece07f289af1b9a9f50cb912fd7d11870413def9373fa79c7c37f45b",
+  "candidatePromptSha256": "bec521dfbc48e23e8526b33de60e9d726a2563971549dab78bc5f7d5505063ee",
+  "observedV5": {
+    "letCallersInterrupt": true,
+    "responseTimingLabel": "Balanced",
+    "responseTimingRaw": 1,
+    "responseTimingRawRange": [
+      0,
+      3
+    ],
+    "volumeThresholdLabel": "Normal",
+    "volumeThresholdRaw": 3,
+    "nudgeAfterSeconds": 5
+  },
+  "proposedSettings": {
+    "letCallersInterrupt": true,
+    "responseTimingLabel": "Patient",
+    "numericMapping": "UNVERIFIED: require dashboard-confirmed Patient label; do not infer numeric direction",
+    "volumeThreshold": "preserve",
+    "nudge": "preserve",
+    "voice": "preserve Chaitra",
+    "languages": "preserve English Kannada Hindi",
+    "maxMinutes": 5,
+    "knowledge": "preserve qw-company-kb-v1",
+    "tools": "preserve"
+  },
+  "rootCause": "UNCONFIRMED: interruption already enabled. Balanced timing/prompt may contribute; VAD/telephony behavior not reproduced with audio.",
+  "reference": "https://docs.sarvam.ai/voice-agents/build/conversation-settings",
+  "versionPlan": {
+    "expectedCurrentDraft": 13,
+    "preserveUnchangedDraftThroughAutomaticCommit": 13,
+    "newCandidate": 14,
+    "stopOnDifferentHead": true,
+    "maximumNewCommits": 2
+  },
+  "activation": "Separate exact approval required; retain same inbound deployment/number/connection; rollback to v5. No outbound runtime change.",
+  "audioAcceptance": [
+    "English: interrupt during services answer; agent stops and listens, then answers latest question.",
+    "Kannada: same with natural thinking pause; no cutting in.",
+    "Hindi: repeat after switching language.",
+    "One short question then wait; no repeated greeting; preserve KB/no-price policy and five-minute cap."
+  ],
+  "limitations": [
+    "No paid simulation or new audio test executed.",
+    "Text checks cannot verify speech interruption, VAD or telephone audio latency.",
+    "Prompt does not activate appointment storage or booking."
+  ]
+}

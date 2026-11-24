@@ -1,0 +1,24 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Read-only post-recovery verification of current image, health, relay and image pins. No server changes.",
+  "scope": {
+    "vpsId": 1871828,
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serverChanges": false,
+    "sourceExports": 0,
+    "marker": "node_modules/.cache/phone-sarvam-post-recovery-readback-20261108.used.json",
+    "receipt": "node_modules/.cache/phone-sarvam-post-recovery-readback-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-post-recovery-readback-20261108.readonly.ps1",
+      "sha256": "971214801f8d1bebab184eb3780b795644a3a4ada4fe75f7a4f3fd7ff42bb2f5"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-v3-switch-readback-20261108.readonly.py",
+      "sha256": "96b93e73c7094a613bd28ae23461eddb8f3b73c9be5295581f1a7e323f35bd5d"
+    }
+  ]
+}

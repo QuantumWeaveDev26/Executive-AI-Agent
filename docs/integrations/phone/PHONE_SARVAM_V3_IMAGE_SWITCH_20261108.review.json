@@ -1,0 +1,31 @@
+{
+  "deploymentAllowed": true,
+  "authorization": "One exact owner-approved V3 API image switch and rollback on VPS 1871828. Keep outbound v2 and inbound v5.",
+  "remoteExecutionAllowed": true,
+  "requiredImage": "sha256:b1b13df2fb1b51817765f099c2645e25bafa6934251add0d71c890c6f29d7117",
+  "candidateImage": "sha256:a7590de6e56ab622ef7b2f5f17dbe744f9182defbcf4fd0817a0f9bfb6ddf8ec",
+  "scope": {
+    "vpsId": 1871828,
+    "apiServiceRecreates": 1,
+    "rollbackRecreates": 1,
+    "reattachExistingApiRelayAlias": true,
+    "outboundVersion": 2,
+    "inboundVersion": 5,
+    "databaseCommands": 0,
+    "providerRequests": 0,
+    "profileChanges": false,
+    "liveCalls": 0,
+    "oneRunMarker": "node_modules/.cache/phone-sarvam-v3-image-switch-20261108.used.json",
+    "resultReceipt": "node_modules/.cache/phone-sarvam-v3-image-switch-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-v3-image-switch-20261108.review.ps1",
+      "sha256": "cd8fbc7d55f3cc39144514cce4152d7e6274dff9c98eaf902dc8826b963f8108"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-v3-image-switch-20261108.review.py",
+      "sha256": "df1aeeda4b8f9e358c2419b15dc13678b0a989cba866d501608be1d151cda040"
+    }
+  ]
+}

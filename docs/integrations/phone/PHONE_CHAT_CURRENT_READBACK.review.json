@@ -1,0 +1,15 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner-approved V3 post-attempt health and validation cleanup verification only; no retry",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-current-readback.readonly.ps1",
+      "sha256": "70b2082b76d32d77625f6b0f4e309fe94a1df2b7005c92e6ef49b12886d55a4f"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-current-readback.readonly.py",
+      "sha256": "2563d5680ba1d926c4d19362083950d2626ff488399c8a604ed9d8a716c085a9"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "reviewOnly": true,
+  "uploadAuthorized": false,
+  "liveIntegration": false,
+  "knowledgeVersion": "qw-company-kb-v1",
+  "policyVersion": "qw-voice-policy-v1",
+  "sourceHashes": {
+    "apps/api/src/knowledge/quantum-weave.v1.ts": "4278c5d889d6695d222b701bd5a60819b2f2a67aa6ff89413d0b2a04f90f6db5",
+    "apps/api/src/services/phone-company-knowledge.ts": "c34c02bac4a30f21f528f8368912ba83bec4398e3b748035c6382c9d24df324e"
+  },
+  "artifacts": {
+    "quantum-weave-public.md": {
+      "sha256": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+      "utf8Bytes": 4657
+    },
+    "unified-voice-instructions.txt": {
+      "sha256": "c563a0f76370ffdc1bb05d29dc1b719fed0e887ef83c290b084792e42365865c",
+      "utf8Bytes": 3149
+    }
+  }
+}

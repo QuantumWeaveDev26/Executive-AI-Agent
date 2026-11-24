@@ -1,0 +1,15 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Approved validation cleanup verification only, read-only; no retry/create/remove/build",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-cleanup-status.readonly.ps1",
+      "sha256": "900433df13f2e92dd507a143b6e4a407a5720d3d719c9955e57ba2a77d9f301d"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-cleanup-status.readonly.py",
+      "sha256": "126c7bfcc78aeb22a10eea25dede095caf80d2082923c9ab66728ba067ba4fe3"
+    }
+  ]
+}

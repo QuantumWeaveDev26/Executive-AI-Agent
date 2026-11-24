@@ -1,0 +1,1049 @@
+{
+  "format": "pgcrypto-upstream-source-declarations-v1",
+  "productionAdmission": false,
+  "verified": false,
+  "source": {
+    "tag": "REL_16_15",
+    "sqlSha256": "84f8eee1d6b03982fac596988b46bf89d5d5d8790d3133783eedad38bc7d8d38",
+    "controlSha256": "2a6c81eef34ae6cee9ff5b557f3b6285db7fdd7bc76ee57798e82c945c61c939",
+    "baseUrl": "https://raw.githubusercontent.com/postgres/postgres/REL_16_15/contrib/pgcrypto/"
+  },
+  "extension": {
+    "name": "pgcrypto",
+    "version": "1.3",
+    "library": "$libdir/pgcrypto",
+    "relocatable": true,
+    "trusted": true
+  },
+  "functions": [
+    {
+      "signature": "digest(text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_digest",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "digest(bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_digest",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "hmac(text, text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_hmac",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "hmac(bytea, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_hmac",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "crypt(text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pg_crypt",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "gen_salt(text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pg_gen_salt",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "gen_salt(text, integer)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "integer",
+          "source": "int4"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pg_gen_salt_rounds",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "encrypt(bytea, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_encrypt",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "decrypt(bytea, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_decrypt",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "encrypt_iv(bytea, bytea, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_encrypt_iv",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "decrypt_iv(bytea, bytea, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_decrypt_iv",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "gen_random_bytes(integer)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "integer",
+          "source": "int4"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_random_bytes",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "gen_random_uuid()",
+      "arguments": [],
+      "result": "uuid",
+      "language": "c",
+      "symbol": "pg_random_uuid",
+      "library": "$libdir/pgcrypto",
+      "strict": false,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_sym_encrypt(text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_sym_encrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_sym_encrypt_bytea(bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_sym_encrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_sym_encrypt(text, text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_sym_encrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_sym_encrypt_bytea(bytea, text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_sym_encrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_sym_decrypt(bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pgp_sym_decrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_sym_decrypt_bytea(bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_sym_decrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_sym_decrypt(bytea, text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pgp_sym_decrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_sym_decrypt_bytea(bytea, text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_sym_decrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_encrypt(text, bytea)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_pub_encrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_encrypt_bytea(bytea, bytea)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_pub_encrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_encrypt(text, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_pub_encrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_encrypt_bytea(bytea, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_pub_encrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "v",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_decrypt(bytea, bytea)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pgp_pub_decrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_decrypt_bytea(bytea, bytea)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_pub_decrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_decrypt(bytea, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pgp_pub_decrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_decrypt_bytea(bytea, bytea, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_pub_decrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_decrypt(bytea, bytea, text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pgp_pub_decrypt_text",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_pub_decrypt_bytea(bytea, bytea, text, text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pgp_pub_decrypt_bytea",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_key_id(bytea)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pgp_key_id_w",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "armor(bytea)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pg_armor",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "armor(bytea, text[], text[])",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "bytea",
+          "source": "bytea"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text[]",
+          "source": "text[]"
+        },
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text[]",
+          "source": "text[]"
+        }
+      ],
+      "result": "text",
+      "language": "c",
+      "symbol": "pg_armor",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "dearmor(text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        }
+      ],
+      "result": "bytea",
+      "language": "c",
+      "symbol": "pg_dearmor",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    },
+    {
+      "signature": "pgp_armor_headers(text)",
+      "arguments": [
+        {
+          "mode": "in",
+          "name": null,
+          "type": "text",
+          "source": "text"
+        },
+        {
+          "mode": "out",
+          "name": "key",
+          "type": "text",
+          "source": "key OUT text"
+        },
+        {
+          "mode": "out",
+          "name": "value",
+          "type": "text",
+          "source": "value OUT text"
+        }
+      ],
+      "result": "SETOF record",
+      "language": "c",
+      "symbol": "pgp_armor_headers",
+      "library": "$libdir/pgcrypto",
+      "strict": true,
+      "volatility": "i",
+      "parallel": "s",
+      "securityDefiner": false,
+      "leakproof": false
+    }
+  ],
+  "preconditions": [
+    "Independently review upstream source provenance and image/source relationship",
+    "Bind installation schema/owner and ordered grants to separately reviewed migration context"
+  ]
+}

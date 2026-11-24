@@ -1,0 +1,26 @@
+{
+  "reviewOnly": true,
+  "providerAcceptanceVerified": false,
+  "browserReadback": {
+    "outboundCommittedVersion": 12,
+    "inboundCommittedVersion": 14,
+    "sourcePromptReadback": "All nonempty lines matched local approved sources; provider editor normalizes blank lines and variable chips",
+    "knowledge": "qw-company-kb-v1 attached to both candidates",
+    "voice": "Chaitra",
+    "configuredMaxMinutes": 5,
+    "listening": "v14 Patient raw3; caller interruptions enabled"
+  },
+  "liveObserved": {
+    "inboundVersion": 5,
+    "outboundVersion": 2,
+    "outboundKnowledgeBinding": false,
+    "image": "sha256:213c9d89b6db4e3cc861f9adc548a629a0092285a9610bd147b56a3fd6bbc4e3"
+  },
+  "notVerified": [
+    "No v12 outbound call or synthetic acceptance run",
+    "No v14 telephone interruption/language test",
+    "No independent five-minute automatic termination observation",
+    "Deployed loader compatibility must be verified before profile rollout"
+  ],
+  "activationAuthorized": false
+}

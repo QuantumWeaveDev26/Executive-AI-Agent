@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "reviewOnly": true,
+  "runtimeEnabled": false,
+  "productionReady": false,
+  "thaaraIdentity": {
+    "workspaceId": null,
+    "ownerUserId": null,
+    "principalId": null,
+    "routeId": null,
+    "revision": null,
+    "expiresAt": null,
+    "profileFingerprint": null
+  },
+  "providerBinding": {
+    "provider": "sarvam",
+    "appId": "Thaara-AI-V-db336de4-5453",
+    "intendedCommittedAppVersion": 5,
+    "deploymentId": "Thaara-V2---6bdfef25-f9ad",
+    "agentPhoneNumber": "+918064269780",
+    "knowledgeBase": "qw-company-kb-v1",
+    "maxCallLengthSeconds": 300,
+    "currentBindingIndependentlyVerified": false,
+    "toolAuthenticationIndependentlyVerified": false
+  },
+  "operations": ["callback", "completion"],
+  "policy": {
+    "direction": "inbound",
+    "callbackMeaning": "human_team_request",
+    "consentPolicy": "explicit-recap.v1",
+    "calendarBooking": "disabled",
+    "mediaRetention": "off",
+    "outboundDispatch": "disabled"
+  },
+  "hostingGates": {
+    "targetDatabaseIdentityVerified": false,
+    "managedDatabaseTlsVerified": false,
+    "managedSecretStorageVerified": false,
+    "recoveryRehearsalVerified": false,
+    "restrictedServiceRoleVerified": false,
+    "ownerReadRoleVerified": false,
+    "sharedIngressLimitsVerified": false,
+    "privateLoggingVerified": false
+  },
+  "credentialReferences": {
+    "ingestDatabase": null,
+    "ownerReadDatabase": null,
+    "providerServiceToken": null
+  },
+  "note": "Review data only; not consumed by startup. Null identities must come from authenticated Thaara records, never Sarvam workspace IDs. Do not activate by flipping flags. No secrets or guessed secret paths. Requires a separately reviewed, source-pinned admission/install package and explicit owner approval."
+}

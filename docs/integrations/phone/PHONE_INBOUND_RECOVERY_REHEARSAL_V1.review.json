@@ -1,0 +1,49 @@
+{
+  "reviewOnly": true,
+  "explicitApprovalRequired": true,
+  "independentReviewComplete": false,
+  "sourceDatabaseReadOnly": true,
+  "scope": "PROPOSAL ONLY: one protected source backup, new isolated restore clone and112h113h clone schema rehearsal; source database never mutated",
+  "artifacts": [
+    {
+      "path": "scripts/phone-inbound-recovery-rehearsal.review.ps1",
+      "sha256": "1f89b251c3253be2ddff36f449713a0b802f946e7996cf4dae8b2852acc4ecd2"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-inbound-recovery-rehearsal.review.py",
+      "sha256": "ae0a97f07d7b5a06754ebec751a3206082f4abc611efc0979f4e86c51f5b5b9a"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-backup-restore.review.py",
+      "sha256": "650464fee1a727eeeccbf938d4e474fde3b3b336e58e812b1c55948ad326916e"
+    },
+    {
+      "path": "docs/migrations/112h-phone-inbound-events.hosted-review.sql",
+      "sha256": "064ac927a1e059e25f2026a0251fa06e15e5849b4d35641d106273a641049a9f"
+    },
+    {
+      "path": "docs/migrations/113h-phone-inbound-principals.hosted-review.sql",
+      "sha256": "688922f79a552699028ce7e1cd450128a5156d585b13803e478f6412a3aee275"
+    },
+    {
+      "path": "scripts/phone_inbound_recovery_rehearsal_test.py",
+      "sha256": "665adfcfd5e7809973e55be016f6db8ff42301f881e580d2e645bd6d49aba6cb"
+    },
+    {
+      "path": "scripts/phone-inbound-recovery-rehearsal.test.ts",
+      "sha256": "eaaec583de9f9ab2d142aeea97baf2110384a52564fe69791dcbc4713d4feae3"
+    },
+    {
+      "path": "node_modules/.cache/phone113-hosted-gates-v1/result.json",
+      "sha256": "bfc555b46287c9eaf1a197be20ac964fc02e936bc3336ffe3ab35218791fbb0b"
+    },
+    {
+      "path": "node_modules/.cache/phone-inbound-host-inventory-v1.result.json",
+      "sha256": "a41ae3d366ae5c4ca43c3ea9e3afd41e7e05ef6786856733a5fec1d2c94633b0"
+    },
+    {
+      "path": "scripts/phone-inbound-owned-process.test.ts",
+      "sha256": "59f80c59f80a988f999d144b479ae893c6f1ff6d789e5d450bea5c4ccd401d92"
+    }
+  ]
+}

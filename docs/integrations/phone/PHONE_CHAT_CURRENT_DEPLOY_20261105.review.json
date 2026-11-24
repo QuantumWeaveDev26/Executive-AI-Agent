@@ -1,0 +1,23 @@
+{
+  "reviewOnly": true,
+  "executionAuthorized": false,
+  "ownerApprovalRequired": true,
+  "baseImage": "sha256:d19e2e2217e8c41b8ce0eeb677b5585d7968acbd1bea6b37c69639a549d67df9",
+  "baseReference": "thaara-v2-whatsapp-enquiries:10831",
+  "packagePath": "output/THAARA_PHONE_CHAT_CURRENT_BASELINE_2026-11-05_V3.zip",
+  "packageSha256": "855c92e8d49a8e2b4c4470766c068f7403e304beb14bd268c9b8b7871ddc29b8",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-current-deploy.review.ps1",
+      "sha256": "216291567adbbb01492d34204fe5e0b598c9ea1d7c7085d3e5c4d016c2abc907"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-current-bootstrap.review.py",
+      "sha256": "4cdcdb840c72bce4ee999208258baf3f907e054c8cc60ba3e2912931c0821fd1"
+    },
+    {
+      "path": "output/THAARA_PHONE_CHAT_CURRENT_BASELINE_2026-11-05_V3.zip",
+      "sha256": "855c92e8d49a8e2b4c4470766c068f7403e304beb14bd268c9b8b7871ddc29b8"
+    }
+  ]
+}

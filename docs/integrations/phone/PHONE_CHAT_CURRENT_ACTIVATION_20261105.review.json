@@ -1,0 +1,24 @@
+{
+  "reviewOnly": true,
+  "executionAuthorized": false,
+  "ownerApprovalRequired": true,
+  "scope": "ONE validation and API-only activation of existing candidate; NO BUILD",
+  "candidateImage": "sha256:213c9d89b6db4e3cc861f9adc548a629a0092285a9610bd147b56a3fd6bbc4e3",
+  "baseImage": "sha256:d19e2e2217e8c41b8ce0eeb677b5585d7968acbd1bea6b37c69639a549d67df9",
+  "packagePath": "output/THAARA_PHONE_CHAT_EXISTING_CANDIDATE_ACTIVATION_2026-11-05.zip",
+  "packageSha256": "aecbcb904955a9b0dac68b816e7a414f64801d5fda5c8db92a81e5356015eaf6",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-current-activation.review.ps1",
+      "sha256": "a8930231dc40a99c98037ba9c2a575f866734a9bc2c3afaf14bb0d280e3b8529"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-current-activation-bootstrap.review.py",
+      "sha256": "a0b619f877e1c00ae73299f062018dd18fada4340e9449136f044e457fe0a1b1"
+    },
+    {
+      "path": "output/THAARA_PHONE_CHAT_EXISTING_CANDIDATE_ACTIVATION_2026-11-05.zip",
+      "sha256": "aecbcb904955a9b0dac68b816e7a414f64801d5fda5c8db92a81e5356015eaf6"
+    }
+  ]
+}

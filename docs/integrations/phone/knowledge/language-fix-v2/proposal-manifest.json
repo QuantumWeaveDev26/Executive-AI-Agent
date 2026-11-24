@@ -1,0 +1,43 @@
+{
+  "reviewOnly": true,
+  "uploadAuthorized": false,
+  "liveIntegration": false,
+  "providerAcceptanceVerified": false,
+  "voicePolicyVersion": "qw-voice-policy-v2",
+  "routePolicyVersion": "qw-route-policy-v1",
+  "sourceProviderVersions": {
+    "inbound": 3,
+    "outbound": 4
+  },
+  "proposedProviderVersions": {
+    "inbound": null,
+    "outbound": null
+  },
+  "knowledgeVersion": "qw-company-kb-v1",
+  "knowledgeSha256": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+  "sourcePromptHashes": {
+    "inbound": "e74cd1559cae67a8e2e4068aa3b643852b21c897387bda53bb553d7059e10c33",
+    "outbound": "50715d830475a1f8ea12f3c339ef1e0e8e55360faa4d5e9549a2a0c54b1bce8b"
+  },
+  "artifacts": {
+    "inbound-instructions.proposed.txt": {
+      "sha256": "073a8337945dc1df71fd9750e63249c0ab96022952938a1c933840cae360352a",
+      "utf8Bytes": 4837
+    },
+    "outbound-instructions.proposed.txt": {
+      "sha256": "33b999ea92a185f9fd7c71f9f42951e67c96635a02a55c83a503c174a5d3ac56",
+      "utf8Bytes": 5034
+    }
+  },
+  "changes": [
+    "Voice policy version1→2; route policy unchanged.",
+    "Retain original language rule, add explicit existing language-tool use before first substantive response; no redundant switches/greetings.",
+    "Preserve all other approved text and native variables exactly, verified by round-trip."
+  ],
+  "evidence": {
+    "failedCase": "IN03",
+    "visibleRunId": "01M6E8FW",
+    "confirmed": "Hindi question received an English reply/closing; pricing guards passed.",
+    "suspected": "Language selection/tool was not invoked despite enabled Hindi. Stronger prompt instruction requires provider retesting."
+  }
+}

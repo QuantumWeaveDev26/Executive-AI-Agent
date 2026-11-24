@@ -1,0 +1,27 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Separate owner approval required for the exact six-file runtime inspection scope",
+  "expected": {
+    "/app/apps/api/dist/app.js": "e8e0f474870e7e50297649efd1ccf0b081cc38e1099c208147ccb2010e929412",
+    "/app/apps/api/pilot-start.mjs": "cbffaddee7dae4918420a2942ea2bcaab5f64a6136b20e13c97ee9c52fa2528d",
+    "/app/apps/api/dist/services/phone-pilot-startup.js": "7273fc04178102049eae487793dc2b90176987adb4abada521faad73998a5430",
+    "/app/apps/api/node_modules/@thaara/contracts/dist/index.js": "4d753a3dd847ab2f4a0ebfadbb096f748766c41835580d01e29b0309449f986a",
+    "/app/apps/api/dist/services/phone-calling.js": "863b64db4063ff04504cafa71bcd146aa126ff283a0fb9b9d6705177310207a9",
+    "/app/apps/api/dist/routes/phone-sarvam-webhook.js": "baadbb157191b078e1d7a8b1180b46961737d1f9236d5f20ed6d7f15266a2b68"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-step115-source-inspection-20261111.readonly.ps1",
+      "sha256": "06f6bafffc319a28c1a170ed0eedf41f41b8f6eff697624d8e54032d6bb9c455"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-step115-source-inspection-20261111.readonly.py",
+      "sha256": "32a612220973a48b2c2386a2f4f7a8da2a94ebcfc539a65b55898792208cd203"
+    },
+    {
+      "path": "docs/integrations/phone/STEP115_RUNTIME_RECONCILIATION_SCOPE_20261111.md",
+      "sha256": "800a651a904444244e95038b6caa61d5035bff22caeedea960ec00a66ae498ed"
+    }
+  ]
+}

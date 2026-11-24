@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "owner": "Thaara AI V2 development",
+  "ownerScope": "Development bootstrap only; not assigned to or imported into an application workspace.",
+  "userAuthorization": "Step76 explicit instruction: one new inactive manual/synthetic workflow; no existing changes or executions.",
+  "creationState": "readback_verified_inactive",
+  "creationAttempted": true,
+  "creationToken": "6484bf6c-f14d-4fff-9605-45430dd5d9e8",
+  "workflowId": "bXk1oGwEpqig0677",
+  "targetProjectType": "personal",
+  "safeInactiveDefaultSource": "https://docs.n8n.io/workflows/create/",
+  "liveProvidersStatus": "not_configured",
+  "externalExecutionPerformed": false,
+  "workflowName": "THAARA_V2_DEV_EMAIL_OFFLINE_3b163d305482ff8032657ced",
+  "artifactHash": "fa13b1ed5290fb00b688ae392135fe065499c3e4e7d1049bd93ede05fa656d2a",
+  "creationAttemptedAt": "2026-10-17T06:29:49.193Z",
+  "url": "https://n8n.srv1871828.hstgr.cloud/workflow/bXk1oGwEpqig0677",
+  "targetProject": {
+    "id": "fn6pQNcDpG7hLM3t",
+    "type": "personal",
+    "name": "Quantumweave academy"
+  },
+  "activeReadback": false,
+  "activeVersionIdReadback": null,
+  "autoAssignedCredentialCount": 0,
+  "mcpDiscoveryVisible": true,
+  "note": "MCP discovery visibility is metadata, not workflow publication/activation. No workflow update or execution performed.",
+  "observation": {
+    "existingWorkflowCountBefore": 63,
+    "after": 64,
+    "existingNamesAndActiveStatesUnchanged": true,
+    "existingWorkflowMutationCalls": 0,
+    "preCreationTimestampChanges": [
+      {
+        "workflowId": "lzGPhyDqonFWltpn",
+        "updatedAt": "2026-10-17T06:18:27.180Z"
+      },
+      {
+        "workflowId": "pktkYZFWUH8gPBVN",
+        "updatedAt": "2026-10-17T06:25:24.207Z"
+      }
+    ],
+    "newWorkflowCreatedAt": "2026-10-17T06:29:53.588Z",
+    "attribution": "Timestamp changes predate this task’s sole creation write; cause not determined and existing workflow content was not inspected or changed."
+  },
+  "verification": {
+    "inactive": true,
+    "unpublished": true,
+    "exactSyntheticGraph": true,
+    "credentialFree": true,
+    "mcpDiscoveryVisible": true,
+    "source": "get_workflow_details readback",
+    "verifiedAt": "2026-10-17T06:32:28.771Z",
+    "executionPerformed": false
+  }
+}

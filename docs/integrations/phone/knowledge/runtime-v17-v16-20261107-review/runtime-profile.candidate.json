@@ -1,0 +1,32 @@
+{
+  "reviewOnly": true,
+  "runtimeProfile": false,
+  "orgId": "01a10103-1b5d-78a1-9902-f391242c7537",
+  "workspaceId": "01a10103-1b66-7123-96b1-43a6e96e016b",
+  "appId": "Thaara-AI-V-db336de4-5453",
+  "appVersion": 17,
+  "connectionId": "255c00af-3e-542ffe50-6043",
+  "agentPhoneNumber": "+918064269780",
+  "requiredMaxCallLengthMinutes": 5,
+  "verifiedMaxCallLengthMinutes": null,
+  "variableMapping": {
+    "call_purpose": "approvedDraft.purpose",
+    "user_name": "approvedDraft.recipient.displayName"
+  },
+  "verificationBasis": "REVIEW ONLY: v17 outbound and v16 inbound committed with qw-company-kb-v3-linktree, Chaitra, interruptions ON, Patient timing, No sound and 5-minute limit; audio interruption acceptance and rollout approval are pending. Live v2/v5 untouched.",
+  "companyKnowledge": {
+    "reviewOnly": true,
+    "providerAcceptanceVerified": false,
+    "direction": "outbound",
+    "appVersion": 17,
+    "inboundAppVersion": 16,
+    "maxDurationSeconds": 300,
+    "knowledgeBaseId": "qw-company-kb-v3-linktree",
+    "knowledgeVersion": "qw-company-kb-v3-linktree",
+    "knowledgeSha256": "f6a99cabd8638a31398fe4fbe6d79fb7b7444e535476aa755751b4592e0d4f86",
+    "policyVersion": "qw-route-policy-v1",
+    "policySha256": "a300f08b3ca14ac7e2758a5362e62be7cbb78e853ad86af4f4c38e28dc6e9209",
+    "commonPolicySha256": "aa10675a9c1a35bf941bf957ff311b33361afd36018418824470f5eae79a5044",
+    "acceptanceEvidenceSha256": "6fe3fa4acffe4be666fe65a56b1e223ea6761e7cd72d0fb03fd16359b5a70bfd"
+  }
+}

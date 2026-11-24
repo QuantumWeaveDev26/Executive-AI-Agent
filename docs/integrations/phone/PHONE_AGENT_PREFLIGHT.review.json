@@ -1,0 +1,18 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "plaintextPrivateKeyFilesAllowed": false,
+  "scope": "agent-only authentication review; no database commands; remote execution needs exact owner approval",
+  "host": "76.13.217.50",
+  "hostFingerprint": "SHA256:yxR6qeawoJkzi3qL8AypF/cQG6euWW216XB2R5J6TQ4",
+  "artifacts": [
+    {
+      "path": "scripts/phone-agent-preflight.review.ps1",
+      "sha256": "72957200eabce2c180fd566cd39862b1d2dcd2adea3a76bd0695cc80e4c6ed0a"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-host-preflight.review.sh",
+      "sha256": "420fe5c2c1e7a4000da929ccc06b3c52f89a200712d74db4e30dbc6f9e47557f"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "reviewOnly": true,
+  "approvalScope": "one-local-disposable-phone110a-diagnostic-only",
+  "container": "thaara-phone110-postgres",
+  "network": "thaara-phone110-isolated",
+  "database": "thaara_phone110_test",
+  "host": "127.0.0.1",
+  "port": 15435,
+  "image": "postgres@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea",
+  "baseSchemaManifestSha256": "29498d7da36994347371a77f0e93467c7898db6c01b0223db6916499fb2d59a2",
+  "artifacts": [
+    {
+      "path": "scripts/phone-runtime-guard.mjs",
+      "sha256": "c36f5c4b8024a2eeb73762bb96a806d8b69f0fd9b311b039d3d420c8517150b2"
+    },
+    {
+      "path": "scripts/phone-runtime-guard.test.ts",
+      "sha256": "0c13527d70339a5330b07c1d4f245a68b16be744d2ebf0a185a193a0c5aef249"
+    },
+    {
+      "path": "scripts/step1084-loopback-proxy.mjs",
+      "sha256": "3e5f9830de7afeef63355592e13bda6b747f9e8c405b497b7847aa99c53602c8"
+    },
+    {
+      "path": "apps/api/test/phone-postgres.runtime.test.ts",
+      "sha256": "a01feffe9fcc675bb4e7f4ae9d8f259bc52bccd2c9c1ec0f6a4daa252ba6ee07"
+    },
+    {
+      "path": "docs/migrations/110a-phone-contacts.review.sql",
+      "sha256": "7c2066959edd4b129751bf858e31af1dbed5ae9b300226597e4ce4e160c06a8e"
+    },
+    {
+      "path": "docs/migrations/110b-phone-calls.review.sql",
+      "sha256": "1030cd5b9d2015cad94221cce19c34699fa049b541606f9b081f65f6acc5aa6e"
+    },
+    {
+      "path": "docs/migrations/110c-phone-live-mode.review.sql",
+      "sha256": "479c06d456577a120a95382b25f29d703366ac624dcae71f1d4839e346a67b5d"
+    },
+    {
+      "path": "scripts/phone-postgres-runtime.mjs",
+      "sha256": "70d8e1a0ddf5564220a1ab0fa779c5ed30320dc0e1fc1acf9b797ea9960f528d"
+    },
+    {
+      "path": "scripts/phone-migration-diagnostic.mjs",
+      "sha256": "90c5e5417f6765944aca44231316bde0910707837dde170213ac53d8bc731db6"
+    },
+    {
+      "path": "scripts/phone-migration-diagnostic.test.ts",
+      "sha256": "922c8123792e7097d69182f84330ae10984976e52947d2a664fd2e013962b11a"
+    }
+  ],
+  "revision": "owner-approved-sqlstate-diagnostic",
+  "command": "node scripts/phone-postgres-runtime.mjs --approved-diagnostic-phone110",
+  "laterMigrationsAndAcceptanceTestsAuthorized": false
+}

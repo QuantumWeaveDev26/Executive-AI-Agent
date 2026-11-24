@@ -1,0 +1,26 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "scope": {
+    "server": "VPS 1871828",
+    "dockerInspections": 2,
+    "container": "thaara-v2-pilot-api-1",
+    "applicationFileReads": 0,
+    "applicationFileExports": 0,
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "oneRunMarker": "node_modules/.cache/phone-baseline-metadata-post-v8.used.json",
+    "resultReceipt": "node_modules/.cache/phone-baseline-metadata-post-v8.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-baseline-metadata-post-v8.readonly.ps1",
+      "sha256": "7a01552660da1b729cf622e699f7bd5271552b5bf3561d772b269b4d863f24fd"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-baseline-metadata-post-v8.readonly.py",
+      "sha256": "127b96e127f257183129d416ccee3de341e6d0e1a08c85c2149bd509c51dc985"
+    }
+  ]
+}

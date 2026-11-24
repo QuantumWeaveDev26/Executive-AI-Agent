@@ -1,0 +1,187 @@
+{
+  "recordedDate": "2026-10-26",
+  "status": "inactive_setup_only",
+  "credentialsAssigned": false,
+  "executionPerformed": false,
+  "providerCallsPerformed": false,
+  "workflows": [
+    {
+      "name": "THAARA_V2_DEV_WHATSAPP_INBOUND_1082",
+      "id": "ezIrlr7y9dEowujw",
+      "url": "https://n8n.srv1871828.hstgr.cloud/workflow/ezIrlr7y9dEowujw",
+      "project": {
+        "id": "fn6pQNcDpG7hLM3t",
+        "name": "Quantumweave academy <quantumweave26@gmail.com>",
+        "type": "personal"
+      },
+      "active": false,
+      "activeVersionId": null,
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "saveExecutionProgress": false,
+        "saveManualExecutions": false,
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "executionTimeout": 30
+      },
+      "nodes": [
+        {
+          "name": "WhatsApp messages and statuses",
+          "type": "n8n-nodes-base.whatsAppTrigger",
+          "disabled": true
+        },
+        {
+          "name": "Relay untrusted event to Thaara",
+          "type": "n8n-nodes-base.httpRequest",
+          "disabled": true
+        }
+      ],
+      "connections": {
+        "WhatsApp messages and statuses": {
+          "main": [
+            [
+              {
+                "node": "Relay untrusted event to Thaara",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "THAARA_V2_DEV_WHATSAPP_OUTGOING_1082",
+      "id": "RrqXTplIBXginMSD",
+      "url": "https://n8n.srv1871828.hstgr.cloud/workflow/RrqXTplIBXginMSD",
+      "project": {
+        "id": "fn6pQNcDpG7hLM3t",
+        "name": "Quantumweave academy <quantumweave26@gmail.com>",
+        "type": "personal"
+      },
+      "active": false,
+      "activeVersionId": null,
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "saveExecutionProgress": false,
+        "saveManualExecutions": false,
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "executionTimeout": 30
+      },
+      "nodes": [
+        {
+          "name": "Authenticated Thaara dispatch",
+          "type": "n8n-nodes-base.webhook",
+          "disabled": true
+        },
+        {
+          "name": "Claim approved dispatch",
+          "type": "n8n-nodes-base.httpRequest",
+          "disabled": true
+        },
+        {
+          "name": "Deployment send gate",
+          "type": "n8n-nodes-base.if",
+          "disabled": false
+        },
+        {
+          "name": "Send only after Thaara authorization",
+          "type": "n8n-nodes-base.whatsApp",
+          "disabled": true
+        },
+        {
+          "name": "Report provider acknowledgement",
+          "type": "n8n-nodes-base.httpRequest",
+          "disabled": true
+        },
+        {
+          "name": "Return unverified outcome",
+          "type": "n8n-nodes-base.set",
+          "disabled": false
+        },
+        {
+          "name": "Return not configured",
+          "type": "n8n-nodes-base.set",
+          "disabled": false
+        },
+        {
+          "name": "Future approved templates - disconnected",
+          "type": "n8n-nodes-base.whatsApp",
+          "disabled": true
+        },
+        {
+          "name": "Future approved media - disconnected",
+          "type": "n8n-nodes-base.whatsApp",
+          "disabled": true
+        }
+      ],
+      "connections": {
+        "Authenticated Thaara dispatch": {
+          "main": [
+            [
+              {
+                "node": "Claim approved dispatch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Claim approved dispatch": {
+          "main": [
+            [
+              {
+                "node": "Deployment send gate",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Deployment send gate": {
+          "main": [
+            [
+              {
+                "node": "Send only after Thaara authorization",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Return not configured",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send only after Thaara authorization": {
+          "main": [
+            [
+              {
+                "node": "Report provider acknowledgement",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Report provider acknowledgement": {
+          "main": [
+            [
+              {
+                "node": "Return unverified outcome",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}

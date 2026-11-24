@@ -1,0 +1,15 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Prepared for separate read-only diagnosis approval after prerequisite verification failed; NOT executed",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-build-v2-state.readonly.ps1",
+      "sha256": "bbf3f5b6a77f1af7a97cb7f4230675675969e369b15c989f46c18be79a6c7c51"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-build-v2-state.readonly.py",
+      "sha256": "f6d8a11f3c584a094719939b5e3701a4205c99da5aa07ca588a46aeec379b1ee"
+    }
+  ]
+}

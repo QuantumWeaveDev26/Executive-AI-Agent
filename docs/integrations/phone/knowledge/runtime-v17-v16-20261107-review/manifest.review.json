@@ -1,0 +1,25 @@
+{
+  "reviewOnly": true,
+  "executionAuthorized": false,
+  "productionAdmission": false,
+  "baselineProfileSha256": "7a41b4f34482ccf833fcdab6b7bb0c8a5c198f52a994ec4d8c0ca11a19596447",
+  "requiresFreshLiveImageCheckBeforeAnyActivation": true,
+  "rollbackVersion": 15,
+  "inboundVersion": 16,
+  "outboundVersion": 17,
+  "workingDraftVersion": 18,
+  "artifacts": [
+    {
+      "path": "docs/integrations/phone/knowledge/runtime-v17-v16-20261107-review/common-policy.candidate.txt",
+      "sha256": "aa10675a9c1a35bf941bf957ff311b33361afd36018418824470f5eae79a5044"
+    },
+    {
+      "path": "docs/integrations/phone/knowledge/runtime-v17-v16-20261107-review/observations.review.json",
+      "sha256": "6fe3fa4acffe4be666fe65a56b1e223ea6761e7cd72d0fb03fd16359b5a70bfd"
+    },
+    {
+      "path": "docs/integrations/phone/knowledge/runtime-v17-v16-20261107-review/runtime-profile.candidate.json",
+      "sha256": "72a07c58d81131f31d431f724db90d676ddc236d96f35a5f8beeeb55b1913a79"
+    }
+  ]
+}

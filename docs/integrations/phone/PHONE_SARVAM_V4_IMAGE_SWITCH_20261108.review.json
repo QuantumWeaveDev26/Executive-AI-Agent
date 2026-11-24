@@ -1,0 +1,33 @@
+{
+  "deploymentAllowed": true,
+  "authorization": "One exact owner-approved V4 compatibility image switch and conditional rollback on VPS 1871828. Preserve outbound v2 and inbound v5.",
+  "remoteExecutionAllowed": true,
+  "requiredImage": "sha256:df1499e3a4b7cfbfab87f9ba4face080bb44737a8a3f2d4b0767cd7b270a99c5",
+  "candidateImage": "sha256:da0cf28a92658a89498693e8b1724377be8a399c5c693f31db506f3d64b12d81",
+  "scope": {
+    "vpsId": 1871828,
+    "apiServiceRecreates": 1,
+    "rollbackRecreates": 1,
+    "reattachExistingApiRelayAlias": true,
+    "outboundVersion": 2,
+    "inboundVersion": 5,
+    "databaseCommands": 0,
+    "providerRequests": 0,
+    "profileChanges": false,
+    "liveCalls": 0,
+    "oneRunMarker": "node_modules/.cache/phone-sarvam-v4-image-switch-20261108.used.json",
+    "resultReceipt": "node_modules/.cache/phone-sarvam-v4-image-switch-20261108.result.json",
+    "conditionalIsolatedRoutingRefreshes": 2,
+    "routingRefreshImage": "sha256:da0cf28a92658a89498693e8b1724377be8a399c5c693f31db506f3d64b12d81"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-v4-image-switch-20261108.review.ps1",
+      "sha256": "74f22b8347fc985ee4c438f62c0cfeda4fa24523909f1e9df76bb6b54ce74add"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-v4-image-switch-20261108.review.py",
+      "sha256": "5784d3a78b1406ce2d46e5a3c9dff14a92e12573fd6bfb6f830d3514e6de4d92"
+    }
+  ]
+}

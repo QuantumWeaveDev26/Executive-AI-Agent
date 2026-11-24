@@ -1,0 +1,32 @@
+{
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner explicitly approved disabled schema installation only in the active conversation, 11 November 2026",
+  "scope": {
+    "vpsId": 1871828,
+    "sshSessions": 1,
+    "databaseSessions": 1,
+    "activation": "disabled",
+    "credentials": false,
+    "restart": false,
+    "providerRequests": 0
+  },
+  "approvedInstallationManifestSha256": "d0ed08bdcaab46e4c5ed6fae578adc8ad823a7a5312e142c38ba1576d85839ca",
+  "artifacts": [
+    {
+      "path": "scripts/phone-step115-disabled-install-20261111.ps1",
+      "sha256": "6eadacfcbab53832ea0a8679c6b530b65e5b42652ae9595916a3bdd28221e0b3"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-step115-disabled-install-20261111.py",
+      "sha256": "d9b19b87be9e1baf0c186c9f936e96f04a296ec545e1f539c9f1e03db670f7df"
+    },
+    {
+      "path": "docs/migrations/115-step115-hosted-install-20261111-r2.review.sql",
+      "sha256": "c809ba7c0a44f9bdf3b76a1566edf1fbe6fc33e39a1d0c1d25e58a53025dcf8e"
+    },
+    {
+      "path": "docs/integrations/phone/PHONE_STEP115_INSTALL_20261111_R2.review.json",
+      "sha256": "d0ed08bdcaab46e4c5ed6fae578adc8ad823a7a5312e142c38ba1576d85839ca"
+    }
+  ]
+}

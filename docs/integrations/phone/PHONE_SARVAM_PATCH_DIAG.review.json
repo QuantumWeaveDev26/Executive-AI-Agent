@@ -1,0 +1,22 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "scope": "ONE connection; minimal-request (>=15s interval before PATCH and readback GET, rate-limit header aware up to 65s, HTTP 429 immediate stop without retry, sanitized HTTP 429 diagnostic capture) idempotent suite-variable PATCH on existing app-bound suite using trusted VPS receipt suiteId; preserves 6 existing cases and all prior guards; 0 mappings created, 0 cases added, 0 runs submitted, â‚¹0 cost; no telephone calls",
+  "minimumPaceSeconds": 15,
+  "maximumProviderRequests": 3,
+  "maximumPaidRuns": 0,
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-patch-diag.review.ps1",
+      "sha256": "788d27e90a0037da80635a7403c54fbac34ab69625ecd713ce691e554e009bcc"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-patch-diag.review.py",
+      "sha256": "67ec16f0a2914af834df2b1059dc638e11e105a6521bc639ee28261945472564"
+    },
+    {
+      "path": "docs/integrations/phone/knowledge/eval-review-v1/request-plan.review.json",
+      "sha256": "76b6885c16496202d7bcad26e11bc0f099f7611215be2b8579b701cf4aadec52"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner 5 Nov request: obtain and verify current live image/baseline; no deployment",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-baseline.readonly.ps1",
+      "sha256": "28f2bbfb4ee09d29f6814400a1c1540bff198007f671fc1f59a27a3b1ca2f010"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-baseline.readonly.py",
+      "sha256": "bf80b49f89b6c13243af3f290b201698ccdcd15061b94ef2a18906c930238943"
+    }
+  ]
+}

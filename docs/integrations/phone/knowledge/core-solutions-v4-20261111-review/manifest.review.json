@@ -1,0 +1,23 @@
+{
+  "reviewOnly": true,
+  "providerMutationAuthorized": false,
+  "livePromotionAuthorized": false,
+  "providerAudioAcceptanceVerified": false,
+  "liveVersions": "must read back before editing",
+  "knowledgeVersion": "qw-company-kb-v4-core-solutions",
+  "notificationRecipient": "connect@brandmintai.io",
+  "listening": {
+    "letCallersInterrupt": true,
+    "soundSensitivityCandidate": "High",
+    "eagernessToRespondCandidate": "Patient",
+    "numericMapping": "Unverified; use provider labels, never infer raw slider values",
+    "backgroundSound": "No sound",
+    "preserveVoice": true,
+    "maxDurationSeconds": 300
+  },
+  "reference": "https://docs.sarvam.ai/voice-agents/build/conversation-settings",
+  "artifacts": {
+    "quantum-weave-public.candidate.md": "2dbbd2f147212aead893dfc6c4dd6932550eb6f0af89628b3bb38d093eb3c732",
+    "inbound-policy.patch.candidate.txt": "7e6d40cf444b2b4c94063a36cabfb1a9c70ed5c014701ddc54b0dbdf25456f9d"
+  }
+}

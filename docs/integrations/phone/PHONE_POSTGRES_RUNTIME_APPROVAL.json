@@ -1,0 +1,45 @@
+{
+  "reviewOnly": true,
+  "approvalScope": "local-disposable-phone110-postgresql-only",
+  "container": "thaara-phone110-postgres",
+  "network": "thaara-phone110-isolated",
+  "database": "thaara_phone110_test",
+  "host": "127.0.0.1",
+  "port": 15435,
+  "image": "postgres@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea",
+  "baseSchemaManifestSha256": "29498d7da36994347371a77f0e93467c7898db6c01b0223db6916499fb2d59a2",
+  "artifacts": [
+    {
+      "path": "scripts/phone-postgres-runtime.mjs",
+      "sha256": "abc8d5cc601711363758b150185e237bd89ac718f15c6b996ed02031543d8e6f"
+    },
+    {
+      "path": "scripts/phone-runtime-guard.mjs",
+      "sha256": "93ae671ceca50402bb7f946ccbdf6d4b66f8a5a153a354861b2822702f4177d9"
+    },
+    {
+      "path": "scripts/phone-runtime-guard.test.ts",
+      "sha256": "46a98fd39401b939c6ce2a0304c15f41276063cb4485e6695bfc7fc56f6cfd80"
+    },
+    {
+      "path": "scripts/step1084-loopback-proxy.mjs",
+      "sha256": "3e5f9830de7afeef63355592e13bda6b747f9e8c405b497b7847aa99c53602c8"
+    },
+    {
+      "path": "apps/api/test/phone-postgres.runtime.test.ts",
+      "sha256": "a01feffe9fcc675bb4e7f4ae9d8f259bc52bccd2c9c1ec0f6a4daa252ba6ee07"
+    },
+    {
+      "path": "docs/migrations/110a-phone-contacts.review.sql",
+      "sha256": "7c2066959edd4b129751bf858e31af1dbed5ae9b300226597e4ce4e160c06a8e"
+    },
+    {
+      "path": "docs/migrations/110b-phone-calls.review.sql",
+      "sha256": "1030cd5b9d2015cad94221cce19c34699fa049b541606f9b081f65f6acc5aa6e"
+    },
+    {
+      "path": "docs/migrations/110c-phone-live-mode.review.sql",
+      "sha256": "479c06d456577a120a95382b25f29d703366ac624dcae71f1d4839e346a67b5d"
+    }
+  ]
+}

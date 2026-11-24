@@ -1,0 +1,35 @@
+{
+  "name": "thaara-v2-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "pnpm --filter \"@thaara/*\" run build",
+    "typecheck": "pnpm --filter \"@thaara/*\" run typecheck",
+    "lint": "pnpm --filter \"@thaara/*\" run lint",
+    "test": "vitest run --exclude \"**/*.integration.test.ts\" --exclude \"**/*.runtime.test.ts\"",
+    "test:integration": "vitest run integration",
+    "test:runtime": "vitest run runtime",
+    "test:all": "vitest run --exclude \"**/*.runtime.test.ts\"",
+    "verify": "pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test:all",
+    "dev": "pnpm --parallel run dev",
+    "db:migrate": "pnpm --filter @thaara/db run migrate",
+    "db:provision-role": "pnpm --filter @thaara/db run provision-role",
+    "db:bootstrap-identities": "pnpm --filter @thaara/db run bootstrap-identities",
+    "db:provision-task004-fresh": "pnpm --filter @thaara/db run provision-task004-fresh"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "@fastify/static": "^10.1.3"
+    }
+  }
+}

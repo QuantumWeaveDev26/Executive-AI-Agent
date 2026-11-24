@@ -1,0 +1,24 @@
+{
+  "reviewOnly": true,
+  "liveRoutingAuthorized": false,
+  "paidTestsAuthorized": false,
+  "providerAcceptanceVerified": false,
+  "knowledgeVersion": "qw-company-kb-v3-linktree",
+  "sourceHashes": {
+    "inbound": "bec521dfbc48e23e8526b33de60e9d726a2563971549dab78bc5f7d5505063ee",
+    "outbound": "1b2e3003effc3b5e067957baa6bb66609c38a113087c86e5ae405e839b329b00"
+  },
+  "artifacts": {
+    "quantum-weave-public.md": "f6a99cabd8638a31398fe4fbe6d79fb7b7444e535476aa755751b4592e0d4f86",
+    "inbound-instructions.candidate.txt": "0fd06593655476ab39cd8a1bddafd3ebc265cb7e108be6002cbfefdf42ffbdfc",
+    "outbound-instructions.candidate.txt": "a300f08b3ca14ac7e2758a5362e62be7cbb78e853ad86af4f4c38e28dc6e9209"
+  },
+  "targetVersions": null,
+  "maxDurationSeconds": 300,
+  "listening": {
+    "allowInterruptions": true,
+    "responseTiming": "Patient",
+    "sensitivity": "preserve initially",
+    "background": "No sound"
+  }
+}

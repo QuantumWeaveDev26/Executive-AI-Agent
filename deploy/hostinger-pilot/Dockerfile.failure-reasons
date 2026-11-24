@@ -1,0 +1,9 @@
+# Step 108.30: log Meta's reason for failed deliveries (operator log only; no phone numbers or message text). No SQL.
+# Expected base: sha256:522a3dd8346e760abd5bd5f4e623b2035c1fa80e41122905f3cc2a589c9f10d6 (108.28). Live sending unchanged.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 api-services/whatsapp-durable.js /app/apps/api/dist/services/whatsapp-durable.js
+RUN node --input-type=module -e "import{readFileSync}from'node:fs'; \
+  const d=await import('./dist/services/whatsapp-durable.js'); if(typeof d.DurableWhatsAppService.deliveryFailureSink!=='function')throw Error('Failure sink missing'); \
+  if(/PhoneCallingService|PHONE_AI_CALL_ACTION/.test(readFileSync('dist/services/whatsapp-durable.js','utf8')))throw Error('Phone check'); \
+  await import('./dist/app.js'); console.log('Durable service with failure reasons and app verified');"

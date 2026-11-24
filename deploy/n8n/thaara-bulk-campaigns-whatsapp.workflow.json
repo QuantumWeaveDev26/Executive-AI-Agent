@@ -1,0 +1,319 @@
+{
+  "id": "ThaaraBulkWa0001",
+  "name": "Thaara Bulk Campaigns — WhatsApp",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "id": "wa-webhook-trigger",
+      "name": "Campaign WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "thaara-bulk-campaign-whatsapp-v1",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "thaara-bulk-campaign-whatsapp-v1",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "wa-claim-next",
+      "name": "Verify Opt-In & Claim Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign WhatsApp Webhook').item.json.body.jobId}}/claim-next",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ executionToken: $('Campaign WhatsApp Webhook').item.json.body.executionToken, workspaceId: $('Campaign WhatsApp Webhook').item.json.body.workspaceId, campaignId: $('Campaign WhatsApp Webhook').item.json.body.campaignId, channel: 'whatsapp' }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "id": "wa-should-proceed",
+      "name": "Opted-In & Authorized?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "wa-proceed-true",
+              "leftValue": "={{ $json.proceed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "wa-stop-ineligible",
+      "name": "Report Stopped (Opt-Out or Denied)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 480],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign WhatsApp Webhook').item.json.body.jobId}}/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workspaceId: $('Campaign WhatsApp Webhook').item.json.body.workspaceId, campaignId: $('Campaign WhatsApp Webhook').item.json.body.campaignId, status: ($json.reason === 'BATCH_QUEUE_COMPLETE' ? 'completed' : 'stopped'), failureReason: ($json.reason === 'BATCH_QUEUE_COMPLETE' ? undefined : ($json.reason || 'Not opted-in or authorized')), n8nExecutionId: $execution.id }) }}"
+      }
+    },
+    {
+      "id": "wa-execute-send",
+      "name": "Submit via Existing Thaara WhatsApp API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign WhatsApp Webhook').item.json.body.jobId}}/execute-whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contactId: $json.contactId, workspaceId: $('Campaign WhatsApp Webhook').item.json.body.workspaceId, campaignId: $('Campaign WhatsApp Webhook').item.json.body.campaignId }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      }
+    },
+    {
+      "id": "wa-wait-delivery",
+      "name": "Wait for Delivery & Reply",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1160, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 20,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "wa-poll-status",
+      "name": "Read Delivery & Reply Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1380, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign WhatsApp Webhook').item.json.body.jobId}}/poll-whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contactId: $('Verify Opt-In & Claim Contact').item.json.contactId, workspaceId: $('Campaign WhatsApp Webhook').item.json.body.workspaceId, campaignId: $('Campaign WhatsApp Webhook').item.json.body.campaignId }) }}"
+      }
+    },
+    {
+      "id": "wa-is-batch-mode",
+      "name": "Batch Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1600, 200],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "wa-batch-mode-true",
+              "leftValue": "={{ $('Verify Opt-In & Claim Contact').item.json.mode === 'multi_contact_batch' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "wa-record-contact-outcome",
+      "name": "Record Batch WhatsApp Outcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1840, 120],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign WhatsApp Webhook').item.json.body.jobId}}/contact-outcome",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workspaceId: $('Campaign WhatsApp Webhook').item.json.body.workspaceId, campaignId: $('Campaign WhatsApp Webhook').item.json.body.campaignId, contactId: $('Verify Opt-In & Claim Contact').item.json.contactId, status: ($('Read Delivery & Reply Status').item.json.deliveryStatus === 'failed' ? 'failed' : 'completed'), providerId: $('Submit via Existing Thaara WhatsApp API').item.json.providerMessageId || null, outcome: 'WhatsApp status: ' + $('Read Delivery & Reply Status').item.json.deliveryStatus + ($('Read Delivery & Reply Status').item.json.replyReceived ? (' | Reply: ' + $('Read Delivery & Reply Status').item.json.latestReplyPreview) : ''), failureReason: $('Submit via Existing Thaara WhatsApp API').item.json.failureReason || null, optOutDetected: Boolean($('Read Delivery & Reply Status').item.json.optOutDetected) }) }}"
+      }
+    },
+    {
+      "id": "wa-has-more",
+      "name": "More Batch Contacts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2080, 120],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "wa-has-more-true",
+              "leftValue": "={{ $('Verify Opt-In & Claim Contact').item.json.hasMore === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "wa-rate-limit-wait",
+      "name": "Rate Limit Cooldown",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2320, 40],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": "={{ $('Verify Opt-In & Claim Contact').item.json.rateLimitDelaySeconds || 12 }}",
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "wa-report-complete",
+      "name": "Report WhatsApp Outcome to Bulk Campaigns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2320, 280],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign WhatsApp Webhook').item.json.body.jobId}}/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workspaceId: $('Campaign WhatsApp Webhook').item.json.body.workspaceId, campaignId: $('Campaign WhatsApp Webhook').item.json.body.campaignId, status: ($('Read Delivery & Reply Status').item.json.deliveryStatus === 'failed' ? 'failed' : 'completed'), outcomeSummary: 'WhatsApp status: ' + $('Read Delivery & Reply Status').item.json.deliveryStatus + ($('Read Delivery & Reply Status').item.json.replyReceived ? (' | Reply: ' + $('Read Delivery & Reply Status').item.json.latestReplyPreview) : ''), n8nExecutionId: $execution.id }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Campaign WhatsApp Webhook": {
+      "main": [[{ "node": "Verify Opt-In & Claim Contact", "type": "main", "index": 0 }]]
+    },
+    "Verify Opt-In & Claim Contact": {
+      "main": [[{ "node": "Opted-In & Authorized?", "type": "main", "index": 0 }]]
+    },
+    "Opted-In & Authorized?": {
+      "main": [
+        [{ "node": "Submit via Existing Thaara WhatsApp API", "type": "main", "index": 0 }],
+        [{ "node": "Report Stopped (Opt-Out or Denied)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Submit via Existing Thaara WhatsApp API": {
+      "main": [[{ "node": "Wait for Delivery & Reply", "type": "main", "index": 0 }]]
+    },
+    "Wait for Delivery & Reply": {
+      "main": [[{ "node": "Read Delivery & Reply Status", "type": "main", "index": 0 }]]
+    },
+    "Read Delivery & Reply Status": {
+      "main": [[{ "node": "Batch Mode?", "type": "main", "index": 0 }]]
+    },
+    "Batch Mode?": {
+      "main": [
+        [{ "node": "Record Batch WhatsApp Outcome", "type": "main", "index": 0 }],
+        [{ "node": "Report WhatsApp Outcome to Bulk Campaigns", "type": "main", "index": 0 }]
+      ]
+    },
+    "Record Batch WhatsApp Outcome": {
+      "main": [[{ "node": "More Batch Contacts?", "type": "main", "index": 0 }]]
+    },
+    "More Batch Contacts?": {
+      "main": [
+        [{ "node": "Rate Limit Cooldown", "type": "main", "index": 0 }],
+        [{ "node": "Report WhatsApp Outcome to Bulk Campaigns", "type": "main", "index": 0 }]
+      ]
+    },
+    "Rate Limit Cooldown": {
+      "main": [[{ "node": "Verify Opt-In & Claim Contact", "type": "main", "index": 0 }]]
+    }
+  }
+}

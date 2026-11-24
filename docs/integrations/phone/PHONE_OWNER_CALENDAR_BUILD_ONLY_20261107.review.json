@@ -1,0 +1,43 @@
+{
+  "buildOnly": true,
+  "deploymentAllowed": false,
+  "databaseCommands": 0,
+  "providerRequests": 0,
+  "remoteExecutionAllowed": false,
+  "authorization": "STALE DRAFT. DO NOT EXECUTE. Published entry changed to index-BiqDT2zG.js; current API image must be rediscovered.",
+  "requiredImage": "sha256:44387266137de5747b3bd68a647af0cbbbce9387cd66239dcfcdfb0dd6aab927",
+  "packagePath": "output/THAARA_PHONE_OWNER_CALENDAR_BUILD_ONLY_V3_2026-11-07.zip",
+  "packageSha256": "8bcf5312fe0036fd4b83842204a94eb4fffe24aafab59aaee4cd247bfb4ede42",
+  "candidateTag": "thaara-v2-pilot-api:phone-owner-calendar-20261107-candidate",
+  "scope": {
+    "candidateImageAssemblies": 1,
+    "assembly": "exact-local-stopped-container-copy-and-docker-commit",
+    "stagingContainers": 1,
+    "stagingContainerStarts": 0,
+    "isolatedValidationContainers": 1,
+    "mounts": 0,
+    "network": "none",
+    "imagePulls": 0,
+    "serviceChanges": false,
+    "secretFileReads": false,
+    "realCalls": 0,
+    "retainCandidateOnlyOnPass": true,
+    "remoteWorkDeadlineSeconds": 170,
+    "remoteCleanupDeadlineSeconds": 230,
+    "sshDeadlineSeconds": 300
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-owner-calendar-build-only-20261107.review.ps1",
+      "sha256": "d3e6f763a9d0ba092874a353937f177b059dc5368abf49f0790b794b0aa2ea15"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-owner-calendar-build-only-20261107.review.py",
+      "sha256": "4f94e64ed685acda5dd18dab31c2376add109453f42d951206632e1498e7f5df"
+    },
+    {
+      "path": "output/THAARA_PHONE_OWNER_CALENDAR_BUILD_ONLY_V3_2026-11-07.zip",
+      "sha256": "8bcf5312fe0036fd4b83842204a94eb4fffe24aafab59aaee4cd247bfb4ede42"
+    }
+  ]
+}

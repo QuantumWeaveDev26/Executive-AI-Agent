@@ -1,0 +1,28 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Read only: check the active image, current outbound version and Linktree parser compatibility following public recovery.",
+  "scope": {
+    "vpsId": 1871828,
+    "sshSessions": 1,
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "profileBytesExported": false,
+    "profilePath": "/run/secrets/sarvam_profile",
+    "profileReads": 2,
+    "compatibility": "Local parser only, synthetic v19/v21 fixture",
+    "marker": "node_modules/.cache/phone-sarvam-current-image-preflight-20261108.used.json",
+    "receipt": "node_modules/.cache/phone-sarvam-current-image-preflight-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-current-image-preflight-20261108.readonly.ps1",
+      "sha256": "eb87ee1981fba65dfa428d9592c5e56a9badd80ceda5b53d34b785ab1c299272"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-release-preflight-20261108.readonly.py",
+      "sha256": "e974389a2967a067c44dad53f9562c2a2f4215dd4260af0fcfa49397285eeb51"
+    }
+  ]
+}

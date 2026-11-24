@@ -1,0 +1,28 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner approved the prepared read-only production schema check; no production changes",
+  "scope": {
+    "vpsId": 1871828,
+    "sshSessions": 1,
+    "serverChanges": false,
+    "databaseSessions": 1,
+    "applicationRowsReturned": 0,
+    "providerRequests": 0,
+    "definitionBytesExported": false
+  },
+  "artifacts": [
+    {
+      "sha256": "5b987e9fe3e4dd19bdb9d53fa188916175364307af07d18f97635efd8a07fa95",
+      "path": "scripts/phone-step115-schema-20261111.readonly.ps1"
+    },
+    {
+      "sha256": "8e1e366c3432d5fe0f9f418b7f7d043637269c39e0d71beb92a6c8c845375a5e",
+      "path": "deploy/hostinger-pilot/phone-step115-schema-20261111.readonly.py"
+    },
+    {
+      "sha256": "a4448d05d9323ae510e448acb6d0f09a08c24e1511f62071a63b00c7e742872c",
+      "path": "docs/integrations/phone/STEP115_PRODUCTION_SCHEMA_PREFLIGHT.review.sql"
+    }
+  ]
+}

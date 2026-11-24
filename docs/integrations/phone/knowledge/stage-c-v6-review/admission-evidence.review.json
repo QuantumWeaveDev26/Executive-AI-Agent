@@ -1,0 +1,65 @@
+{
+  "reviewOnly": true,
+  "installationAuthorized": false,
+  "providerAcceptanceVerified": false,
+  "status": "synthetic_pass_manual_admission_pending",
+  "sourceReceipt": {
+    "path": "node_modules/.cache/sarvam-eval-paced-20261103-execution-v4.json",
+    "sha256": "930375093c4611cb74cbe6c0e2c8b1ad24bdf7750af6026dbb53cde439c6801d"
+  },
+  "providerSynthetic": {
+    "appVersion": 6,
+    "status": "completed_requires_manual_review",
+    "passedChecks": 5,
+    "totalChecks": 5,
+    "providerJudgePassed": true,
+    "telephoneCalls": 0,
+    "existingCasesPreserved": 6,
+    "transcriptSha256": "36f75c737b682f7eb12074193093559c5514e6aa3fc19c62f0f249a333b36403",
+    "rawTranscriptDigestIndependentlyRecomputed": false,
+    "sanitizedSpeechSha256": "cef440f4633af992f243b11730c3c783f9655350050e2edb5da9cc2dc83bdd14",
+    "sanitizedSpeechTurnCount": 9,
+    "verdicts": [
+      {
+        "name": "Identity and recipient",
+        "verdict": "Pass"
+      },
+      {
+        "name": "Knowledge-grounded business answer",
+        "verdict": "Pass"
+      },
+      {
+        "name": "Return to approved objective",
+        "verdict": "Pass"
+      },
+      {
+        "name": "Truthful result",
+        "verdict": "Pass"
+      },
+      {
+        "name": "Scope and ending",
+        "verdict": "Pass"
+      }
+    ]
+  },
+  "hashes": {
+    "knowledgeSha256": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+    "inboundPromptSha256": "073a8337945dc1df71fd9750e63249c0ab96022952938a1c933840cae360352a",
+    "outboundPromptSha256": "33b999ea92a185f9fd7c71f9f42951e67c96635a02a55c83a503c174a5d3ac56",
+    "commonPolicySha256": "c3ca0c9156d03121d2691c5c37b12a9ca2259976744220d15ea29b99fba3c8d9"
+  },
+  "voicePolicyVersion": "qw-voice-policy-v2",
+  "routePolicyVersion": "qw-route-policy-v1",
+  "pending": {
+    "rawToolFramesManuallyVerified": false,
+    "inboundV5RolloutVerified": false,
+    "v6DurationAdmissionAttested": false,
+    "liveChatCallReportVerified": false,
+    "ownerAdmissionApproved": false
+  },
+  "limitations": [
+    "Saved result contains sanitized speech and judge grades; raw tool frames are not in this receipt.",
+    "Five-minute configuration evidence is historical; no live hang-up verification is inferred.",
+    "Inbound v5 route switch and outbound installation remain separately approved actions."
+  ]
+}

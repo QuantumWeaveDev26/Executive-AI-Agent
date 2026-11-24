@@ -1,0 +1,19 @@
+# Step 108.24: live-sending-ready code (normal-mode profile '*', cap<=250, 90-day max validity, truthful live flag/UI).
+# Sending stays OFF until the separately approved pilot-send-live-on.sh runs. No SQL, no secrets.
+# Expected base: sha256:02977c430485e4b2c09e0452c9359eb57fbedcb4b6c16b640f0da78fcdda542d (108.23b).
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 contracts/ /app/packages/contracts/dist/
+COPY --chown=1000:1000 api-services/ /app/apps/api/dist/services/
+COPY --chown=1000:1000 api-root/pilot-config.mjs /app/apps/api/pilot-config.mjs
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+RUN node --input-type=module -e "import {copyFileSync,realpathSync,readFileSync} from 'node:fs'; import {dirname,join} from 'node:path'; import {fileURLToPath} from 'node:url'; \
+  const source='/app/packages/contracts/dist/whatsapp-n8n.js', target=realpathSync(join(dirname(fileURLToPath(import.meta.resolve('@thaara/contracts'))),'whatsapp-n8n.js')); \
+  if(!target.startsWith('/app/apps/api/node_modules/') && target!==source)throw Error('Unexpected installed package path'); if(target!==source)copyFileSync(source,target); \
+  const {Value}=await import('@sinclair/typebox/value'); const contracts=await import('@thaara/contracts'); \
+  if(contracts.N8nWhatsAppInboxSchema.properties.liveSendingEnabled.type!=='boolean')throw Error('Live flag contract missing'); \
+  const durable=await import('./dist/services/whatsapp-durable.js'); if(durable.MAX_SENDS_PER_DAY!==250)throw Error('Send ceiling missing'); \
+  const cfg=await import('./pilot-config.mjs'); if(cfg.pilotSendSettings({THAARA_WHATSAPP_SEND_ENABLED:'false'})!==null)throw Error('Send-off default broken'); \
+  for(const f of ['dist/app.js','dist/routes/conversations.js'])if(/PhoneCallingService|PHONE_AI_CALL_ACTION/.test(readFileSync(f,'utf8')))throw Error('Paused Phone code must not enter pilot image'); \
+  await import('./dist/services/chat-whatsapp-assistant.js'); await import('./dist/services/whatsapp-inbox.js'); await import('./dist/app.js'); \
+  console.log('Live-ready contracts, services, config and app verified');"

@@ -1,0 +1,13 @@
+# Step 108.28: connect the owner-entered Meta key to media/template/upload adapters; CSP allows verified blob: images/audio.
+# Expected base: sha256:7f577bb120325f295949d93054c37e9c82d24f46689a7e008e3fa423d0f7e09c (108.25-108.27). Sending stays OFF.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 api-root/pilot-config.mjs api-root/pilot-start.mjs /app/apps/api/
+COPY --chown=1000:1000 patch-whatsapp-meta.mjs /app/apps/api/
+RUN node /app/apps/api/patch-whatsapp-meta.mjs --approved-image-build 5718005694b27b43434ac9e55656361ed50c2f16ed85018cf10c9ebd977fe4ac && rm /app/apps/api/patch-whatsapp-meta.mjs
+RUN node --check /app/apps/api/pilot-start.mjs && node --input-type=module -e "import{readFileSync}from'node:fs'; \
+  const cfg=await import('./pilot-config.mjs'); if(typeof cfg.pilotMetaAccessToken!=='function'||cfg.pilotSendSettings({THAARA_WHATSAPP_SEND_ENABLED:'false'})!==null)throw Error('Config contract'); \
+  const src=readFileSync('pilot-start.mjs','utf8'); if(!src.includes('createMetaWhatsAppTemplateProvider')||!src.includes('pilotMetaAccessToken'))throw Error('Startup wiring missing'); \
+  const app=readFileSync('dist/app.js','utf8'); if(!app.includes('mediaSrc')||app.split('blob:').length!==3||/PhoneCallingService|PHONE_AI_CALL_ACTION/.test(app))throw Error('CSP or Phone check failed'); \
+  for(const m of ['whatsapp-media-preview','whatsapp-templates','whatsapp-media-upload'])await import('./dist/services/'+m+'.js'); \
+  await import('./dist/app.js'); console.log('Meta wiring, CSP and app verified; sending remains off');"

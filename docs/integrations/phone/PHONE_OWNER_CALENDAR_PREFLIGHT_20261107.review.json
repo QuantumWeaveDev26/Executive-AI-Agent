@@ -1,0 +1,23 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "PREPARED ONLY; one separate owner-approved execution, no retry or prior-marker reuse",
+  "scope": {
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "allowedProfilePath": "/run/secrets/sarvam_profile",
+    "readApiKeyFiles": false,
+    "oneRunMarker": "node_modules/.cache/phone-owner-calendar-preflight-20261107.used.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-owner-calendar-preflight-20261107.readonly.ps1",
+      "sha256": "50cedd99face95868ad0b312773caceaff5641f696dac1933d1490d11c03c66f"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-runtime-metadata-final-20261106.readonly.py",
+      "sha256": "707e434cb342b9eaf30730aab0dc817ebaac27c448f99409bb1bd5613aa01d6d"
+    }
+  ]
+}

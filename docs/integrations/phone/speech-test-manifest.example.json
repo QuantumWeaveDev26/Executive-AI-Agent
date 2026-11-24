@@ -1,0 +1,13 @@
+{
+  "speakers": ["kavya", "kavitha", "roopa"],
+  "phrases": [
+    { "file": "p01-en.wav", "language": "en-IN", "expected": "Yes, I can attend the meeting tomorrow at eleven." },
+    { "file": "p02-kn.wav", "language": "kn-IN", "expected": "ನಾಳೆ ಹನ್ನೊಂದು ಗಂಟೆಗೆ ಬರುತ್ತೇನೆ." },
+    { "file": "p03-kanglish.wav", "language": "kn-en", "expected": "ನಾಳೆ meeting ಗೆ ಬರ್ತೀನಿ, location share ಮಾಡಿ." }
+  ],
+  "ttsSamples": [
+    { "language": "en-IN", "text": "Hello, I am Thaara, an AI assistant. Is now a good time to talk?" },
+    { "language": "kn-IN", "text": "ನಮಸ್ಕಾರ, ನಾನು ತಾರಾ, AI ಸಹಾಯಕಿ. ಈಗ ಮಾತನಾಡಲು ಅನುಕೂಲವೇ?" },
+    { "language": "kn-en", "text": "ನಮಸ್ಕಾರ, ನಾನು ತಾರಾ, AI assistant. ಈಗ ಮಾತಾಡೋಕೆ convenient ಆಗುತ್ತಾ?" }
+  ]
+}

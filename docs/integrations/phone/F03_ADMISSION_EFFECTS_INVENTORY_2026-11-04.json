@@ -1,0 +1,48 @@
+{
+  "status": "LOCAL_UNREVIEWED_IMPLEMENTATION",
+  "productionAdmission": false,
+  "executionAuthorized": false,
+  "statementCount": 864,
+  "sourceCount": 14,
+  "modeledProceduralBlocks": 14,
+  "aclSourceOperations": 280,
+  "unresolved": 194,
+  "unverifiedPreconditions": 248,
+  "files": {
+    "scripts/phone-schema-acl-effects.mjs": "0bad6d670f6e61a0dd6aa2bebbbb99f98c953e674c818befedae3a3401b6a7bc",
+    "scripts/phone-schema-acl-effects.test.ts": "a9a5010ab9c29ba40e695f3fe99ca82cc85d84654f9cfa51505390ddd77479f2",
+    "scripts/phone-schema-procedural-effects.mjs": "2a5c031ea65a54052451af22dcb1d867a1df9a27e6d0fee6b6b2c121353f8a6a",
+    "scripts/phone-schema-procedural-effects.test.ts": "f4d7d20438586afe8ee77800b88320b55f6cbf75ed8c028070c1a7f2fcd0f626",
+    "scripts/phone-schema-effective-contract.mjs": "b832a55dbadb52aa8e694740d9792df6d3eadfe4eacbce7ecf10cb8a1f22797d",
+    "docs/integrations/phone/F03_EFFECTIVE_SOURCE_CONTRACT_2026-11-04.json": "85b97927087534c614250ca5537dfa48800fde523fa5c6c9c5847b08ceb9eb23"
+  },
+  "sqlSources": {
+    "packages/db/src/migrations/0001_initial_schema.sql": "3217934202738044421d03877b51517c03b5608d813cf1aed28844f0361b3ebf",
+    "packages/db/src/migrations/0002_rls_policies.sql": "bbd6ab272efa12f544c3dfc96266157e48315064d1e62065cb82397e70e07207",
+    "packages/db/src/migrations/0003_plans_and_receipts.sql": "96573100861560d38d9004b77ae76f60b2d415577c7f050627612eb18d0921b4",
+    "packages/db/src/migrations/0004_context_and_memory.sql": "3d8313750af5258522d8d26412f7be5e19734a72b9917ba2083eb6104041c612",
+    "packages/db/src/migrations/0005_task003_runtime_fixes.sql": "d102ae3fffb8e7862f8328eb1cb275075bdbde35f586f672a58793200605b501",
+    "packages/db/src/migrations/0006_task003_procedure_hardening.sql": "bbdd983e0c637ab5d24d61b94cdaf543d59eb62ff4174cdbc4b78b0942e149c8",
+    "packages/db/src/migrations/0007_task003_token_bound_auxiliary_rls.sql": "ea756e9b197a7b4745040bf6b9cbb7c888c8a0ff5b7596255f83048d4ff45b9c",
+    "packages/db/src/migrations/0008_task003_assistant_stream_lifecycle.sql": "554eecebc003f09bb2f8cdf4720c2d093cdb1565a08ba30fb802102078ca8d13",
+    "packages/db/src/migrations/0009_task003_privacy_purge_and_outbox_hardening.sql": "e96a524f60906d03a9ef280bf425f58e7450ed499092319cf11ccbae7e884fd9",
+    "packages/db/src/migrations/0010_task003_purge_recovery_after_claim.sql": "c296a17c06c8d569b0b078564ad800d8d2e4b148c76357cdcc9bb7445bfd5584",
+    "packages/db/src/migrations/0011_task003_purge_recovery_hardening.sql": "7aed4b8185f9bcf07573856d414f4ca1ab146f3246d909d5844a65938de3918d",
+    "packages/db/src/migrations/0012_task004_governed_capabilities_and_personas.sql": "57a77c9c6b2983e465ceea22d2f94bb0dbef1c10ce5afafb7977163b3e41a7d0",
+    "docs/migrations/112h-phone-inbound-events.hosted-review.sql": "064ac927a1e059e25f2026a0251fa06e15e5849b4d35641d106273a641049a9f",
+    "docs/migrations/113h-phone-inbound-principals.hosted-review.sql": "688922f79a552699028ce7e1cd450128a5156d585b13803e478f6412a3aee275"
+  },
+  "testEvidence": {
+    "path": "node_modules/.cache/phone-f03-admission-effects-20261104-final.json",
+    "sha256": "43fddfe1bd50a26c956120fa7bd47b535fbe48439b24f74d14536213915c9e00",
+    "passed": 248,
+    "failed": 0,
+    "files": 9
+  },
+  "limitations": [
+    "ACL parsing does not establish effective ACLs, grantors or ownership-transfer behavior",
+    "16 procedural blocks remain unresolved",
+    "All248 prerequisites remain unverified; no row/catalog evidence created",
+    "Production Calendar delegation and inbound runtime wiring remain pending"
+  ]
+}

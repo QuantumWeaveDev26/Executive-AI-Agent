@@ -1,0 +1,27 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Prepared for one separate owner-approved read-only nine-file checksum comparison; no source export or server changes",
+  "output": "node_modules/.cache/phone-step115-runtime-hashes-20261111.result.json",
+  "paths": [
+    "/app/apps/api/dist/app.js",
+    "/app/apps/api/pilot-start.mjs",
+    "/app/apps/api/dist/services/phone-pilot-startup.js",
+    "/app/apps/api/node_modules/@thaara/contracts/dist/index.js",
+    "/app/apps/api/dist/services/whatsapp-durable.js",
+    "/app/apps/api/dist/services/whatsapp-enquiries.js",
+    "/app/apps/api/dist/services/phone-calling.js",
+    "/app/apps/api/dist/routes/phone-sarvam-webhook.js",
+    "/app/apps/web/dist/index.html"
+  ],
+  "artifacts": [
+    {
+      "path": "scripts/phone-step115-runtime-hashes-20261111.readonly.ps1",
+      "sha256": "6f13d452edc30774e5bdaed13fee0b7b0a758b903cd1dbfcc20c58eb66c470f2"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-step115-runtime-hashes-20261111.readonly.py",
+      "sha256": "9fbefdd5a642175609f164673a20a4c521ad22bfbc1d6c0571d57517de26c7c2"
+    }
+  ]
+}

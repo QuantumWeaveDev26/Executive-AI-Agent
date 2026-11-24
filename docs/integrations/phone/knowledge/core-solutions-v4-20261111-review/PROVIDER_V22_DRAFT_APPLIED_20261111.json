@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-11",
+  "source": "owner-authorized edits in signed-in Sarvam Chrome tab; visible editor and provider readback",
+  "agent": "Thaara AI Voice Assistant",
+  "agentId": "Thaara-AI-V-db336de4-5453",
+  "version": 22,
+  "stage": "Draft",
+  "changesSaved": true,
+  "changes": [
+    "Core custom solutions category plus all five exact owner offerings, preserving the wider services overview",
+    "Exact owner pricing paragraph followed by voluntary callback offer",
+    "Earlier callback offer after roughly two to four useful exchanges",
+    "Name/business/service collection, verified incoming number, recap and explicit consent",
+    "Continued conversation after callback confirmation; removed end-when-answered rule",
+    "Resolved old appointment paragraph that requested callback numbers unnecessarily",
+    "Warm short turns and preserved interruption behavior",
+    "Persisted pronunciation dictionary for WhatsApp/Whatsapp/whatsapp in English, Kannada and Hindi"
+  ],
+  "settingsObservedAfterEdits": {
+    "voice": "Chaitra - Kannada Mix Support",
+    "speed": 1,
+    "pitch": 0,
+    "volume": 1,
+    "letCallersInterrupt": true,
+    "volumeThresholdLabel": "Sensitive",
+    "eagernessToRespondLabel": "Patient",
+    "backgroundSound": "No sound",
+    "maxCallMinutes": 5,
+    "attachedKnowledgeBase": "qw-company-kb-v3-linktree"
+  },
+  "pronunciationProviderReadback": {
+    "English": "WhatsApp/Whatsapp/whatsapp -> wots app",
+    "Kannada": "WhatsApp/Whatsapp/whatsapp -> ವಾಟ್ಸಾಪ್",
+    "Hindi": "WhatsApp/Whatsapp/whatsapp -> वॉट्सऐप",
+    "providerReportsStoredTtsSidecar": true,
+    "providerReportsPreviouslyEmpty": true
+  },
+  "knowledgeNote": "Existing shared KB attachment was preserved; new owner facts were added to draft instructions, not published into the shared KB.",
+  "notificationRecipientInPrompt": "connect@brandmintai.io",
+  "callbackEmailRuntimeActivated": false,
+  "audioAcceptanceVerifiedForNewPronunciation": false,
+  "newConversationFlowAudioVerified": false,
+  "committed": false,
+  "deployed": false,
+  "callsPlaced": 0,
+  "emailsSent": 0,
+  "proofScreenshot": "node_modules/.cache/thaara-v22-draft-pronunciation-verified.jpg"
+}

@@ -1,0 +1,49 @@
+{
+  "remoteExecutionAllowed": true,
+  "authorization": "One voice test each on v19 and v21, synthetic speech only, no retries, one billed minute per version.",
+  "programSha256": "4d4d8fb26a89e6d1e75901bc4502fb47dd7b1dd79380684dd139e1dba6946ac9",
+  "scope": {
+    "vpsId": 1871828,
+    "versions": [
+      19,
+      21
+    ],
+    "voiceSessions": 2,
+    "phoneCalls": 0,
+    "sessionSecondsLimit": 50,
+    "costCapInrBeforeGst": 7,
+    "productionConfigChanges": false,
+    "oneRunMarker": "node_modules/.cache/phone-sarvam-headless-preview-20261108.used.json",
+    "resultReceipt": "node_modules/.cache/phone-sarvam-headless-preview-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-headless-preview-20261108.review.ps1",
+      "sha256": "c74cb4ac62046293762cfaa4c9ac759856ec29072d05e0b2b683d830cff06c6f"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-headless-preview-20261108.review.py",
+      "sha256": "f176868f6e7ce4b1ee802c47d99fd2506823f57623df417e9b7984f47a5df0d5"
+    },
+    {
+      "path": "node_modules/.cache/phone-sarvam-headless-preview/approved-preview-program.mjs",
+      "sha256": "4d4d8fb26a89e6d1e75901bc4502fb47dd7b1dd79380684dd139e1dba6946ac9"
+    },
+    {
+      "path": "scripts/phone-sarvam-headless-evidence.mjs",
+      "sha256": "23e47bfe26aa34402c1489cfbadf80e9f7029b89be1d05beddc91a3afe17d8cf"
+    },
+    {
+      "path": "scripts/phone-sarvam-headless-preview.review.mjs",
+      "sha256": "a0be90f0ae6a3ac6f567ae88382ad07c1d3de9da9537c53088ace6c95a221ecb"
+    },
+    {
+      "path": "node_modules/.cache/phone-sarvam-headless-preview/intro.wav",
+      "sha256": "698a0e3801b110f2273a88e533f86ba7ee18c4bee08e301790b537f1eda659ff"
+    },
+    {
+      "path": "node_modules/.cache/phone-sarvam-headless-preview/interrupt.wav",
+      "sha256": "48b713e285663e3db1e8fce11dc0ce8c3deddbf6df8ca9bb80454a622eb516f4"
+    }
+  ]
+}

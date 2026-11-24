@@ -1,0 +1,25 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "scope": "REVISED ONE v6 outbound simulation: approved website task, KB-grounded company question, return to task and actual answer; no telephony/DB/services",
+  "host": "76.13.217.50",
+  "hostFingerprint": "SHA256:yxR6qeawoJkzi3qL8AypF/cQG6euWW216XB2R5J6TQ4",
+  "maximumProviderRequests": 18,
+  "maximumAdditionalExecutions": 1,
+  "maximumAdditionalBaseCostINR": 2,
+  "stageBPreviousExecutions": 9,
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-eval.review.ps1",
+      "sha256": "3007eb1be1126fdd1e207c38ffaea92722cb441aa2747213eb6e493a3eff802f"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-eval.review.py",
+      "sha256": "5c9118510053a046af0672a5c9aaa20fd986fdd991b245704a176fc708c200b4"
+    },
+    {
+      "path": "docs/integrations/phone/knowledge/eval-review-v1/request-plan.review.json",
+      "sha256": "76b6885c16496202d7bcad26e11bc0f099f7611215be2b8579b701cf4aadec52"
+    }
+  ]
+}

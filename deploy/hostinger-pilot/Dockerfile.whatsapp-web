@@ -1,0 +1,13 @@
+# Step 108.18 — Web UI + WhatsApp contact-name overlay on the reviewed 108.17 WhatsApp pilot image.
+# Build from a clean staged directory after verifying BASE_IMAGE resolves to sha256:46605527...
+ARG BASE_IMAGE=thaara-v2-whatsapp-base:10817-reviewed
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 contracts/meta-whatsapp.js contracts/whatsapp-n8n.js /app/packages/contracts/dist/
+COPY --chown=1000:1000 api-services/whatsapp-inbox.js api-services/chat-whatsapp-assistant.js /app/apps/api/dist/services/
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+COPY --chown=1000:1000 pilot/pilot-config.mjs pilot/pilot-start.mjs pilot/pilot-owner-login.mjs /app/apps/api/
+RUN node --input-type=module -e "import {readFileSync,existsSync} from 'node:fs'; \
+  if(!existsSync('/app/apps/web/dist/index.html'))throw Error('Missing web index.html'); \
+  if(readFileSync('/app/apps/api/dist/app.js','utf8').includes('PhoneCallingService'))throw Error('Paused Phone code must not enter pilot image'); \
+  await import('./dist/app.js'); await import('./dist/services/whatsapp-inbox.js'); await import('./dist/services/chat-whatsapp-assistant.js'); await import('./pilot-owner-login.mjs'); \
+  console.log('Pilot web + WhatsApp contact-name overlay verified');"

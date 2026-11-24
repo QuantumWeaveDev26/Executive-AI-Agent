@@ -1,0 +1,52 @@
+{
+  "format": "phone-migrator-bootstrap-source-v1",
+  "productionAdmission": false,
+  "verified": false,
+  "source": {
+    "path": "packages/db/src/migrator.ts",
+    "sha256": "5c1341b60a7c4dae2fa47036c829c03630b0309d9037eb3a2f20bcae44e33a98",
+    "sqlSha256": "60469a37642d26072bfbb9c082742ec84aead018cbf8765b56f500814896b95d"
+  },
+  "executedSource": {
+    "path": "packages/db/dist/migrator.js",
+    "sha256": "8360a16e3e634c00df9def1109ce3612f1c3bebc77b66477542c3d4fe757a9dd",
+    "sqlSha256": "60469a37642d26072bfbb9c082742ec84aead018cbf8765b56f500814896b95d"
+  },
+  "sql": "CREATE TABLE IF NOT EXISTS schema_migrations (\r\n        version TEXT PRIMARY KEY,\r\n        name TEXT NOT NULL,\r\n        checksum TEXT NOT NULL,\r\n        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\r\n      );",
+  "table": {
+    "name": "schema_migrations",
+    "qualification": "search-path-dependent",
+    "conditionalExistence": "absence-or-independently-verified-identical-definition",
+    "columns": [
+      {
+        "name": "version",
+        "type": "TEXT",
+        "primaryKey": true,
+        "default": null
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "notNull": true,
+        "default": null
+      },
+      {
+        "name": "checksum",
+        "type": "TEXT",
+        "notNull": true,
+        "default": null
+      },
+      {
+        "name": "applied_at",
+        "type": "TIMESTAMPTZ",
+        "notNull": true,
+        "default": "NOW()"
+      }
+    ]
+  },
+  "preconditions": [
+    "Verify migration search_path resolves the unqualified table to public",
+    "Verify absence before creation or independently approved existing definition",
+    "Verify migration actor, initial defaults and all subsequent ordered ACL effects"
+  ]
+}

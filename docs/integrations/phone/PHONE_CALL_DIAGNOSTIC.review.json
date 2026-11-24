@@ -1,0 +1,17 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "artifacts": [
+    {
+      "path": "scripts/phone-backup-restore.review.ps1",
+      "sha256": "d9d8521a79c4610ac827577925651be6a55f0f192f15773f3fff5a46362c77be"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-call-diagnostic.review.py",
+      "sha256": "7d2395c5e775a56217618a8d2a0c8e9b37d08d7ec4c8b6d8db44f1634f2bb8c7"
+    }
+  ],
+  "preparationOnly": true,
+  "command": "pwsh -NoProfile -NonInteractive -File scripts/phone-backup-restore.review.ps1 -ApprovedPhoneCallDiagnostic",
+  "windowIST": "2026-11-02 13:54:00 inclusive to 13:55:00 exclusive"
+}

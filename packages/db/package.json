@@ -1,0 +1,36 @@
+{
+  "name": "@thaara/db",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b && node -e \"const fs = require('fs'); fs.cpSync('src/migrations', 'dist/migrations', { recursive: true, force: true });\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "migrate": "node ./dist/cli/migrate.js",
+    "provision-role": "node ./dist/cli/provision-role.js",
+    "bootstrap-identities": "node --experimental-strip-types ./scripts/bootstrap-runtime-identities.ts",
+    "provision-task004-fresh": "node --experimental-strip-types ./scripts/provision-task004-fresh.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@thaara/config": "workspace:*",
+    "@thaara/contracts": "workspace:*",
+    "@thaara/observability": "workspace:*",
+    "gpt-tokenizer": "2.8.1",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.3"
+  }
+}

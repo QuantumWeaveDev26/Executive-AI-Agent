@@ -1,0 +1,284 @@
+#requires -Version 7.0
+param([switch]$ReviewOnly,[switch]$ApprovedPacedEval)
+$TestEmptyAgent=$false # No empty-agent execution mode is exposed by this package.
+$ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
+$repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$payload=Join-Path $repo 'deploy/hostinger-pilot/phone-sarvam-eval-paced.review.py'
+$manifestPath=Join-Path $repo 'docs/integrations/phone/PHONE_SARVAM_EVAL_PACED.review.json'
+$pin='SHA256:yxR6qeawoJkzi3qL8AypF/cQG6euWW216XB2R5J6TQ4'
+$gitBin='C:/Program Files/Git/usr/bin'
+$identityDir=Join-Path $env:USERPROFILE '.codex/credentials/thaara-ai-v2-vps1871828'
+$publicHosts=Join-Path $repo 'node_modules/.cache/thaara-10816-control/known_hosts'
+$planPath=Join-Path $repo 'docs/integrations/phone/knowledge/eval-review-v1/request-plan.review.json'
+$phase='review';$work=$null;$agent=$null;$agentPid=$null;$pointer=[IntPtr]::Zero;$pem=$null;$output=$null;$cleanup=$false
+
+function Invoke-OwnedProcess([string]$Exe,[string[]]$Arguments,[string]$InputText,[hashtable]$Environment=@{},[int]$Timeout=15000){
+ $info=[Diagnostics.ProcessStartInfo]::new($Exe)
+ $info.UseShellExecute=$false;$info.CreateNoWindow=$true
+ $info.RedirectStandardInput=$true;$info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true
+ foreach($argument in $Arguments){$info.ArgumentList.Add($argument)}
+ foreach($key in $Environment.Keys){$info.Environment[$key]=[string]$Environment[$key]}
+ $child=[Diagnostics.Process]::new();$child.StartInfo=$info
+ $writeTask=$null;$stdinClosed=$false;$stdinDelivered=$false;$stdinFaulted=$false
+ try{
+  if(-not $child.Start()){throw 'child_start_failed'}
+  $stdout=$child.StandardOutput.ReadToEndAsync();$stderr=$child.StandardError.ReadToEndAsync()
+  if($null -ne $InputText){
+   $bytes=[Text.Encoding]::UTF8.GetBytes($InputText)
+   try{
+    $writeTask=$child.StandardInput.BaseStream.WriteAsync($bytes,0,$bytes.Length)
+   }catch{
+    $stdinFaulted=$true;$stdinClosed=$true
+    try{$child.StandardInput.Close()}catch{}
+   }
+  }else{
+   $child.StandardInput.Close()
+   $stdinClosed=$true;$stdinDelivered=$true
+  }
+  $deadline=[Environment]::TickCount64+[long]$Timeout
+  while([Environment]::TickCount64 -lt $deadline){
+   if((-not $stdinClosed) -and $null -ne $writeTask -and $writeTask.IsCompleted){
+    if($writeTask.IsCompletedSuccessfully){
+     try{$child.StandardInput.Flush();$stdinDelivered=$true}catch{$stdinFaulted=$true}
+    }else{
+     $stdinFaulted=$true;if($writeTask.IsFaulted){$null=$writeTask.Exception}
+    }
+    try{$child.StandardInput.Close()}catch{}
+    $stdinClosed=$true
+   }
+   if($child.WaitForExit(40)){break}
+  }
+  if(-not $child.HasExited){
+   try{$child.Kill($true);$child.WaitForExit(2000)}catch{}
+   try{$child.StandardInput.Close()}catch{}
+   if($null -ne $writeTask){try{$null=$writeTask.Wait(200)}catch{};if($writeTask.IsFaulted){$null=$writeTask.Exception}}
+   return @{Code=-1;Text='';TimedOut=$true;StdinDelivered=$stdinDelivered;StdinFaulted=$stdinFaulted}
+  }
+  if(-not $stdinClosed){
+   if($null -ne $writeTask){
+    try{$done=$writeTask.Wait(300)}catch{$done=$false}
+    if($done -and $writeTask.IsCompletedSuccessfully){$stdinDelivered=$true}
+    else{$stdinFaulted=$true;if($writeTask.IsFaulted){$null=$writeTask.Exception}}
+   }
+   try{$child.StandardInput.Close()}catch{}
+   $stdinClosed=$true
+  }
+  $child.WaitForExit()
+  $text=$stdout.GetAwaiter().GetResult();$null=$stderr.GetAwaiter().GetResult()
+  if($text.Length -gt 65536){throw 'child_output_limit'}
+  return @{Code=$child.ExitCode;Text=$text;TimedOut=$false;StdinDelivered=$stdinDelivered;StdinFaulted=$stdinFaulted}
+ }finally{
+  try{if($child.Id -and -not $child.HasExited){$child.Kill($true);$child.WaitForExit(2000)}}catch{}
+  try{$child.StandardInput.Close()}catch{}
+  if($null -ne $writeTask -and $writeTask.IsFaulted){$null=$writeTask.Exception}
+  $child.Dispose()
+ }
+}
+
+try{
+ $manifest=Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+ $expectedArtifacts=@('scripts/phone-sarvam-eval-paced.review.ps1','deploy/hostinger-pilot/phone-sarvam-eval-paced.review.py',
+  'docs/integrations/phone/knowledge/eval-review-v1/request-plan.review.json')
+ if(@($manifest.artifacts).Count -ne 3 -or @($manifest.artifacts.path|Select-Object -Unique).Count -ne 3 -or
+  @($manifest.artifacts|Where-Object{$_.path -cnotin $expectedArtifacts -or $_.sha256 -cnotmatch '^[a-f0-9]{64}$'}).Count -or
+  $manifest.remoteExecutionAllowed -isnot [bool]){throw 'artifact_set_rejected'}
+ foreach($artifact in $manifest.artifacts){
+  $actual=(Get-FileHash -LiteralPath (Join-Path $repo $artifact.path) -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($actual -cne $artifact.sha256){throw 'artifact_checksum_mismatch'}
+ }
+ if(($TestEmptyAgent -and $ApprovedPacedEval) -or ($ReviewOnly -and ($TestEmptyAgent -or $ApprovedPacedEval))){throw 'mode_conflict'}
+ if($ReviewOnly -or (-not $TestEmptyAgent -and -not $ApprovedPacedEval)){
+  @{mode='review_only';temporaryAgent=$true;plaintextPrivateKeyFiles=$false;remoteCommands='rate-paced (>=22s inter-request, <=3 req/62s rolling window, 30s poll) idempotent post-PATCH & post-mapping v6 eval; appends 7th case if absent and runs ONLY 7th case once preserving 6 existing cases; no telephone calls';liveCalling=$false}|ConvertTo-Json -Compress
+  exit 0
+ }
+ if($ApprovedPacedEval -and ($manifest.remoteExecutionAllowed -isnot [bool] -or $manifest.remoteExecutionAllowed -ne $true)){throw 'remote_execution_not_approved'}
+ # Consume local one-run gate BEFORE authentication. Remote atomic mkdir independently fences duplicate runs.
+ $manifest.remoteExecutionAllowed=$false
+ [IO.File]::WriteAllText($manifestPath,($manifest|ConvertTo-Json -Depth 12)+"`n",[Text.UTF8Encoding]::new($false))
+ if((Get-Content -LiteralPath $manifestPath -Raw|ConvertFrom-Json).remoteExecutionAllowed -ne $false){throw 'gate_consume_failed'}
+ $phase='public_pin_check'
+ $lines=@([IO.File]::ReadAllLines($publicHosts)|Where-Object{$_ -and -not $_.StartsWith('#')})
+ if($lines.Count -ne 1){throw 'host_record_ambiguous'}
+ $fields=$lines[0].Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
+ if($fields.Count -ne 3 -or $fields[0] -cne '76.13.217.50' -or $fields[1] -cne 'ssh-ed25519'){throw 'host_record_denied'}
+ $hostHash='SHA256:'+([Convert]::ToBase64String([Security.Cryptography.SHA256]::HashData([Convert]::FromBase64String($fields[2])))).TrimEnd('=')
+ if($hostHash -cne $pin){throw 'host_pin_mismatch'}
+ foreach($binary in @('ssh-agent.exe','ssh-add.exe','ssh.exe')){if(-not (Test-Path -LiteralPath (Join-Path $gitBin $binary))){throw 'reviewed_tool_missing'}}
+ $phase='protected_temp_directory'
+ $work=Join-Path ([IO.Path]::GetTempPath()) ('thaara-phone-pace-'+[guid]::NewGuid().ToString('N'))
+ $null=New-Item -ItemType Directory -Path $work -ErrorAction Stop
+ $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User
+ $acl=[Security.AccessControl.DirectorySecurity]::new();$acl.SetAccessRuleProtection($true,$false);$acl.SetOwner($sid)
+ $inherit=[Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'
+ foreach($principal in @($sid,[Security.Principal.SecurityIdentifier]::new('S-1-5-18'))){
+  $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($principal,'FullControl',$inherit,'None','Allow'))
+ }
+ Set-Acl -LiteralPath $work -AclObject $acl
+ $actualAcl=Get-Acl -LiteralPath $work
+ $allowedSids=@($sid.Value,'S-1-5-18')
+ if(-not $actualAcl.AreAccessRulesProtected -or $actualAcl.Access.Count -ne 2 -or
+  @($actualAcl.Access|Where-Object{$_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -notin $allowedSids -or $_.AccessControlType -ne 'Allow'}).Count){throw 'temp_acl_unverified'}
+ $known=Join-Path $work 'known_hosts'
+ [IO.File]::WriteAllText($known,$lines[0]+"`n",[Text.UTF8Encoding]::new($false)) # PUBLIC host record only.
+ $socket=(Join-Path $work 'agent.sock').Replace('\','/')
+ $agentInfo=[Diagnostics.ProcessStartInfo]::new((Join-Path $gitBin 'ssh-agent.exe'))
+ $agentInfo.UseShellExecute=$false;$agentInfo.CreateNoWindow=$true
+ $agentInfo.RedirectStandardOutput=$true;$agentInfo.RedirectStandardError=$true
+ foreach($argument in @('-D','-a',$socket)){$agentInfo.ArgumentList.Add($argument)}
+ $agent=[Diagnostics.Process]::new();$agent.StartInfo=$agentInfo
+ if(-not $agent.Start()){throw 'agent_start_failed'}
+ $agentPid=$agent.Id
+ $agentOut=$agent.StandardOutput.ReadToEndAsync();$agentErr=$agent.StandardError.ReadToEndAsync()
+ $agentEnv=@{SSH_AUTH_SOCK=$socket;SSH_AGENT_PID=[string]$agentPid}
+ $phase='empty_agent_check';$ready=$false
+ for($i=0;$i -lt 15;$i++){
+  if($agent.HasExited){throw 'agent_exited'}
+  $check=Invoke-OwnedProcess (Join-Path $gitBin 'ssh-add.exe') @('-l') $null $agentEnv 3000
+  if((-not $check.TimedOut) -and $check.Code -eq 1){$ready=$true;break}
+  if((-not $check.TimedOut) -and $check.Code -eq 0){throw 'agent_not_empty'}
+  Start-Sleep -Milliseconds 100
+ }
+ if(-not $ready){throw 'agent_unavailable'}
+ if($TestEmptyAgent){$output=@{mode='empty_agent_test';hostRecordMatched=$true;keyLoaded=$false;remoteConnected=$false}}
+ else{
+  $phase='memory_only_key_load'
+  $identity=Get-Content -LiteralPath (Join-Path $identityDir 'identity.json') -Raw | ConvertFrom-Json
+  if($identity.hostname -cne 'srv1871828.hstgr.cloud' -or $identity.port -ne 22 -or $identity.enrolled -isnot [bool] -or $identity.enrolled -ne $true -or
+   $identity.fingerprint -isnot [string] -or $identity.fingerprint -cnotmatch '^SHA256:[A-Za-z0-9+/]{43}$'){throw 'identity_metadata_mismatch'}
+  $keyDirectory=Get-Item -LiteralPath $identityDir
+  $keyAcl=Get-Acl -LiteralPath $identityDir
+  if($keyDirectory.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint) -or -not $keyAcl.AreAccessRulesProtected -or
+   @($keyAcl.Access|Where-Object{$_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -notin $allowedSids -or $_.AccessControlType -ne 'Allow'}).Count){throw 'identity_permissions_denied'}
+  foreach($leaf in @('private-key.clixml','identity.pub')){if((Get-Item -LiteralPath (Join-Path $identityDir $leaf)).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'identity_file_redirected'}}
+  $secure=Import-Clixml -LiteralPath (Join-Path $identityDir 'private-key.clixml')
+  $pointer=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+  $pem=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
+  $add=Invoke-OwnedProcess (Join-Path $gitBin 'ssh-add.exe') @('-t','720','-') ($pem+"`n") $agentEnv 10000
+  $pem=$null;[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer);$pointer=[IntPtr]::Zero
+  if($add.TimedOut -or $add.Code -ne 0){throw 'agent_key_load_failed'}
+  $loaded=Invoke-OwnedProcess (Join-Path $gitBin 'ssh-add.exe') @('-l') $null $agentEnv 3000
+  $loadedLines=@($loaded.Text.Trim().Split("`n")|Where-Object{$_})
+  $loadedFields=$loaded.Text.Trim().Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
+  if($loaded.TimedOut -or $loaded.Code -ne 0 -or $loadedLines.Count -ne 1 -or $loadedFields.Count -lt 2 -or $loadedFields[1] -cne $identity.fingerprint){throw 'agent_identity_mismatch'}
+  $phase='pinned_paced_eval_ssh'
+  $sshArgs=@('-F','none','-i',(Join-Path $identityDir 'identity.pub'),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
+   '-o',('UserKnownHostsFile='+$known),'-o','GlobalKnownHostsFile=/dev/null','-o','UpdateHostKeys=no','-o','HostKeyAlgorithms=ssh-ed25519',
+   '-o','KexAlgorithms=curve25519-sha256','-o','PubkeyAcceptedAlgorithms=rsa-sha2-512,rsa-sha2-256','-o','ForwardAgent=no','-o','ClearAllForwardings=yes',
+   '-o','PermitLocalCommand=no','-o','ConnectionAttempts=1','-o','ConnectTimeout=20','-o','ServerAliveInterval=10','-o','ServerAliveCountMax=3','root@76.13.217.50','python3 -B - --approved-paced-eval-v6-once')
+  $plan64=[Convert]::ToBase64String([IO.File]::ReadAllBytes($planPath))
+  $remoteInput="import json,base64`nPLAN=json.loads(base64.b64decode('$plan64'))`n"+[IO.File]::ReadAllText($payload).Replace("`r`n","`n")
+  $remote=Invoke-OwnedProcess (Join-Path $gitBin 'ssh.exe') $sshArgs $remoteInput $agentEnv 660000
+  if($remote.TimedOut){
+   $output=@{status='stopped';category='ssh_command_timeout';phase=$phase;sshExitCode=$remote.Code;stdinDelivered=[bool]$remote.StdinDelivered;stdinFaulted=[bool]$remote.StdinFaulted;hostRecordMatched=$true;telephoneCalls=0;providerAcceptanceVerified=$false}
+  }elseif([string]::IsNullOrWhiteSpace($remote.Text)){
+   $sshCategory=if($remote.Code -eq 255){'ssh_transport_or_handshake_failed'}elseif($remote.StdinFaulted){'ssh_stdin_broken_pipe'}else{'ssh_empty_stdout'}
+   $output=@{status='stopped';category=$sshCategory;phase=$phase;sshExitCode=$remote.Code;stdinDelivered=[bool]$remote.StdinDelivered;stdinFaulted=[bool]$remote.StdinFaulted;hostRecordMatched=$true;telephoneCalls=0;providerAcceptanceVerified=$false}
+  }else{
+   $facts=$null
+   try{$facts=$remote.Text|ConvertFrom-Json -ErrorAction Stop}catch{$facts=$null}
+   if($null -eq $facts){
+    $output=@{status='stopped';category='remote_json_parse_failed';phase=$phase;sshExitCode=$remote.Code;stdinDelivered=[bool]$remote.StdinDelivered;stdinFaulted=[bool]$remote.StdinFaulted;hostRecordMatched=$true;telephoneCalls=0;providerAcceptanceVerified=$false}
+   }else{
+    $categories=@('arguments_rejected','root_required','plan_checksum_mismatch','already_claimed','private_path_rejected','key_directory_rejected',
+     'key_permissions_rejected','key_format_rejected','guard_permissions_rejected','guard_unavailable','identifier_rejected','endpoint_or_body_rejected',
+     'duplicate_write_rejected','request_budget_exhausted','rate_limit_delay_exceeded','redirect_rejected','http_status_rejected','response_format_rejected',
+     'response_limit','http_400','http_401','http_402','http_403','http_404','http_409','http_422','http_429','http_failure','network_timeout_or_tls_failure',
+     'response_mismatch','suite_mismatch','variables_not_present','case_mismatch','mapping_mismatch','run_state_unverified','run_mismatch','provider_run_failed',
+     'poll_limit_outcome_unverified','result_mismatch','grade_mismatch','transcript_unavailable','provider_grade_failed',
+     'trusted_receipt_missing','trusted_receipt_rejected','trusted_suite_id_mismatch','unclassified_failure')
+    $diagClassifications=@('rate_limit_window_with_retry_after','rate_limit_without_retry_after_header','quota_or_plan_restriction',
+     'endpoint_or_burst_throttled_without_retry_after','permission_or_auth_restriction','quota_or_credit_exhausted','validation_or_schema_rejection',
+     'resource_not_found','resource_conflict','unclassified_http_error')
+    if($facts.telephoneCalls -ne 0 -or $facts.providerAcceptanceVerified -isnot [bool] -or $facts.providerAcceptanceVerified -ne $false){throw 'eval_output_denied'}
+    $boolFlags=@('trustedReceiptsMatched','variablesPatched','variablesAlreadyPresent','mappingCreated','mappingAlreadyPresent','caseAdded','caseAlreadyPresent')
+    if($facts.status -eq 'stopped'){
+     $stopAllowed=@('status','category','lastPhase','receiptCount','providerRequests','providerMutations','providerAcceptanceVerified','telephoneCalls',
+      'trustedReceiptsMatched','variablesPatched','variablesAlreadyPresent','mappingCreated','mappingAlreadyPresent','caseAdded','caseAlreadyPresent',
+      'runSubmissionFencePresent','hasRunId','passedChecks','totalChecks','evaluationChecks','transcriptTurns','transcriptSha256','errorDiagnostic')
+     if($facts.category -notin $categories -or @($facts.PSObject.Properties.Name|Where-Object{$_ -notin $stopAllowed}).Count){throw 'eval_output_denied'}
+     $output=@{status='stopped';category=$facts.category;phase=$phase;lastPhase=$facts.lastPhase;receiptCount=$facts.receiptCount;
+      providerRequests=[int]$facts.providerRequests;providerMutations=[int]$facts.providerMutations;
+      trustedReceiptsMatched=[bool]$facts.trustedReceiptsMatched;
+      variablesPatched=[bool]$facts.variablesPatched;variablesAlreadyPresent=[bool]$facts.variablesAlreadyPresent;
+      mappingCreated=[bool]$facts.mappingCreated;mappingAlreadyPresent=[bool]$facts.mappingAlreadyPresent;
+      caseAdded=[bool]$facts.caseAdded;caseAlreadyPresent=[bool]$facts.caseAlreadyPresent;
+      runSubmissionFencePresent=[bool]$facts.runSubmissionFencePresent;hasRunId=[bool]$facts.hasRunId;
+      sshExitCode=$remote.Code;stdinDelivered=[bool]$remote.StdinDelivered;stdinFaulted=[bool]$remote.StdinFaulted;
+      hostRecordMatched=$true;hostHandshakeVerified=$true;telephoneCalls=0;providerAcceptanceVerified=$false}
+     if($null -ne $facts.errorDiagnostic){
+      $ed=$facts.errorDiagnostic
+      $edAllowed=@('httpStatus','failedOperation','errorBodyShape','errorCode','errorMessage','retryAfterSeconds','rateLimitHeaders','diagnosticClassification')
+      if(@($ed.PSObject.Properties.Name|Where-Object{$_ -notin $edAllowed}).Count -or $ed.diagnosticClassification -notin $diagClassifications){throw 'eval_output_denied'}
+      $output.errorDiagnostic=$ed
+     }
+     if($null -ne $facts.transcriptSha256){
+      $output.passedChecks=$facts.passedChecks
+      $output.totalChecks=$facts.totalChecks
+      $output.transcriptSha256=$facts.transcriptSha256
+      $output.evaluationChecks=$facts.evaluationChecks
+      $output.transcriptTurns=$facts.transcriptTurns
+     }
+    }else{
+     $expected=@('status','suiteId','caseId','runId','appVersion','existingCasesPreserved','trustedReceiptsMatched','providerJudgePassed','passedChecks','totalChecks',
+      'evaluationChecks','transcriptTurns','transcriptSha256','variablesPatched','variablesAlreadyPresent','mappingCreated','mappingAlreadyPresent',
+      'caseAdded','caseAlreadyPresent','providerAcceptanceVerified','telephoneCalls')
+     if($remote.Code -ne 0 -or $facts.status -cne 'completed_requires_manual_review' -or
+      @($facts.PSObject.Properties.Name|Where-Object{$_ -notin $expected}).Count -or @($facts.PSObject.Properties.Name).Count -ne $expected.Count -or
+      $facts.appVersion -ne 6 -or $facts.existingCasesPreserved -ne 6 -or $facts.trustedReceiptsMatched -isnot [bool] -or $facts.trustedReceiptsMatched -ne $true -or
+      $facts.variablesPatched -isnot [bool] -or $facts.variablesPatched -ne $false -or $facts.variablesAlreadyPresent -isnot [bool] -or $facts.variablesAlreadyPresent -ne $true -or
+      $facts.mappingCreated -isnot [bool] -or $facts.mappingCreated -ne $false -or $facts.mappingAlreadyPresent -isnot [bool] -or $facts.mappingAlreadyPresent -ne $true -or
+      $facts.providerJudgePassed -isnot [bool] -or $facts.providerJudgePassed -ne $true -or
+      $facts.passedChecks -notin @(5,6) -or $facts.totalChecks -ne $facts.passedChecks -or $facts.transcriptSha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'eval_output_denied'}
+     foreach($field in @('suiteId','caseId','runId')){if($facts.$field -cnotmatch '^[0-9A-HJKMNP-TV-Z]{26}$'){throw 'eval_output_denied'}}
+     foreach($flag in $boolFlags){if($facts.$flag -isnot [bool]){throw 'eval_output_denied'}}
+     $output=@{status='completed_requires_manual_review';suiteId=$facts.suiteId;caseId=$facts.caseId;runId=$facts.runId;appVersion=6;
+      existingCasesPreserved=6;trustedReceiptsMatched=$true;providerJudgePassed=$true;passedChecks=$facts.passedChecks;totalChecks=$facts.totalChecks;
+      evaluationChecks=$facts.evaluationChecks;transcriptTurns=$facts.transcriptTurns;transcriptSha256=$facts.transcriptSha256;
+      variablesPatched=$false;variablesAlreadyPresent=$true;
+      mappingCreated=$false;mappingAlreadyPresent=$true;
+      caseAdded=$facts.caseAdded;caseAlreadyPresent=$facts.caseAlreadyPresent;
+      sshExitCode=$remote.Code;stdinDelivered=[bool]$remote.StdinDelivered;stdinFaulted=[bool]$remote.StdinFaulted;
+      hostRecordMatched=$true;hostHandshakeVerified=$true;telephoneCalls=0;providerAcceptanceVerified=$false}
+    }
+   }
+  }
+ }
+}catch{
+ # No raw exception, child stderr, key, connection string or remote payload is printed.
+ $output=@{status='stopped';category='wrapper_guard_rejected';phase=$phase};$global:LASTEXITCODE=1
+}finally{
+ if($ApprovedPacedEval){
+  $gateResetVerified=$false
+  try{
+   $resetManifest=Get-Content -LiteralPath $manifestPath -Raw|ConvertFrom-Json
+   $resetManifest.remoteExecutionAllowed=$false
+   [IO.File]::WriteAllText($manifestPath,($resetManifest|ConvertTo-Json -Depth 12)+"`n",[Text.UTF8Encoding]::new($false))
+   $resetGate=(Get-Content -LiteralPath $manifestPath -Raw|ConvertFrom-Json).remoteExecutionAllowed
+   $gateResetVerified=($resetGate -is [bool] -and $resetGate -eq $false)
+  }catch{$gateResetVerified=$false}
+  if($output){$output.gateResetVerified=$gateResetVerified;if(-not $gateResetVerified){$output.status='stopped'}}
+ }
+ $pem=$null;if($pointer -ne [IntPtr]::Zero){[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)}
+ try{
+  if($agent){if($agent.Id -ne $agentPid){throw 'agent_identity_changed'};if(-not $agent.HasExited){$agent.Kill($true);if(-not $agent.WaitForExit(5000)){throw 'agent_cleanup_failed'}};$agent.Dispose()}
+  if($work){
+   $expected=[IO.Path]::GetFullPath($work)
+   if((Split-Path $work -Leaf) -notmatch '^thaara-phone-pace-[a-f0-9]{32}$' -or (Get-Item -LiteralPath $work).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'temp_identity_changed'}
+   foreach($entry in @(Get-ChildItem -LiteralPath $work -Force)){
+    if($entry.Name -notin @('known_hosts','agent.sock') -or $entry.PSIsContainer -or $entry.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'unexpected_auth_artifact'}
+    if([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($entry.FullName)) -cne $expected){throw 'unsafe_cleanup_path'}
+    Remove-Item -LiteralPath $entry.FullName -Force
+   }
+   Remove-Item -LiteralPath $work -Force
+   if(Test-Path -LiteralPath $work){throw 'temp_cleanup_failed'}
+  }
+  $cleanup=$true
+ }catch{$cleanup=$false;$global:LASTEXITCODE=1}
+}
+if(-not $output){$output=@{status='stopped';phase=$phase}}
+$output.cleanupVerified=$cleanup
+if($work){$output.temporaryDirectoryName=(Split-Path $work -Leaf)}
+if($agentPid){$output.agentProcessId=$agentPid}
+$output|ConvertTo-Json -Compress -Depth 6
+if(-not $cleanup -or $output.status -cne 'completed_requires_manual_review'){exit 1}

@@ -1,0 +1,15 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner approved ONE read-only deployment failure investigation; no build/restart/production writes",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-failure-diagnostic.readonly.ps1",
+      "sha256": "81c420441ed71f21cb76dc356accd53389730c3584902b81562eff47522422c4"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-failure-diagnostic.readonly.py",
+      "sha256": "8a60412d10a9e2ed9d3d34cbb231fe0b2635f1961081a03a0d0b5c421d11be49"
+    }
+  ]
+}

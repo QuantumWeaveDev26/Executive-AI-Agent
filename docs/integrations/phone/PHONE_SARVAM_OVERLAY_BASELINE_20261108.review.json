@@ -1,0 +1,32 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "One scoped read-only VPS check; no retries.",
+  "scope": {
+    "vpsId": 1871828,
+    "sshSessions": 1,
+    "exactPaths": [
+      "/app/apps/api/dist/services/phone-sarvam-runtime.js",
+      "/app/apps/api/dist/services/phone-sarvam-knowledge-binding.js",
+      "/app/apps/api/dist/services/phone-sarvam-calls.js",
+      "/app/apps/api/dist/services/phone-sarvam-results.js"
+    ],
+    "checksumsOrMissingOnly": true,
+    "sourceExports": 0,
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "marker": "node_modules/.cache/phone-sarvam-overlay-baseline-20261108.used.json",
+    "receipt": "node_modules/.cache/phone-sarvam-overlay-baseline-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-overlay-baseline-20261108.readonly.ps1",
+      "sha256": "74e643d0bb48e091fbe2165f281bdcae9468e52efed87d2a23e821bb6d495294"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-overlay-baseline-20261108.readonly.py",
+      "sha256": "5c64ca0e1b60949256a8e8a4348a783a9fdebd3f2a748f6b456d8a9af441db63"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "clientDate": "2026-11-06",
+  "purpose": "Read-only evidence admission review; no provider mutation, paid test, call or activation.",
+  "executionAuthorized": false,
+  "liveOutbound": {
+    "appVersion": 2,
+    "companyKnowledgeBound": false,
+    "imageId": "sha256:213c9d89b6db4e3cc861f9adc548a629a0092285a9610bd147b56a3fd6bbc4e3",
+    "profileSha256": "7a41b4f34482ccf833fcdab6b7bb0c8a5c198f52a994ec4d8c0ca11a19596447",
+    "receiptSha256": "202a6f4d1335a82df831fb50d3c3a6c980a6febbf0d9453029f2e10140f03dc7",
+    "providerVersion2KnowledgeBaseCountObserved": 0,
+    "providerVersion2SettingsReadOnlyVerified": true
+  },
+  "inbound": {
+    "deployment": "Thaara V2 - Inbound Voice",
+    "active": true,
+    "committedVersion": 5,
+    "browserObserved": true,
+    "unchanged": true
+  },
+  "outboundReference": {
+    "committedVersion": 6,
+    "knowledgeVersion": "qw-company-kb-v1",
+    "voice": "Chaitra - Kannada Mix Support",
+    "configuredMaxCallLengthMinutes": 5,
+    "independentFiveMinuteHangupTest": false,
+    "browserObserved": true,
+    "existingRun": "THAARA-B-OUT01-TaskAndBusiness-v6-ONE-REVIEW-20261103",
+    "existingRunDate": "2026-11-03",
+    "existingRunCompleted": true,
+    "behaviorChecksPassed": 5,
+    "behaviorChecksTotal": 5,
+    "rawToolFrameObserved": true,
+    "toolName": "query_knowledge_base",
+    "toolParameters": {
+      "knowledge_base": "qw-company-kb-v1",
+      "query": "AI automation services provided by Quantum Weave"
+    },
+    "returnedSourceDocument": "quantum-weave-public.md",
+    "returnedDocumentExcerptsObserved": 5,
+    "returnedServicesObserved": [
+      "AI-assisted workflows",
+      "multilingual voice agents",
+      "WhatsApp/business automation",
+      "digital transformation",
+      "AI consulting",
+      "process automation"
+    ],
+    "returnedToApprovedObjectiveObserved": true,
+    "recipientTimeframeObserved": "Sunday afternoon",
+    "fullProviderTranscriptHashIndependentlyRecomputed": false
+  },
+  "preservation": {
+    "committedV7Unchanged": true,
+    "draftV9Unchanged": true,
+    "inboundV5Unchanged": true,
+    "credentialsUnchanged": true,
+    "liveApiUnchanged": true
+  },
+  "limitations": [
+    "v6 pricing text still refers to historical ladder figures; no strict all-prices ban is claimed.",
+    "Configured five-minute cap observed; no new live duration test performed.",
+    "No live Chat v6 call or appointment tested.",
+    "Deployment compatibility, owner admission and exact rollout approval remain required."
+  ]
+}

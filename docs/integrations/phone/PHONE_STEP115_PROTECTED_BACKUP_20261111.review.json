@@ -1,0 +1,22 @@
+{
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner explicitly approved protected backup and disabled SQL installation against STEP115_NEXT_INSTALLATION_SCOPE_20261111.md; this runner performs backup/restore only",
+  "artifacts": [
+    {
+      "path": "scripts/phone-step115-protected-backup-20261111.ps1",
+      "sha256": "7b9761a970450a14b4d642f8f8725f93476c5e3cedff91407603cf58e053d2ef"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-step115-protected-backup-20261111.py",
+      "sha256": "fe144e026a112e7314ded526238143eee7831e88fc1a52721f1da48f48ba2b61"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-backup-restore.review.py",
+      "sha256": "650464fee1a727eeeccbf938d4e474fde3b3b336e58e812b1c55948ad326916e"
+    },
+    {
+      "path": "docs/integrations/phone/STEP115_NEXT_INSTALLATION_SCOPE_20261111.md",
+      "sha256": "deba315528256684ad977cc99eda1662ce65741cda9bf934e39287dfcb3d3eab"
+    }
+  ]
+}

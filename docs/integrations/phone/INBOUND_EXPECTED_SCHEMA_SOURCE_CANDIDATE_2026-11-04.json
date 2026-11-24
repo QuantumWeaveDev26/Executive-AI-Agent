@@ -1,0 +1,137 @@
+{
+  "status": "UNAPPROVED SOURCE-DERIVED DESIGN CANDIDATE; NOT A CANONICAL CATALOG",
+  "origin": "manual SQL definition review, never observed clone catalog",
+  "expectedCatalogSha256": null,
+  "reviewAuthorization": null,
+  "postgresVersionNum": null,
+  "imageId": null,
+  "imageRepoDigest": null,
+  "baseContractSha256": null,
+  "stages": [
+    "after112",
+    "after113"
+  ],
+  "provenance": [
+    {
+      "component": "journal-table",
+      "path": "docs/migrations/112h-phone-inbound-events.hosted-review.sql",
+      "artifactSha256": "064ac927a1e059e25f2026a0251fa06e15e5849b4d35641d106273a641049a9f",
+      "lines": [
+        41,
+        60
+      ],
+      "rawLineSpanSha256": "1b69690482d1888f4ddde8169f8d018c24e5cd604e7359b1e9d81f9807836ec2"
+    },
+    {
+      "component": "journal-index-rls-and-acl",
+      "path": "docs/migrations/112h-phone-inbound-events.hosted-review.sql",
+      "artifactSha256": "064ac927a1e059e25f2026a0251fa06e15e5849b4d35641d106273a641049a9f",
+      "lines": [
+        61,
+        74
+      ],
+      "rawLineSpanSha256": "1a7229989fee792a1d4298a91e3e297430c5e061003076d052c7e740c9a693f6"
+    },
+    {
+      "component": "principals-roles-table-base-rights",
+      "path": "docs/migrations/113h-phone-inbound-principals.hosted-review.sql",
+      "artifactSha256": "688922f79a552699028ce7e1cd450128a5156d585b13803e478f6412a3aee275",
+      "lines": [
+        40,
+        68
+      ],
+      "rawLineSpanSha256": "7ee3d431dcf8ac204ca097078ab6469444c6657ec2228d353de37d80e99af2a6"
+    },
+    {
+      "component": "resolve-and-scope-functions",
+      "path": "docs/migrations/113h-phone-inbound-principals.hosted-review.sql",
+      "artifactSha256": "688922f79a552699028ce7e1cd450128a5156d585b13803e478f6412a3aee275",
+      "lines": [
+        70,
+        97
+      ],
+      "rawLineSpanSha256": "2b3a7f1a83205407ee5e8165c45d57f03c80501b78fec986c0bd6c5d4895395b"
+    },
+    {
+      "component": "journal-policy-role-and-audit-rights",
+      "path": "docs/migrations/113h-phone-inbound-principals.hosted-review.sql",
+      "artifactSha256": "688922f79a552699028ce7e1cd450128a5156d585b13803e478f6412a3aee275",
+      "lines": [
+        98,
+        109
+      ],
+      "rawLineSpanSha256": "8ea72e25021a20fc70c4f831cf492ebb669caeff318fc5ce71ced3b2c6e76fc0"
+    },
+    {
+      "component": "append-function-and-final-ownership-acl",
+      "path": "docs/migrations/113h-phone-inbound-principals.hosted-review.sql",
+      "artifactSha256": "688922f79a552699028ce7e1cd450128a5156d585b13803e478f6412a3aee275",
+      "lines": [
+        111,
+        194
+      ],
+      "rawLineSpanSha256": "22a640de70edb54e8c2fbf2eee8316960faccf6a6cd31c785440428fbc74bb80"
+    }
+  ],
+  "expectedRequirements": {
+    "journalColumns": [
+      "workspace_id",
+      "owner_user_id",
+      "call_id",
+      "kind",
+      "event_id",
+      "source_digest",
+      "sequence",
+      "report",
+      "created_at"
+    ],
+    "principalColumns": [
+      "principal_id",
+      "workspace_id",
+      "owner_user_id",
+      "route_id",
+      "token_hash",
+      "profile_fingerprint",
+      "revision",
+      "operations",
+      "created_at",
+      "expires_at",
+      "revoked_at"
+    ],
+    "functionSignatures": [
+      "public.phone_inbound_resolve_grant(text,text,text)",
+      "public.phone_inbound_scope_matches(uuid,uuid)",
+      "public.phone_inbound_append_event(jsonb)"
+    ],
+    "functionOwner": "thaara_phone_guard",
+    "ingestExecute": [
+      "public.phone_inbound_resolve_grant(text,text,text)",
+      "public.phone_inbound_append_event(jsonb)"
+    ],
+    "roles": [
+      "thaara_phone_ingest",
+      "thaara_phone_guard"
+    ],
+    "roleFlagsAllFalse": [
+      "login",
+      "inherit",
+      "super",
+      "bypassrls",
+      "createdb",
+      "createrole",
+      "replication"
+    ],
+    "requiredFullReview": [
+      "complete constraint/index/expression definitions",
+      "complete function bodies and security settings",
+      "stage-specific RLS roles/commands/expressions",
+      "table, column, schema, function ACL and grantor tuples",
+      "base memberships, audit policies, role memberships and default privileges"
+    ],
+    "notYetDerived": [
+      "exhaustive version-specific normalized catalog",
+      "independently verified grantor after ownership transfer",
+      "approved base dependency contract"
+    ]
+  }
+}

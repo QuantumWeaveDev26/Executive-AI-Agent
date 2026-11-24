@@ -1,0 +1,10 @@
+import {Type,Static} from '@sinclair/typebox';
+export const ChatVoiceSpokenLanguageSchema=Type.Union([Type.Literal('en-IN'),Type.Literal('kn-IN'),Type.Literal('hi-IN')]);
+export type ChatVoiceSpokenLanguage=Static<typeof ChatVoiceSpokenLanguageSchema>;
+export const ChatVoiceLanguageSchema=Type.Union([Type.Literal('auto'),ChatVoiceSpokenLanguageSchema]);
+export type ChatVoiceLanguage=Static<typeof ChatVoiceLanguageSchema>;
+const uuid=()=>Type.String({pattern:'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$'});
+export const ChatVoiceTranscribeSchema=Type.Object({conversationId:uuid(),language:ChatVoiceLanguageSchema,mimeType:Type.Literal('audio/wav'),audio:Type.String({minLength:64,maxLength:1066728,pattern:'^[A-Za-z0-9+/]+={0,2}$'})},{additionalProperties:false});
+export const ChatVoiceSpeakSchema=Type.Object({conversationId:uuid(),messageId:uuid(),language:ChatVoiceLanguageSchema,chunk:Type.Integer({minimum:0,maximum:7})},{additionalProperties:false});
+export const ChatVoiceTranscriptSchema=Type.Object({transcript:Type.String({maxLength:16000}),detectedLanguage:Type.Optional(ChatVoiceSpokenLanguageSchema)},{additionalProperties:false});
+export const ChatVoiceAudioSchema=Type.Object({audio:Type.String({maxLength:5600000}),mimeType:Type.Literal('audio/wav'),chunkCount:Type.Integer({minimum:1,maximum:8})},{additionalProperties:false});

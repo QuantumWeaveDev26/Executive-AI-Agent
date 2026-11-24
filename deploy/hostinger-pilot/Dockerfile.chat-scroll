@@ -1,0 +1,4 @@
+# Step 108.23b: UI-only overlay (chat scrolling fix). Expected base: sha256:1cbe1786f7fa350a655307f0f4447f200ae85176cee9333ef5ced591b8303296.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/

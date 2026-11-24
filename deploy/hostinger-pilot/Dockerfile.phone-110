@@ -1,0 +1,11 @@
+# Step 110: reviewed full API image plus web assets and the existing operator tools. Calling stays off until its switches are set.
+ARG BASE_IMAGE=thaara-v2-pilot-api:phone-110
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+COPY --chown=1000:1000 tools/pilot-owner-login.mjs tools/pilot-seed.mjs tools/pilot-send-cli.mjs tools/validate-budget.mjs /app/apps/api/
+RUN node --check /app/apps/api/pilot-start.mjs && node --input-type=module -e "import{existsSync,readFileSync}from'node:fs'; \
+  if(!existsSync('/app/apps/web/dist/index.html'))throw Error('Missing web index.html'); \
+  const app=readFileSync('dist/app.js','utf8'); if(!app.includes('isRuntimeLoadedPhoneProvider')||!app.includes('mediaSrc'))throw Error('Guard or CSP missing'); \
+  const s=await import('./dist/services/phone-pilot-startup.js'); const off=await s.createPhoneStartup({}); if(off.status!=='off')throw Error('Default must be off'); \
+  for(const m of ['whatsapp-media-preview','whatsapp-templates','whatsapp-media-upload','whatsapp-pilot-dispatch'])await import('./dist/services/'+m+'.js'); \
+  await import('./dist/app.js'); console.log('Phone image verified; calling off by default');"

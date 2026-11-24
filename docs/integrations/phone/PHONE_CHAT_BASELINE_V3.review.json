@@ -1,0 +1,15 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner requests read-only current-baseline reconciliation and local package preparation only",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-baseline-v3.readonly.ps1",
+      "sha256": "5b98e5a5440b08ed9e83b96c10d8b60b82cde861776c7f92ba8f186f3a67a03e"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-baseline-v3.readonly.py",
+      "sha256": "14ec4a53b42d759a035b97c6b2c9c236c537ee08be049427d0fa3a13b7cfa6a7"
+    }
+  ]
+}

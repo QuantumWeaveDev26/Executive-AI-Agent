@@ -1,0 +1,1023 @@
+{
+  "id": "upU4clCyj1VvJlpk",
+  "name": "Sub 05 - Gmail & Google Drive Operations",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sub-gmail-operations",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e91b5c47-3a9a-4ff1-8848-03487f970e70",
+      "name": "Webhook: Gmail Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        20,
+        96
+      ],
+      "webhookId": "sub-gmail-operations"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "b3e0c7a1-8932-4211-8991-382901a1b123",
+              "leftValue": "={{ $json.body?.service || $json.service || '' }}",
+              "rightValue": "drive",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "2d1f7c3e-89a1-432b-9871-331290bbfa11",
+      "name": "Switch: Route Gmail vs Drive",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        220,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst to = body.recipientEmail || 'client@brandmint.ai';\nconst name = body.recipientName || 'Client';\nconst subject = body.subject || 'Executive Briefing & Strategic Update';\nconst messageBody = body.body || '';\nconst autoSend = Boolean(body.autoSend);\nconst operation = body.operation || (autoSend ? 'send' : 'draft');\n\nreturn {\n  json: {\n    operation,\n    recipientEmail: to,\n    recipientName: name,\n    subject,\n    body: messageBody,\n    autoSend\n  }\n};"
+      },
+      "id": "c1f7b8bb-16ad-456c-8515-32e67ea78e34",
+      "name": "Normalize Email Directive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "18f9d6b5-0c7f-4424-9dae-bd9ea31e13aa",
+              "leftValue": "={{ $json.operation }}",
+              "rightValue": "send",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "7a503d9a-2553-440b-8291-52d4ab966e77",
+      "name": "Check Send vs Draft",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.srv1871828.hstgr.cloud/api/v1/gmail/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "recipientEmail",
+              "value": "={{ $json.recipientEmail }}"
+            },
+            {
+              "name": "recipientName",
+              "value": "={{ $json.recipientName }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.body }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "19bfae34-58f7-414b-84a1-0506bb2a0011",
+      "name": "HTTP: Send Direct Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.srv1871828.hstgr.cloud/api/v1/gmail/drafts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "recipientEmail",
+              "value": "={{ $json.recipientEmail }}"
+            },
+            {
+              "name": "recipientName",
+              "value": "={{ $json.recipientName }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.body }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1ca7e11-893b-4654-8b1e-6178bb319800",
+      "name": "HTTP: Stage Email Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, status: 'dispatched', outcome: $json }) }}",
+        "options": {}
+      },
+      "id": "e0a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+      "name": "Respond: Dispatched",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, status: 'staged', outcome: $json }) }}",
+        "options": {}
+      },
+      "id": "f1a2b3c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+      "name": "Respond: Staged",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.item.json.body || $input.item.json;\nconst operation = payload.operation || 'drive_search';\nconst queryTerm = String(payload.query || payload.nameFilter || payload.fileName || '').trim();\nconst clauses = ['trashed = false'];\n\nif (operation === 'drive_list') {\n  const folderId = String(payload.folderId || 'root').trim().replace(/'/g, \"\\\\'\");\n  clauses.push(\"'\" + folderId + \"' in parents\");\n} else {\n  if (queryTerm) {\n    const safeTerm = queryTerm.replace(/\\\\/g, '\\\\\\\\').replace(/'/g, \"\\\\'\");\n    clauses.push(\"name contains '\" + safeTerm + \"'\");\n  }\n  if (payload.folderId) {\n    const safeFolder = String(payload.folderId).trim().replace(/'/g, \"\\\\'\");\n    clauses.push(\"'\" + safeFolder + \"' in parents\");\n  }\n  if (payload.mimeTypeFilter) {\n    const safeMime = String(payload.mimeTypeFilter).trim().replace(/'/g, \"\\\\'\");\n    clauses.push(\"mimeType = '\" + safeMime + \"'\");\n  }\n}\n\nconst boundary = 'thaara_drive_multipart_boundary';\nlet multipartBody = '';\nif (operation === 'drive_create_doc' || operation === 'drive_upload') {\n  const isDoc = operation === 'drive_create_doc';\n  const meta = {\n    name: isDoc ? (payload.title || 'Untitled Document') : (payload.name || 'Untitled.txt'),\n    mimeType: isDoc ? 'application/vnd.google-apps.document' : (payload.mimeType || 'text/plain')\n  };\n  const parentId = payload.parentFolderId || (payload.folderId && payload.folderId !== 'root' ? payload.folderId : '');\n  if (parentId) meta.parents = [parentId];\n  const contentMime = isDoc ? 'text/plain' : (payload.mimeType || 'text/plain');\n  const rawContent = String(payload.content || '');\n  multipartBody =\n    '--' + boundary + '\\r\\n' +\n    'Content-Type: application/json; charset=UTF-8\\r\\n\\r\\n' +\n    JSON.stringify(meta) + '\\r\\n' +\n    '--' + boundary + '\\r\\n' +\n    'Content-Type: ' + contentMime + '; charset=UTF-8\\r\\n\\r\\n' +\n    rawContent + '\\r\\n' +\n    '--' + boundary + '--';\n}\n\nconst folderMeta = {\n  name: payload.name || 'New Folder',\n  mimeType: 'application/vnd.google-apps.folder',\n  ...(payload.parentFolderId ? { parents: [payload.parentFolderId] } : {})\n};\n\nreturn {\n  json: {\n    ...payload,\n    operation,\n    gdriveQuery: clauses.join(' and '),\n    pageSize: Math.min(Math.max(Number(payload.limit) || 15, 1), 50),\n    multipartBoundary: boundary,\n    multipartBody,\n    folderMetaJson: JSON.stringify(folderMeta),\n    renamePatchJson: JSON.stringify(payload.newName ? { name: payload.newName } : {}),\n    shareBodyJson: JSON.stringify({\n      type: 'user',\n      role: payload.role || 'reader',\n      emailAddress: payload.email || ''\n    })\n  }\n};"
+      },
+      "id": "d1e2f3a4-b5c6-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "Normalize Drive Directive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "drive_read",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "read"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "drive_create_folder",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create_folder"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation === 'drive_create_doc' || $json.operation === 'drive_upload' ? 'multipart_create' : '' }}",
+                    "rightValue": "multipart_create",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create_or_upload"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "drive_rename_move",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "rename_move"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "drive_share",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "share"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "drive_delete",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "delete"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "31a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a60",
+      "name": "Switch: Drive Operation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        660,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.gdriveQuery }}"
+            },
+            {
+              "name": "pageSize",
+              "value": "={{ String($json.pageSize || 15) }}"
+            },
+            {
+              "name": "orderBy",
+              "value": "modifiedTime desc"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name,mimeType,webViewLink,iconLink,size,createdTime,modifiedTime,parents,shared)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d",
+      "name": "Google Drive: Search & List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        40
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BNt9B8jgVmexVQ1O",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.fileId ? ('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent($json.fileId) + '?fields=id,name,mimeType,webViewLink,iconLink,size,createdTime,modifiedTime,parents,shared') : ('https://www.googleapis.com/drive/v3/files?pageSize=5&orderBy=modifiedTime%20desc&fields=files(id,name,mimeType,webViewLink,iconLink,size,createdTime,modifiedTime,parents,shared)&q=' + encodeURIComponent($json.gdriveQuery)) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "id": "32a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a61",
+      "name": "Google Drive: Get File Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        -520
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BNt9B8jgVmexVQ1O",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const metaResp = $input.first()?.json || {};\nconst directive = $('Normalize Drive Directive').first()?.json || {};\nif (metaResp.error) {\n  return { json: { error: metaResp.error, canExportText: false } };\n}\nconst candidate = metaResp.id ? metaResp : (Array.isArray(metaResp.files) ? metaResp.files[0] : null);\nif (!candidate || !candidate.id) {\n  return { json: { files: [], canExportText: false, notFound: true } };\n}\nconst mime = String(candidate.mimeType || '');\nlet exportUrl = '';\nif (mime === 'application/vnd.google-apps.document' || mime === 'application/vnd.google-apps.presentation') {\n  exportUrl = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(candidate.id) + '/export?mimeType=text%2Fplain';\n} else if (mime === 'application/vnd.google-apps.spreadsheet') {\n  exportUrl = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(candidate.id) + '/export?mimeType=text%2Fcsv';\n} else if (mime.startsWith('text/') || mime === 'application/json') {\n  exportUrl = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(candidate.id) + '?alt=media';\n}\nreturn {\n  json: {\n    fileMeta: candidate,\n    canExportText: Boolean(exportUrl),\n    exportUrl,\n    operation: directive.operation || 'drive_read'\n  }\n};"
+      },
+      "id": "33a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a62",
+      "name": "Prepare Drive Content Export",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        -520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ Boolean($json.canExportText) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "34a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a63",
+      "name": "Can Export Text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        -520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.exportUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "35a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a64",
+      "name": "Google Drive: Export Text Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        -600
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BNt9B8jgVmexVQ1O",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType,webViewLink,createdTime,modifiedTime,parents",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.folderMetaJson }}",
+        "options": {}
+      },
+      "id": "36a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a65",
+      "name": "Google Drive: Create Folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        -400
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BNt9B8jgVmexVQ1O",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink,size,createdTime,modifiedTime,parents",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "={{ 'multipart/related; boundary=' + $json.multipartBoundary }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "={{ 'multipart/related; boundary=' + $json.multipartBoundary }}",
+        "body": "={{ $json.multipartBody }}",
+        "options": {}
+      },
+      "id": "37a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a66",
+      "name": "Google Drive: Create Doc or Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        -290
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BNt9B8jgVmexVQ1O",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent($json.fileId) + '?fields=id,name,mimeType,webViewLink,modifiedTime,parents' + ($json.targetFolderId ? ('&addParents=' + encodeURIComponent($json.targetFolderId)) : '') + ($json.removeParents ? ('&removeParents=' + encodeURIComponent($json.removeParents)) : '') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.renamePatchJson }}",
+        "options": {}
+      },
+      "id": "38a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a67",
+      "name": "Google Drive: Rename or Move",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        -180
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BNt9B8jgVmexVQ1O",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent($json.fileId) + '/permissions?sendNotificationEmail=true' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.shareBodyJson }}",
+        "options": {}
+      },
+      "id": "39a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a68",
+      "name": "Google Drive: Share Permission",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        -70
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BNt9B8jgVmexVQ1O",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent($json.fileId) + '?fields=id,name,mimeType,trashed' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"trashed\":true}",
+        "options": {}
+      },
+      "id": "3aa2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a69",
+      "name": "Google Drive: Trash File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        150
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BNt9B8jgVmexVQ1O",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.all();\nconst original = $('Normalize Drive Directive').first()?.json || {};\nconst op = original.operation || 'drive_search';\nconst firstJson = inputData[0]?.json || {};\n\nif (firstJson.error) {\n  const rawErr = firstJson.error;\n  const errMsg = typeof rawErr === 'string' ? rawErr : (rawErr.message || rawErr.description || JSON.stringify(rawErr));\n  let userFriendly = errMsg;\n  if (/reconnected|Access could not be refreshed|invalid_grant|unauthorized/i.test(errMsg)) {\n    userFriendly = 'The Google Drive OAuth credential (BNt9B8jgVmexVQ1O) has expired or was revoked. Please reconnect the Google Drive account in n8n credentials.';\n  }\n  return {\n    json: {\n      success: false,\n      operation: op,\n      message: userFriendly,\n      files: []\n    }\n  };\n}\n\nconst normalizeFile = (raw, extractedText) => {\n  if (!raw || !raw.id) return undefined;\n  const isFolder = raw.mimeType === 'application/vnd.google-apps.folder';\n  const fallbackLink = isFolder\n    ? ('https://drive.google.com/drive/folders/' + raw.id)\n    : ('https://drive.google.com/file/d/' + raw.id + '/view');\n  return {\n    id: String(raw.id),\n    name: String(raw.name || original.fileName || original.title || original.name || raw.id),\n    mimeType: String(raw.mimeType || 'application/octet-stream'),\n    webViewLink: raw.webViewLink || fallbackLink,\n    ...(raw.iconLink ? { iconLink: raw.iconLink } : {}),\n    ...(raw.size !== undefined ? { size: Number(raw.size) } : {}),\n    ...(raw.createdTime ? { createdTime: raw.createdTime } : {}),\n    ...(raw.modifiedTime ? { modifiedTime: raw.modifiedTime } : {}),\n    ...(Array.isArray(raw.parents) ? { parents: raw.parents } : {}),\n    ...(typeof raw.shared === 'boolean' ? { shared: raw.shared } : {}),\n    ...(extractedText ? { content: extractedText, summary: extractedText.slice(0, 4000) } : {})\n  };\n};\n\nif (op === 'drive_read') {\n  const prepared = $('Prepare Drive Content Export').first()?.json || {};\n  if (prepared.notFound || !prepared.fileMeta) {\n    return {\n      json: {\n        success: false,\n        operation: op,\n        files: [],\n        message: 'Requested file was not found in Google Drive.'\n      }\n    };\n  }\n  const rawExport = typeof firstJson.data === 'string' ? firstJson.data : (typeof firstJson.body === 'string' ? firstJson.body : '');\n  const exportedText = rawExport ? rawExport.slice(0, 60000) : '';\n  const file = normalizeFile(prepared.fileMeta, exportedText);\n  return {\n    json: {\n      success: true,\n      operation: op,\n      file,\n      files: file ? [file] : [],\n      webViewLink: file?.webViewLink,\n      message: exportedText\n        ? ('Read ' + file.name + ' (' + exportedText.length + ' chars).')\n        : ('Retrieved metadata for ' + file.name + '.')\n    }\n  };\n}\n\nif (op === 'drive_create_folder') {\n  const folder = normalizeFile(firstJson);\n  return {\n    json: {\n      success: Boolean(folder),\n      operation: op,\n      folder,\n      file: folder,\n      webViewLink: folder?.webViewLink,\n      message: folder ? ('Created folder \"' + folder.name + '\".') : 'Folder creation returned no metadata.'\n    }\n  };\n}\n\nif (op === 'drive_create_doc' || op === 'drive_upload' || op === 'drive_rename_move') {\n  const file = normalizeFile(firstJson);\n  return {\n    json: {\n      success: Boolean(file),\n      operation: op,\n      file,\n      webViewLink: file?.webViewLink,\n      message: file ? ('Completed ' + op + ' for \"' + file.name + '\".') : ('Operation ' + op + ' returned no file metadata.')\n    }\n  };\n}\n\nif (op === 'drive_share') {\n  return {\n    json: {\n      success: Boolean(firstJson.id || firstJson.role),\n      operation: op,\n      webViewLink: original.fileId ? ('https://drive.google.com/file/d/' + original.fileId + '/view') : undefined,\n      message: 'Shared file with ' + (original.email || 'recipient') + ' as ' + (original.role || 'reader') + '.'\n    }\n  };\n}\n\nif (op === 'drive_delete') {\n  return {\n    json: {\n      success: Boolean(firstJson.id || firstJson.trashed),\n      operation: op,\n      message: 'Moved \"' + (firstJson.name || original.fileName || original.fileId) + '\" to Google Drive trash.'\n    }\n  };\n}\n\nconst rawFiles = Array.isArray(firstJson.files)\n  ? firstJson.files\n  : inputData.map(i => i.json).filter(j => j && j.id && j.name);\nconst validFiles = rawFiles.map(f => normalizeFile(f)).filter(Boolean);\nvalidFiles.sort((a, b) => new Date(b.modifiedTime || 0).getTime() - new Date(a.modifiedTime || 0).getTime());\n\nreturn {\n  json: {\n    success: true,\n    operation: op,\n    files: validFiles,\n    ...(validFiles[0] ? { file: validFiles[0] } : {}),\n    message: validFiles.length > 0\n      ? ('Successfully executed ' + op + ': found ' + validFiles.length + ' items.')\n      : 'No matching files found in your Google Drive.'\n  }\n};"
+      },
+      "id": "b3c4d5e6-f7a8-9b0c-1d2e-3f4a5b6c7d8e",
+      "name": "Format Drive Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        -220
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "c4d5e6f7-a8b9-0c1d-2e3f-4a5b6c7d8e9f",
+      "name": "Respond: Drive Outcome",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2000,
+        -220
+      ],
+      "alwaysOutputData": true
+    }
+  ],
+  "connections": {
+    "Webhook: Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch: Route Gmail vs Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Route Gmail vs Drive": {
+      "main": [
+        [
+          {
+            "node": "Normalize Drive Directive",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Email Directive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email Directive": {
+      "main": [
+        [
+          {
+            "node": "Check Send vs Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Send vs Draft": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Send Direct Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Stage Email Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Send Direct Email": {
+      "main": [
+        [
+          {
+            "node": "Respond: Dispatched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Stage Email Draft": {
+      "main": [
+        [
+          {
+            "node": "Respond: Staged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Drive Directive": {
+      "main": [
+        [
+          {
+            "node": "Switch: Drive Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Drive Operation": {
+      "main": [
+        [
+          {
+            "node": "Google Drive: Get File Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Drive: Create Folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Drive: Create Doc or Upload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Drive: Rename or Move",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Drive: Share Permission",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Drive: Trash File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Drive: Search & List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Search & List": {
+      "main": [
+        [
+          {
+            "node": "Format Drive Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Get File Metadata": {
+      "main": [
+        [
+          {
+            "node": "Prepare Drive Content Export",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Drive Content Export": {
+      "main": [
+        [
+          {
+            "node": "Can Export Text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Export Text?": {
+      "main": [
+        [
+          {
+            "node": "Google Drive: Export Text Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Drive Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Export Text Content": {
+      "main": [
+        [
+          {
+            "node": "Format Drive Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Create Folder": {
+      "main": [
+        [
+          {
+            "node": "Format Drive Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Create Doc or Upload": {
+      "main": [
+        [
+          {
+            "node": "Format Drive Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Rename or Move": {
+      "main": [
+        [
+          {
+            "node": "Format Drive Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Share Permission": {
+      "main": [
+        [
+          {
+            "node": "Format Drive Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Trash File": {
+      "main": [
+        [
+          {
+            "node": "Format Drive Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Drive Output": {
+      "main": [
+        [
+          {
+            "node": "Respond: Drive Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  }
+}

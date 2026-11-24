@@ -1,0 +1,60 @@
+{
+  "buildOnly": true,
+  "deploymentAllowed": false,
+  "databaseCommands": 0,
+  "providerRequests": 0,
+  "remoteExecutionAllowed": true,
+  "authorization": "PREPARED ONLY. One explicit owner approval for the V9 build. No deployment or retry.",
+  "requiredImage": "sha256:b1b13df2fb1b51817765f099c2645e25bafa6934251add0d71c890c6f29d7117",
+  "requiredContainer": "thaara-v2-pilot-api-1",
+  "packagePath": "output/THAARA_PHONE_OWNER_CALENDAR_BUILD_ONLY_V9_2026-11-07.zip",
+  "packageSha256": "dd41547eb8f60aa61a9a3521c8fbd597fcc56afa3780bd83f451071f7e599b70",
+  "candidateTag": "thaara-v2-pilot-api:phone-owner-calendar-20261107-candidate-v9",
+  "featureSwitch": {
+    "THAARA_PHONE_OWNER_CALENDAR_REVIEW": "disabled"
+  },
+  "scope": {
+    "candidateImageAssemblies": 1,
+    "assembly": "exact-local-stopped-container-copy-and-docker-commit",
+    "stagingContainers": 1,
+    "stagingContainerStarts": 0,
+    "isolatedValidationContainers": 1,
+    "mounts": 0,
+    "network": "none",
+    "imagePulls": 0,
+    "serviceChanges": false,
+    "secretFileReads": false,
+    "realCalls": 0,
+    "retainCandidateOnlyOnPass": true,
+    "oneRunMarker": "node_modules/.cache/phone-owner-calendar-build-only-v9-20261107.used.json",
+    "resultReceipt": "node_modules/.cache/phone-owner-calendar-build-only-v9-20261107.result.json",
+    "remoteWorkDeadlineSeconds": 170,
+    "remoteCleanupDeadlineSeconds": 230,
+    "sshDeadlineSeconds": 300
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-owner-calendar-build-only-v9-20261107.review.ps1",
+      "sha256": "06375228a7bcd787158382548196cd95aaf65d9ce2c5c539b7753e8aa353f1f8"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-owner-calendar-build-only-v9-20261107.review.py",
+      "sha256": "878262fec5d47b05364dec92b2bc8ce036e2bd9acf1e75302d5c0aa7da55f2db"
+    },
+    {
+      "path": "output/THAARA_PHONE_OWNER_CALENDAR_BUILD_ONLY_V9_2026-11-07.zip",
+      "sha256": "dd41547eb8f60aa61a9a3521c8fbd597fcc56afa3780bd83f451071f7e599b70"
+    }
+  ],
+  "schemaVersion": "2026-11-07.phone-owner-calendar-build-only.v9",
+  "reconciledBaseline": {
+    "previousImage": "sha256:9fb2739d92ba3c5bc38c1c5927b8ef3614da816e03a9dac107497b2b842f652c",
+    "verifiedImage": "sha256:b1b13df2fb1b51817765f099c2645e25bafa6934251add0d71c890c6f29d7117",
+    "verifiedContainerId": "08f378a8216af3b5b24749825da6d9fe789bd9b891831ede1e27df673b093ba8",
+    "matchingV8Hashes": 7,
+    "preservedChangedFiles": {
+      "/app/apps/api/dist/services/whatsapp-durable.js": "dfc0036868bea4ab37f8f9b0e074fdda336378590915d418decd491addeabb91",
+      "/app/apps/api/dist/services/whatsapp-enquiries.js": "2e913e8192606b58c34e91cc26e117396367fc773fd6fbb3f65aeb4a88c603c4"
+    }
+  }
+}

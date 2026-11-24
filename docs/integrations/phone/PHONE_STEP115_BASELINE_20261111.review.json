@@ -1,0 +1,18 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner request to verify current production baseline before release preparation",
+  "scope": {
+    "serviceChanges": false,
+    "sourceExport": false,
+    "providerRequests": 0,
+    "vpsId": 1871828,
+    "databaseCommands": 0
+  },
+  "artifacts": [
+    {
+      "path": "deploy/hostinger-pilot/phone-step115-baseline-20261111.readonly.py",
+      "sha256": "8177d20a7ab7bb66f7826dec89ce05bbedfee0129952980c1be4d69fcf93d419"
+    }
+  ]
+}

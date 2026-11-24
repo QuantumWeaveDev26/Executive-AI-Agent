@@ -1,0 +1,4 @@
+# Checksum-pinned deployment artifacts must keep LF so pinned sha256 values stay valid on any checkout.
+deploy/hostinger-pilot/** text eol=lf
+docs/migrations/*.sql text eol=lf
+# Note: packages/db/src/migrations keep the checkout default; their pinned manifest and applied ledgers were computed from this CRLF Windows checkout.

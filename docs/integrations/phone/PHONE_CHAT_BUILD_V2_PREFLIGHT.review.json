@@ -1,0 +1,15 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Owner-requested prerequisites for approved corrected build; no build in this preflight",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-build-v2-preflight.readonly.ps1",
+      "sha256": "1f572d292075f240fd95d522436cfd4933873ea4fb4a9e3ca7769be4b7e48083"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-build-v2-preflight.readonly.py",
+      "sha256": "5075fc6066481e888e91629534a88f2109ab1b19e3b14b04cf7f315de65d77ca"
+    }
+  ]
+}

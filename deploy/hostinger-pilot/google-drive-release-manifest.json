@@ -1,0 +1,113 @@
+{
+  "prepared_at": "2026-11-14",
+  "owner_approval_gate": "CLOSED (OWNER_APPROVED_GOOGLE_DRIVE = False)",
+  "expected_live_base_image": "sha256:352cc60a6b5c89bacde094c8bb8ce9060e94009d86816010d050e759ae1ca02d",
+  "target_n8n_workflow_id": "upU4clCyj1VvJlpk",
+  "internal_webhook_url": "http://n8n-n8n-1:5678/webhook/sub-gmail-operations",
+  "stage_cache_dir": "C:\\Users\\Admin\\.gemini\\antigravity-cli\\brain\\2c31584e-7318-4c35-9f32-ee827493e891\\scratch\\stage",
+  "publication_archive_sha256": "910736a00fb5fc0a7526c4804e33124593577543f4f81a5a6b98ce603aad5b50",
+  "dockerfile_sha256": "5a7720cdddf28cb308d2b92502ce17d64ec4735a15fb4758e7caec87374ba107",
+  "sub05_workflow_sha256": "37cfda2f75d594434ae726676f5be1c6fb3c47362014f03175d213ded93219fd",
+  "publish_py_sha256": "4417f8d2481c3f67a1a6c54bee3600717dc3c4ec2113140a9bcf75e9203bc120",
+  "publish_sh_sha256": "836a3864b08c8a801ca1df4053bff56d59f0efa679488667a04afeee0a7976b5",
+  "archive_bytes": 230200,
+  "manifest_file_count": 24,
+  "manifest": [
+    {
+      "Path": "api-app/app.d.ts",
+      "SHA256": "293c60cae8a0c23a5e57a77b799150e637892a5ec668ed9ab482183a89e1f38f"
+    },
+    {
+      "Path": "api-app/app.js",
+      "SHA256": "3a637f65650e59dfff0861fe326175358326cb52b8854eba5dec91d4692cda4a"
+    },
+    {
+      "Path": "api-routes/conversations.d.ts",
+      "SHA256": "69ca627ec874a8a35244257cfe8873e4c92100af11e18eceda651e23475301af"
+    },
+    {
+      "Path": "api-routes/conversations.js",
+      "SHA256": "5beb8ef197a39aa6c8c86f38746a202bc54619f3ad55fad59b012fcf0fa54121"
+    },
+    {
+      "Path": "api-routes/google-drive.d.ts",
+      "SHA256": "fdb9c0afc614ab8a5707838a8362a05cdb4318eed7fd45249c1556724a69a77b"
+    },
+    {
+      "Path": "api-routes/google-drive.js",
+      "SHA256": "6c601393b8edb0860f0566458dc7c67973a10af78b33da88f57e5480814723df"
+    },
+    {
+      "Path": "api-services/chat-google-drive-assistant.d.ts",
+      "SHA256": "ddc797ab58e7bc7a06d8a66ad4abcbdf8d0f1cf1065d2f36d359dc862d06bf05"
+    },
+    {
+      "Path": "api-services/chat-google-drive-assistant.js",
+      "SHA256": "7df2b61506d902814018d9ed39f756997d2c76fb297582e9b473cfbbe93f9b32"
+    },
+    {
+      "Path": "api-services/google-drive.d.ts",
+      "SHA256": "5bc7fcb2e0440fcb54825396b3e663591dce1e38c090bb97a928e0c1685cd199"
+    },
+    {
+      "Path": "api-services/google-drive.js",
+      "SHA256": "0f6dd253024a998c7170923fe9f76924bfcefbc59313996e4a2303c5f663bbf4"
+    },
+    {
+      "Path": "contracts/google-drive.d.ts",
+      "SHA256": "3c675f3bb452b00e46393df44e6957e697ebe82bf1dec35bc8a01c8bd14ab517"
+    },
+    {
+      "Path": "contracts/google-drive.js",
+      "SHA256": "c7dd78965777df74c2a909948fb6cc1e5df1153a02b05e1f3a496314840d56a9"
+    },
+    {
+      "Path": "contracts/index.d.ts",
+      "SHA256": "c725cc006bdc7e82b421d224ade2f885988fa6b4e1dc569ed368db0853144020"
+    },
+    {
+      "Path": "contracts/index.js",
+      "SHA256": "8bee6f088266c478fda23f219925c98c6bc662a12599eca967e5e40f6dbb0de2"
+    },
+    {
+      "Path": "Dockerfile",
+      "SHA256": "5a7720cdddf28cb308d2b92502ce17d64ec4735a15fb4758e7caec87374ba107"
+    },
+    {
+      "Path": "n8n/Sub_05_Gmail_and_Google_Drive_Operations.workflow.json",
+      "SHA256": "37cfda2f75d594434ae726676f5be1c6fb3c47362014f03175d213ded93219fd"
+    },
+    {
+      "Path": "pilot-start/pilot-start.mjs",
+      "SHA256": "b59d6f2f61327ea57eef5f9b8965bba2d957994c9645b739cc3712725c7bd4c7"
+    },
+    {
+      "Path": "policy/index.d.ts",
+      "SHA256": "b49a9711ec224f2b0b490572b5477286f172391a878dfc8addb8626ccbb8a514"
+    },
+    {
+      "Path": "policy/index.js",
+      "SHA256": "ef916c33732f6d5776d238f1a1eeae0eada9c51f102471a5746bd542ecb0601e"
+    },
+    {
+      "Path": "policy/registry.d.ts",
+      "SHA256": "ff7454cd6438c8599b298a534cdf029541a3fed265cb764a836ef9b509e104f6"
+    },
+    {
+      "Path": "policy/registry.js",
+      "SHA256": "9284176cad7d0bc61db98bc0d7222f3031904cfe969441299b32329532788eb7"
+    },
+    {
+      "Path": "web-dist/assets/index-Bal4nBrO.css",
+      "SHA256": "59154398f384e36a414fb53cddbda4fc7625a16fa4b6358bb2fec172fb1ee296"
+    },
+    {
+      "Path": "web-dist/assets/index-Dz21SjfD.js",
+      "SHA256": "5435bd0e821589fbffc2ec62b4ecfb63644b759f824adeea55912299635faae6"
+    },
+    {
+      "Path": "web-dist/index.html",
+      "SHA256": "957f92abe296369bdaf29d94d9407aa4583336282bc09c2ffb7e01eca9b2984e"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+# Step108.21: this artifact requires separate pilot SQL/publication approval.
+# Expected base: sha256:9ceaf0086b356062c2269da52516f2beeb010b8787ecd399272503fa9b070ac3.
+# Schema must be updated before recreating the API. Never copy the full API build.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 contracts/ /app/packages/contracts/dist/
+COPY --chown=1000:1000 db/whatsapp-postgres.js /app/packages/db/dist/repositories/
+COPY --chown=1000:1000 api-services/ /app/apps/api/dist/services/
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+RUN node --input-type=module -e "import {copyFileSync,realpathSync} from 'node:fs'; import {dirname,join} from 'node:path'; import {fileURLToPath} from 'node:url'; \
+  for(const [pkg,file,source] of [ \
+    ['@thaara/contracts','meta-whatsapp.js','/app/packages/contracts/dist/meta-whatsapp.js'], \
+    ['@thaara/contracts','whatsapp-n8n.js','/app/packages/contracts/dist/whatsapp-n8n.js'], \
+    ['@thaara/db','repositories/whatsapp-postgres.js','/app/packages/db/dist/repositories/whatsapp-postgres.js'] \
+  ]) { const target=realpathSync(join(dirname(fileURLToPath(import.meta.resolve(pkg))),file)); \
+    if(!target.startsWith('/app/apps/api/node_modules/') && target!==source)throw Error('Unexpected installed package path'); \
+    if(target!==source)copyFileSync(source,target); } \
+  const contracts=await import('@thaara/contracts'); \
+  if(!contracts.MetaWhatsAppDurableWebhookSchema || typeof contracts.isMetaWhatsAppStoredMedia!=='function' || !contracts.N8nWhatsAppInboxSchema.properties.messages.items.properties.attachment)throw Error('Missing runtime media contracts'); \
+  const db=await import('@thaara/db'); if(!db.PostgresWhatsAppStateStore.toString().includes('media_metadata'))throw Error('Missing runtime media repository'); \
+  await import('./dist/services/whatsapp-media.js'); await import('./dist/services/whatsapp-durable.js'); await import('./dist/services/whatsapp-inbox.js'); \
+  console.log('Runtime media contracts, repository and services verified');"

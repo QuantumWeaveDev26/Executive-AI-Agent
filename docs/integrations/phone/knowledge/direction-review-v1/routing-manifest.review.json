@@ -1,0 +1,54 @@
+{
+  "reviewOnly": true,
+  "uploadAuthorized": false,
+  "dispatchAllowed": false,
+  "liveIntegration": false,
+  "knowledgeVersion": "qw-company-kb-v1",
+  "knowledgeSha256": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+  "policyVersion": "qw-route-policy-v1",
+  "commonPolicySha256": "6f486d2c79680a0aee0a2351d474ddb209670c6de28daf7c3f48628f1eff7c9f",
+  "providerApp": "same-existing-agent",
+  "workspaceId": null,
+  "ownerUserId": null,
+  "appId": null,
+  "inbound": {
+    "direction": "inbound",
+    "routeType": "inbound_deployment",
+    "appVersion": null,
+    "deploymentId": null,
+    "policySha256": "20a8532a01675986bc3c2ddd50378f38bfdcb2e5238f7a9387c7f725592aaf68"
+  },
+  "outbound": {
+    "direction": "outbound",
+    "routeType": "instant_outbound",
+    "appVersion": null,
+    "policySha256": "170553282afbefae5106b5d0fe4ea60779973c6cf4ab5d35cfb1ea1b50c7c22a"
+  },
+  "maxDurationSeconds": 300,
+  "dailyCallLimit": 5,
+  "variableMapping": {
+    "call_purpose": "approvedDraft.purpose",
+    "user_name": "approvedDraft.recipient.displayName"
+  },
+  "unresolved": [
+    "Actual reviewed committed versions and inbound deployment binding",
+    "Provider conversation/route acceptance",
+    "Live runtime KB/policy binding and stale-approval enforcement",
+    "Separate publish/deployment/call authorization"
+  ],
+  "sourceHashes": {
+    "apps/api/src/knowledge/quantum-weave.v1.ts": "4278c5d889d6695d222b701bd5a60819b2f2a67aa6ff89413d0b2a04f90f6db5",
+    "apps/api/src/services/phone-company-knowledge.ts": "c34c02bac4a30f21f528f8368912ba83bec4398e3b748035c6382c9d24df324e",
+    "apps/api/src/services/phone-company-routing-review.ts": "5f84d7ef32d8b53f6944df5b2d6dfd375939601ff8aacaede48f1996f066fa7b"
+  },
+  "artifacts": {
+    "inbound-instructions.review.txt": {
+      "sha256": "20a8532a01675986bc3c2ddd50378f38bfdcb2e5238f7a9387c7f725592aaf68",
+      "utf8Bytes": 3663
+    },
+    "outbound-instructions.review.txt": {
+      "sha256": "170553282afbefae5106b5d0fe4ea60779973c6cf4ab5d35cfb1ea1b50c7c22a",
+      "utf8Bytes": 3731
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "buildOnly": true,
+  "deploymentAllowed": false,
+  "databaseCommands": 0,
+  "providerRequests": 0,
+  "remoteExecutionAllowed": true,
+  "authorization": "One owner-approved diagnostic build on VPS 1871828. Previous approval is consumed. No deployment or automatic retry.",
+  "requiredImage": "sha256:b1b13df2fb1b51817765f099c2645e25bafa6934251add0d71c890c6f29d7117",
+  "requiredContainer": "08f378a8216af3b5b24749825da6d9fe789bd9b891831ede1e27df673b093ba8",
+  "candidateTag": "thaara-v2-pilot-api:phone-sarvam-compatibility-20261108-v2",
+  "packagePath": "output/THAARA_PHONE_SARVAM_COMPATIBILITY_BUILD_ONLY_V2_2026-11-08.zip",
+  "packageSha256": "73e9beedfa6ded1b96cdc50370f4d9ba920df82bfb082e73b578f39f3828ff03",
+  "scope": {
+    "candidateImageAssemblies": 1,
+    "stoppedStagingContainers": 1,
+    "isolatedValidationContainers": 1,
+    "network": "none",
+    "imagePulls": 0,
+    "serverProfileChanges": false,
+    "liveCalls": 0,
+    "oneRunMarker": "node_modules/.cache/phone-sarvam-compatibility-build-only-v2-20261108.used.json",
+    "resultReceipt": "node_modules/.cache/phone-sarvam-compatibility-build-only-v2-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-compatibility-build-only-v2-20261108.review.ps1",
+      "sha256": "142874194493bbd2b1d5f2e98bc7c59da34cf9ad25a17e456df4e602c888fc2f"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-compatibility-build-only-v2-20261108.review.py",
+      "sha256": "1b7e02a0f5d63d37f63da2669baab174d8f79a1ae25503b8dbd260d9175b9128"
+    },
+    {
+      "path": "output/THAARA_PHONE_SARVAM_COMPATIBILITY_BUILD_ONLY_V2_2026-11-08.zip",
+      "sha256": "73e9beedfa6ded1b96cdc50370f4d9ba920df82bfb082e73b578f39f3828ff03"
+    }
+  ]
+}

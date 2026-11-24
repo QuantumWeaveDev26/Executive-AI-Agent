@@ -1,0 +1,24 @@
+{
+  "reviewOnly": true,
+  "providerMutationAuthorized": false,
+  "liveRoutingAuthorized": false,
+  "paidTestsAuthorized": false,
+  "targetVersions": null,
+  "knowledgeVersion": "qw-company-kb-v1",
+  "voice": "Chaitra",
+  "maxDurationSeconds": 300,
+  "artifacts": [
+    {
+      "name": "inbound-instructions.candidate.txt",
+      "sha256": "5e001e4fece07f289af1b9a9f50cb912fd7d11870413def9373fa79c7c37f45b",
+      "sourceSha256": "073a8337945dc1df71fd9750e63249c0ab96022952938a1c933840cae360352a",
+      "sourceVersion": 5
+    },
+    {
+      "name": "outbound-instructions.candidate.txt",
+      "sha256": "1b2e3003effc3b5e067957baa6bb66609c38a113087c86e5ae405e839b329b00",
+      "sourceSha256": "33b999ea92a185f9fd7c71f9f42951e67c96635a02a55c83a503c174a5d3ac56",
+      "sourceVersion": 6
+    }
+  ]
+}

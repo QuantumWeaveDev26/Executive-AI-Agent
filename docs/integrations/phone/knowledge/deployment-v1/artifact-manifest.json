@@ -1,0 +1,45 @@
+{
+  "reviewOnly": true,
+  "uploadAuthorized": false,
+  "dispatchAllowed": false,
+  "liveIntegration": false,
+  "providerAcceptanceVerified": false,
+  "voicePolicyVersion": "qw-voice-policy-v1",
+  "policyVersion": "qw-route-policy-v1",
+  "knowledgeVersion": "qw-company-kb-v1",
+  "knowledgeSha256": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+  "commonPolicySha256": "7bef3893a00a4cbed37568dd76ee7d707eddccdd7154394d27faf50ce457f546",
+  "providerKnowledgeBaseId": "01a19bee-d7ed-778c-b0db-e320e8209de9",
+  "inboundAppVersion": null,
+  "outboundAppVersion": null,
+  "maxDurationSeconds": 300,
+  "dailyCallLimit": 5,
+  "voice": "Chaitra - Kannada Mix Support",
+  "prerequisites": [
+    "Owner Stage A approval",
+    "Reverified provider baselines/settings/KB identity",
+    "Distinct committed numeric provider versions",
+    "Actual provider conversation/cap acceptance and separate activation approval"
+  ],
+  "sourceHashes": {
+    "apps/api/src/knowledge/quantum-weave.v1.ts": "4278c5d889d6695d222b701bd5a60819b2f2a67aa6ff89413d0b2a04f90f6db5",
+    "apps/api/src/services/phone-company-knowledge.ts": "c34c02bac4a30f21f528f8368912ba83bec4398e3b748035c6382c9d24df324e",
+    "apps/api/src/services/phone-company-routing-review.ts": "5f84d7ef32d8b53f6944df5b2d6dfd375939601ff8aacaede48f1996f066fa7b",
+    "apps/api/src/services/phone-company-deployment-instructions.ts": "2fc9ac898ee9bec487025de02883ae268beb381f52adc95f15cb869ad77020dd",
+    "scripts/export-phone-company-deployment.mjs": "1e6b2a69b05b47117c7660235bdcac755729259b371b5baa0b04e1d7fc3dfa33"
+  },
+  "artifacts": {
+    "inbound-instructions.txt": {
+      "sha256": "e74cd1559cae67a8e2e4068aa3b643852b21c897387bda53bb553d7059e10c33",
+      "utf8Bytes": 3880
+    },
+    "outbound-instructions.txt": {
+      "sha256": "50715d830475a1f8ea12f3c339ef1e0e8e55360faa4d5e9549a2a0c54b1bce8b",
+      "utf8Bytes": 4077
+    },
+    "changes-from-review.md": {
+      "sha256": "979ca6444df119f62c7c79bc2d0cc5c25ff3812185c0b104df47afafced58886",
+      "utf8Bytes": 2922
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-11",
+  "agentVersion": 22,
+  "stage": "Draft",
+  "source": "Browser Variables output table and provider readback",
+  "before": ["call_summary"],
+  "addedStringOutputs": ["customer_name", "business_type", "requested_service", "callback_preference"],
+  "after": ["business_type", "call_summary", "callback_preference", "customer_name", "requested_service"],
+  "callSummaryUnchanged": true,
+  "extractionRules": {
+    "customer_name": "Caller-provided/confirmed name only; final corrections; empty when unknown; never infer from sample user_name",
+    "business_type": "Caller-stated business/company/type only; final corrections; empty when unknown",
+    "requested_service": "Caller-expressed interest only; not merely agent-listed or recommended; empty when unknown",
+    "callback_preference": "requested/declined/not_requested based on actual caller request/agreement/withdrawal; unrelated no thanks is not withdrawal; backend independently validates transcript consent"
+  },
+  "phoneNumberSource": "verified incoming telephony metadata, not an output variable",
+  "customToolsObservedBefore": [],
+  "customToolsAdded": [],
+  "published": false,
+  "callsPlaced": 0,
+  "emailsSent": 0,
+  "backendRuntimeActivated": false,
+  "proofScreenshot": "node_modules/.cache/thaara-v22-callback-fields-verified.jpg",
+  "syntheticBackendEvidence": "node_modules/.cache/phone-v22-callback-extraction-tests.result.json"
+}

@@ -1,0 +1,16 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "artifacts": [
+    {
+      "path": "scripts/phone-backup-restore.review.ps1",
+      "sha256": "d9d8521a79c4610ac827577925651be6a55f0f192f15773f3fff5a46362c77be"
+    },
+    {
+      "path": "deploy/hostinger-pilot/sarvam-key-compare.review.py",
+      "sha256": "2022f94dcc066f98f9b3018371120cf37a9311b6805b1f39228d06987a52260c"
+    }
+  ],
+  "preparationOnly": true,
+  "command": "pwsh -NoProfile -NonInteractive -File scripts/phone-backup-restore.review.ps1 -ApprovedSarvamKeyCompare"
+}

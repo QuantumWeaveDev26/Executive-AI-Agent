@@ -1,0 +1,46 @@
+{
+  "buildOnly": true,
+  "deploymentAllowed": false,
+  "databaseCommands": 0,
+  "providerRequests": 0,
+  "remoteExecutionAllowed": true,
+  "authorization": "PREPARED ONLY; one separate explicit owner approval; no retry",
+  "requiredImage": "sha256:b61157e5fab01145bac06c9a9bd5aa38525d1e956a28cb9e703090e66fe63eb1",
+  "requiredContainer": "c89cbf73b2937ce9294c7cce66d1d8fa481d46c3eef7e024a12f62e03da8a16f",
+  "packagePath": "output/THAARA_PHONE_OWNER_CALENDAR_BUILD_ONLY_V5_2026-11-07.zip",
+  "packageSha256": "4bbde4228c0eabfaf55d30b8e276fb431b2982939a0ce898f751ab39f1efb5e0",
+  "candidateTag": "thaara-v2-pilot-api:phone-owner-calendar-20261107-candidate",
+  "scope": {
+    "candidateImageAssemblies": 1,
+    "assembly": "exact-local-stopped-container-copy-and-docker-commit",
+    "stagingContainers": 1,
+    "stagingContainerStarts": 0,
+    "isolatedValidationContainers": 1,
+    "mounts": 0,
+    "network": "none",
+    "imagePulls": 0,
+    "serviceChanges": false,
+    "secretFileReads": false,
+    "realCalls": 0,
+    "retainCandidateOnlyOnPass": true,
+    "oneRunMarker": "node_modules/.cache/phone-owner-calendar-build-only-v5-20261107.used.json",
+    "resultReceipt": "node_modules/.cache/phone-owner-calendar-build-only-v5-20261107.result.json",
+    "remoteWorkDeadlineSeconds": 170,
+    "remoteCleanupDeadlineSeconds": 230,
+    "sshDeadlineSeconds": 300
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-owner-calendar-build-only-v5-20261107.review.ps1",
+      "sha256": "6932c4a39ee591e202f6d2e060d516d9afca9e57577f86a94b1cb24fbdae41f5"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-owner-calendar-build-only-v5-20261107.review.py",
+      "sha256": "f28394de2023f747936e2871e95d91e2efc24167acc05125a6ca7a97db75d1a2"
+    },
+    {
+      "path": "output/THAARA_PHONE_OWNER_CALENDAR_BUILD_ONLY_V5_2026-11-07.zip",
+      "sha256": "4bbde4228c0eabfaf55d30b8e276fb431b2982939a0ce898f751ab39f1efb5e0"
+    }
+  ]
+}

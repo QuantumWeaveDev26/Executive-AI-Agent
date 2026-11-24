@@ -1,0 +1,18 @@
+{
+  "reviewOnly": true,
+  "uploadAuthorized": false,
+  "liveIntegration": false,
+  "knowledgeVersion": "qw-company-kb-v2-custom-solutions",
+  "voicePolicyVersion": "qw-voice-policy-v3-no-pricing",
+  "targetAgentVersion": null,
+  "direction": "inbound",
+  "maxDurationSeconds": 300,
+  "baselineHashes": {
+    "knowledge": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+    "inboundInstructions": "073a8337945dc1df71fd9750e63249c0ab96022952938a1c933840cae360352a"
+  },
+  "artifacts": {
+    "quantum-weave-public.md": "f0be052c11155fee7bbb70bc2630dd97a8bfd6a9131d9f7b90235dbcdc2bc3db",
+    "inbound-instructions.proposed.txt": "216669fcce1e94772f5f9030309559ce2aa933133210410e827c3e1037451b59"
+  }
+}

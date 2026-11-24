@@ -1,0 +1,24 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "Readback of the owner-approved image switch and rollback, no changes.",
+  "scope": {
+    "vpsId": 1871828,
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serverChanges": false,
+    "sourceExports": 0,
+    "marker": "node_modules/.cache/phone-sarvam-v3-switch-readback-20261108.used.json",
+    "receipt": "node_modules/.cache/phone-sarvam-v3-switch-readback-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-v3-switch-readback-20261108.readonly.ps1",
+      "sha256": "78b7a6a2e2942ce163ff6f602ab78364831280bbc477c5bda8d8613f87b2cf34"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-v3-switch-readback-20261108.readonly.py",
+      "sha256": "96b93e73c7094a613bd28ae23461eddb8f3b73c9be5295581f1a7e323f35bd5d"
+    }
+  ]
+}

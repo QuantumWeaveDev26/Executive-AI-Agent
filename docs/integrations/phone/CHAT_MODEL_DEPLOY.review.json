@@ -1,0 +1,20 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "artifacts": [
+    {
+      "path": "scripts/phone-backup-restore.review.ps1",
+      "sha256": "d9d8521a79c4610ac827577925651be6a55f0f192f15773f3fff5a46362c77be"
+    },
+    {
+      "path": "node_modules/.cache/phone110-chat-image.tar.gz",
+      "sha256": "474530e26fbf36ddad3fe2d71e587e9fd9d33764915f7cb96e400c69d6ead800"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-publish.review.py",
+      "sha256": "f0b44d6341fb575968660486fcbcf33c8d55e425df178e28bb1aa7b1691b541e"
+    }
+  ],
+  "preparationOnly": true,
+  "command": "pwsh -NoProfile -NonInteractive -File scripts/phone-backup-restore.review.ps1 -ApprovedChatModelDeploy"
+}

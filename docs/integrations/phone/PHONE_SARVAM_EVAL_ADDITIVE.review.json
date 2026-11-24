@@ -1,0 +1,20 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "scope": "ONE connection; additive empty-default suite vars + v6 mapping + 1 case with overrides + 1 single-case run (scope=test_case, total_executions=1); preserves 6 existing cases and original guard; 0 PSTN calls",
+  "maximumProviderRequests": 23,
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-eval-additive.review.ps1",
+      "sha256": "027f072acafc1315527b955ba4fd599e855a31cb7a4f4e57a66ca6170c6ec9ea"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-eval-additive.review.py",
+      "sha256": "f731220fde5915f54f74c988a24fe294a433ddf64afd27213ba7d706d5094ebb"
+    },
+    {
+      "path": "docs/integrations/phone/knowledge/eval-review-v1/request-plan.review.json",
+      "sha256": "76b6885c16496202d7bcad26e11bc0f099f7611215be2b8579b701cf4aadec52"
+    }
+  ]
+}

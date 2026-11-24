@@ -1,0 +1,34 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "One read-only baseline discovery after V8 stopped before build. Preserve existing execution markers. No retry.",
+  "scope": {
+    "server": "VPS 1871828",
+    "container": "thaara-v2-pilot-api-1",
+    "dockerSocket": "unix:///var/run/docker.sock",
+    "liveImage": "discover, verify identity/health unchanged before and after",
+    "publicFrontend": "Discover current bounded asset hashes for comparison with the V8 baseline",
+    "sameFourCodePathsAsPriorExport": true,
+    "exportOnlyChangedFiles": true,
+    "fileLimitBytes": 196608,
+    "totalLimitBytes": 524288,
+    "databaseCommands": 0,
+    "providerRequests": 0,
+    "serviceChanges": false,
+    "secretFileReads": false,
+    "oneRunMarker": "node_modules/.cache/phone-release-refresh-post-v8-20261107.used.json",
+    "requireReadonlyRoot": true,
+    "denyMountsCoveringApp": true,
+    "resultReceipt": "node_modules/.cache/phone-release-refresh-post-v8-20261107.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-release-refresh-post-v8-20261107.readonly.ps1",
+      "sha256": "28e6ff6f1497c98294e3ad3758076ef3c5bbc527d5f6a8ddc20b58079b16a72b"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-release-refresh-v6-20261107.readonly.py",
+      "sha256": "f03d243464dc82fe6dc385fc1ac05dd0351258d2ed0e0a1057fbaaf57b6f064a"
+    }
+  ]
+}

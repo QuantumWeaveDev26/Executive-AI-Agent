@@ -1,0 +1,137 @@
+[
+ {
+  "type": "addNode",
+  "node": {
+   "name": "Is rich message",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.3,
+   "position": [
+    672,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "thaara-rich-message",
+       "leftValue": "={{ [\"template\", \"media\"].includes($json.messageType) }}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "notes": "Step 108.29b: template/media only when Thaara authorized it (claim messageType). Text keeps the existing WhatsApp node."
+  }
+ },
+ {
+  "type": "addNode",
+  "node": {
+   "name": "Send rich message (template/media)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.4,
+   "position": [
+    944,
+    -288
+   ],
+   "credentials": {
+    "whatsAppApi": {
+     "id": "Ub44cxSJarXiuVBb",
+     "name": "Thaara WhatsApp Test"
+    }
+   },
+   "parameters": {
+    "method": "POST",
+    "url": "=https://graph.facebook.com/v21.0/{{ $json.phoneNumberId }}/messages",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "whatsAppApi",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ ((j => {\n  if (!j || j.authorized !== true || j.dispatchEnabled !== true || !/^\\+[1-9][0-9]{7,14}$/.test(j.recipientPhoneNumber ?? '')) throw new Error('Unauthorized claim');\n  const base = { messaging_product: 'whatsapp', recipient_type: 'individual', to: j.recipientPhoneNumber.slice(1) };\n  if (j.messageType === 'template') {\n    const t = j.template ?? {}, components = [];\n    if (t.headerParams?.length) components.push({ type: 'header', parameters: t.headerParams.map(text => ({ type: 'text', text })) });\n    if (t.bodyParams?.length) components.push({ type: 'body', parameters: t.bodyParams.map(text => ({ type: 'text', text })) });\n    return { ...base, type: 'template', template: { name: t.name, language: { code: t.language }, ...(components.length ? { components } : {}) } };\n  }\n  if (j.messageType === 'media') {\n    const m = j.media ?? {};\n    if (!['image', 'document', 'audio'].includes(m.kind) || !/^[0-9]{1,64}$/.test(m.mediaId ?? '')) throw new Error('Invalid media claim');\n    return { ...base, ...(j.replyToProviderMessageId ? { context: { message_id: j.replyToProviderMessageId } } : {}), type: m.kind,\n      [m.kind]: { id: m.mediaId, ...(m.caption && m.kind !== 'audio' ? { caption: m.caption } : {}), ...(m.filename && m.kind === 'document' ? { filename: m.filename } : {}) } };\n  }\n  throw new Error('Not a rich message');\n}))($json) }}",
+    "options": {
+     "redirect": {
+      "redirect": {
+       "followRedirects": false
+      }
+     },
+     "response": {
+      "response": {
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "notes": "Step 108.29b: Graph body built only from the authorized claim (deploy/n8n/rich-message-body.mjs, tested). Errors go to the sanitized error output."
+  }
+ },
+ {
+  "type": "setNodeSettings",
+  "nodeName": "Send rich message (template/media)",
+  "settings": {
+   "onError": "continueErrorOutput"
+  }
+ },
+ {
+  "type": "removeConnection",
+  "source": "Deployment send gate",
+  "sourceIndex": 0,
+  "target": "Send only after Thaara authorization",
+  "targetIndex": 0
+ },
+ {
+  "type": "addConnection",
+  "source": "Deployment send gate",
+  "sourceIndex": 0,
+  "target": "Is rich message",
+  "targetIndex": 0
+ },
+ {
+  "type": "addConnection",
+  "source": "Is rich message",
+  "sourceIndex": 0,
+  "target": "Send rich message (template/media)",
+  "targetIndex": 0
+ },
+ {
+  "type": "addConnection",
+  "source": "Is rich message",
+  "sourceIndex": 1,
+  "target": "Send only after Thaara authorization",
+  "targetIndex": 0
+ },
+ {
+  "type": "addConnection",
+  "source": "Send rich message (template/media)",
+  "sourceIndex": 0,
+  "target": "Report provider acknowledgement",
+  "targetIndex": 0
+ },
+ {
+  "type": "addConnection",
+  "source": "Send rich message (template/media)",
+  "sourceIndex": 1,
+  "target": "Return sanitized provider error",
+  "targetIndex": 0
+ },
+ {
+  "type": "setWorkflowSettings",
+  "settings": {
+   "saveDataSuccessExecution": "none",
+   "saveDataErrorExecution": "none",
+   "saveManualExecutions": false,
+   "saveExecutionProgress": false
+  }
+ }
+]

@@ -1,0 +1,23 @@
+{
+  "reviewOnly": true,
+  "executionAuthorized": false,
+  "ownerApprovalRequired": true,
+  "scope": "ONE corrected build only; existing local base tag must resolve to pinned live image; stdin Dockerfile; no deployment/restarts/config changes",
+  "packagePath": "output/THAARA_PHONE_CHAT_NARROW_DEPLOY_2026-11-05.zip",
+  "packageSha256": "ada9bb9714c8e398f028270b6fcd8d77180e81c81af9dc4b7d6e719f48f55d69",
+  "requiredBase": "sha256:0287204a4b9ba3db5febc37e5bf022e0d615f4c600d23a4452288f07a7533161",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-build-diagnostic.v2.review.ps1",
+      "sha256": "a01867a10cb2cc4b6929535aa294da6c33f5e816828feeebdbd65f06844861c7"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-build-diagnostic.v2.review.py",
+      "sha256": "196a528ff5ec3653c4ed769bc7c4c1bba8041bc0b1c5b4d81fb0f521cd526514"
+    },
+    {
+      "path": "output/THAARA_PHONE_CHAT_NARROW_DEPLOY_2026-11-05.zip",
+      "sha256": "ada9bb9714c8e398f028270b6fcd8d77180e81c81af9dc4b7d6e719f48f55d69"
+    }
+  ]
+}

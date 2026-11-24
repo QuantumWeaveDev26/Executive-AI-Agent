@@ -1,0 +1,26 @@
+{
+  "reviewOnly": true,
+  "explicitApprovalRequired": true,
+  "readOnly": true,
+  "plaintextPrivateKeyFilesAllowed": false,
+  "scope": "One SSH connection; verified container metadata and fixed read-only PostgreSQL catalog only; no customer rows",
+  "hostFingerprint": "SHA256:yxR6qeawoJkzi3qL8AypF/cQG6euWW216XB2R5J6TQ4",
+  "artifacts": [
+    {
+      "path": "scripts/phone-inbound-host-inventory.review.ps1",
+      "sha256": "10fe0be262ae74bb84cb3459e91f9d71b3cdb194a5fa202cecf9bafbb4d95f11"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-inbound-host-inventory.review.py",
+      "sha256": "07689a7e3b1c23528e680aa2a74146401d8e19d87f5c65ff425adb2ebeb077f3"
+    },
+    {
+      "path": "scripts/phone_inbound_host_inventory_test.py",
+      "sha256": "f81fdd615154be66b371dc08fee8af87b457880d59b703cb6472ab39d9a706fb"
+    },
+    {
+      "path": "scripts/phone-inbound-host-inventory.test.ts",
+      "sha256": "dcce04d4b80cdc71ac42a89eda72727ee3b027b82e988fcda4b509b6368525a2"
+    }
+  ]
+}

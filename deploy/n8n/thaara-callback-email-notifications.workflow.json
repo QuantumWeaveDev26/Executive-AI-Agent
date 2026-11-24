@@ -1,0 +1,484 @@
+{
+  "name": "Thaara — Callback Email Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "cb-schedule-trigger-01",
+      "name": "Every 2 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "thaara-callback-notify",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "cb-webhook-trigger-02",
+      "name": "Authenticated Callback Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        440
+      ],
+      "webhookId": "thaara-callback-notify-v1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraPhoneBackendSyncAuth",
+          "name": "Thaara Phone Backend Sync"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://172.16.1.13:3002/api/v1/connectors/phone/n8n/checkpoint",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "cb-get-checkpoint-03",
+      "name": "Load Callback Cutoff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraPhoneBackendSyncAuth",
+          "name": "Thaara Phone Backend Sync"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const nowMs = Date.now();\nconst cutoffIso = $input.first()?.json?.callbackCutoffDatetime || new Date(nowMs - 15 * 60 * 1000).toISOString();\nconst cutoffMs = Date.parse(cutoffIso);\nconst lookbackMs = Math.max(Number.isFinite(cutoffMs) ? cutoffMs - 5 * 60 * 1000 : 0, nowMs - 45 * 60 * 1000);\nreturn [{\n  json: {\n    startDatetime: new Date(lookbackMs).toISOString(),\n    endDatetime: new Date(nowMs + 5 * 60 * 1000).toISOString(),\n    filterConditions: JSON.stringify([\n      { field: 'channel_direction', operator: 'equals', value: 'inbound' }\n    ])\n  }\n}];"
+      },
+      "id": "cb-build-window-04",
+      "name": "Build Inbound Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://apps.sarvam.ai/api/analytics/v1/01a10103-1b5d-78a1-9902-f391242c7537/01a10103-1b66-7123-96b1-43a6e96e016b/Thaara-AI-V-db336de4-5453/attempts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_datetime",
+              "value": "={{ $json.startDatetime }}"
+            },
+            {
+              "name": "end_datetime",
+              "value": "={{ $json.endDatetime }}"
+            },
+            {
+              "name": "limit",
+              "value": "25"
+            },
+            {
+              "name": "offset",
+              "value": "0"
+            },
+            {
+              "name": "filter_conditions",
+              "value": "={{ $json.filterConditions }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 12000
+        }
+      },
+      "id": "cb-fetch-attempts-05",
+      "name": "Fetch Completed Inbound Calls",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraSarvamAnalyticsAuth",
+          "name": "Thaara Sarvam Analytics API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = Array.isArray($input.first()?.json?.items) ? $input.first().json.items : [];\nconst eligible = items.filter(a =>\n  a &&\n  a.channel_direction === 'inbound' &&\n  a.connectivity_status === 'connected' &&\n  typeof a.interaction_id === 'string' &&\n  a.interaction_id.length > 0 &&\n  Boolean(a.end_datetime)\n);\nreturn eligible.map(attempt => ({\n  json: {\n    attempt,\n    encodedInteractionId: encodeURIComponent(attempt.interaction_id)\n  }\n}));"
+      },
+      "id": "cb-filter-connected-06",
+      "name": "Select Ended Inbound Interactions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://apps.sarvam.ai/api/analytics/v1/01a10103-1b5d-78a1-9902-f391242c7537/01a10103-1b66-7123-96b1-43a6e96e016b/Thaara-AI-V-db336de4-5453/transcripts/{{ $json.encodedInteractionId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 12000
+        }
+      },
+      "id": "cb-fetch-transcript-07",
+      "name": "Fetch Call Transcript",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraSarvamAnalyticsAuth",
+          "name": "Thaara Sarvam Analytics API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sourceItems = $('Select Ended Inbound Interactions').all();\nconst txItems = $input.all();\nconst out = [];\nfor (let i = 0; i < txItems.length; i++) {\n  const attempt = sourceItems[i]?.json?.attempt;\n  const tx = txItems[i]?.json;\n  if (!attempt || !attempt.attempt_id) continue;\n  const messages = Array.isArray(tx?.messages) ? tx.messages.slice(0, 200).map(m => ({\n    role: String(m.role || 'user'),\n    content: typeof m.content === 'string' ? m.content.slice(0, 4000) : '',\n    ...(typeof m.english_content === 'string' ? { english_content: m.english_content.slice(0, 4000) } : {}),\n    ...(typeof m.language_name === 'string' ? { language_name: m.language_name.slice(0, 64) } : {}),\n    ...(m.turn_id !== undefined ? { turn_id: m.turn_id } : {})\n  })) : [];\n  const av = attempt.agent_variables && typeof attempt.agent_variables === 'object' ? attempt.agent_variables : {};\n  out.push({\n    json: {\n      call: {\n        attemptId: String(attempt.attempt_id),\n        interactionId: attempt.interaction_id || null,\n        direction: 'inbound',\n        connectivityStatus: ['connected', 'no_answer', 'busy', 'failed'].includes(attempt.connectivity_status) ? attempt.connectivity_status : 'unknown',\n        failureReason: attempt.failure_reason || null,\n        endedBy: attempt.ended_by || null,\n        durationSeconds: typeof attempt.duration_in_seconds === 'number' ? attempt.duration_in_seconds : null,\n        startDatetime: attempt.start_datetime || null,\n        endDatetime: attempt.end_datetime || null,\n        attemptedAt: attempt.attempted_at || null,\n        userContact: attempt.user_contact || null,\n        userContactMasked: attempt.user_contact_masked || null,\n        recordingAvailable: Boolean(attempt.audio_url && attempt.interaction_id),\n        appVersion: attempt.app_version ?? null,\n        languageName: attempt.language_name || null,\n        agentVariables: {\n          user_name: av.user_name ?? null,\n          call_purpose: av.call_purpose ?? null,\n          call_summary: av.call_summary ?? null,\n          business_name: av.business_name ?? null,\n          service_needed: av.service_needed ?? null,\n          preferred_callback_time: av.preferred_callback_time ?? null\n        },\n        messages\n      }\n    }\n  });\n}\nreturn out;"
+      },
+      "id": "cb-normalize-candidate-08",
+      "name": "Prepare Verification Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.16.1.13:3002/api/v1/connectors/phone/n8n/callbacks/evaluate-and-claim",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 12000
+        }
+      },
+      "id": "cb-evaluate-claim-09",
+      "name": "Verify Consent & Claim Single Delivery",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraPhoneBackendSyncAuth",
+          "name": "Thaara Phone Backend Sync"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-send-allowed",
+              "leftValue": "={{ $json.sendAllowed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cb-if-confirmed-10",
+      "name": "Verified & Unsent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.email.fromEmail }}",
+        "toEmail": "={{ $json.email.toEmail }}",
+        "subject": "={{ $json.email.subject }}",
+        "emailFormat": "both",
+        "text": "={{ $json.email.textBody }}",
+        "html": "={{ $json.email.htmlBody }}",
+        "options": {}
+      },
+      "id": "cb-send-email-11",
+      "name": "Send Callback Email to Owner",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2240,
+        240
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "smtp": {
+          "id": "G1VGVGldX32ch2xV",
+          "name": "BrandMint SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.16.1.13:3002/api/v1/connectors/phone/n8n/callbacks/receipt",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ callId: $('Verified & Unsent?').item.json.callId, claimAttemptId: $('Verified & Unsent?').item.json.claimAttemptId, outcome: 'submitted', providerMessageId: String($json.messageId || $json.response || '') }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "cb-record-success-12",
+      "name": "Record Delivery Receipt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2500,
+        160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraPhoneBackendSyncAuth",
+          "name": "Thaara Phone Backend Sync"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.16.1.13:3002/api/v1/connectors/phone/n8n/callbacks/receipt",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ callId: $('Verified & Unsent?').item.json.callId, claimAttemptId: $('Verified & Unsent?').item.json.claimAttemptId, outcome: 'pending', errorSummary: 'SMTP send failed; queued for bounded retry' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "cb-record-retry-13",
+      "name": "Release Claim for Retry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2500,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraPhoneBackendSyncAuth",
+          "name": "Thaara Phone Backend Sync"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 2 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Load Callback Cutoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticated Callback Webhook": {
+      "main": [
+        [
+          {
+            "node": "Load Callback Cutoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Callback Cutoff": {
+      "main": [
+        [
+          {
+            "node": "Build Inbound Window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Inbound Window": {
+      "main": [
+        [
+          {
+            "node": "Fetch Completed Inbound Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Completed Inbound Calls": {
+      "main": [
+        [
+          {
+            "node": "Select Ended Inbound Interactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Ended Inbound Interactions": {
+      "main": [
+        [
+          {
+            "node": "Fetch Call Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Call Transcript": {
+      "main": [
+        [
+          {
+            "node": "Prepare Verification Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Verification Payload": {
+      "main": [
+        [
+          {
+            "node": "Verify Consent & Claim Single Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Consent & Claim Single Delivery": {
+      "main": [
+        [
+          {
+            "node": "Verified & Unsent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verified & Unsent?": {
+      "main": [
+        [
+          {
+            "node": "Send Callback Email to Owner",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send Callback Email to Owner": {
+      "main": [
+        [
+          {
+            "node": "Record Delivery Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Release Claim for Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "reviewOnly": true,
+  "executionAuthorized": false,
+  "activationEnabled": false,
+  "target": {
+    "database": "thaara_vps_pilot",
+    "serverVersion": "160015",
+    "observedApiImage": "sha256:953a089698496c46d479eba46590b9afbd3dce672531f85f5ff29b4163038514",
+    "newTables": [
+      "phone_inbound_call_events",
+      "phone_inbound_principals",
+      "phone_callback_requests",
+      "phone_callback_notification_grants",
+      "phone_callback_notification_grant_uses",
+      "phone_callback_worker_principals",
+      "phone_callback_dispatch_numbers"
+    ],
+    "newRoles": [
+      "thaara_phone_ingest",
+      "thaara_phone_guard",
+      "thaara_phone_notify",
+      "thaara_phone_notify_guard"
+    ],
+    "newFunctions": [
+      "phone_inbound_resolve_grant",
+      "phone_inbound_scope_matches",
+      "phone_inbound_append_event",
+      "complete_phone_provider_report",
+      "phone_callback_validate_grant",
+      "phone_callback_record_grant_use",
+      "phone_callback_worker_operation",
+      "phone_callback_inbound_save",
+      "phone_callback_outbound_context",
+      "phone_callback_outbound_save"
+    ],
+    "approvalSetting": "thaara.step115_hosted_install_approved",
+    "approvalValue": "owner-approved-step115-hosted-install-r3-acl"
+  },
+  "schemaReceiptSha256": "46abefeb1537c3d044963fbf0718bbad9838dc7713183ecdc67df2eb32f29086",
+  "observedAt": "2026-11-11T08:20:41.702Z",
+  "sql": {
+    "path": "docs/migrations/115-step115-hosted-install-20261111-r2.review.sql",
+    "sha256": "c809ba7c0a44f9bdf3b76a1566edf1fbe6fc33e39a1d0c1d25e58a53025dcf8e"
+  },
+  "inputs": [
+    {
+      "path": "docs/migrations/112-phone-inbound-events.review.sql",
+      "sha256": "d5c6a338b2bddba4e70bd527e8b0601b8bfe47602f3e46fc6306cc937adbbd8a"
+    },
+    {
+      "path": "docs/migrations/113-phone-inbound-principals.review.sql",
+      "sha256": "318eee1bad52b2674b1af21a186723e6c76d0433e247cacc0c4d983f61711680"
+    },
+    {
+      "path": "docs/migrations/114-phone-structured-report.review.sql",
+      "sha256": "bc4f111e15edb6b00718ee9e64378149508a51219a8152e83d480bceec25448b"
+    },
+    {
+      "path": "docs/migrations/115-phone-callback-notification.review.sql",
+      "sha256": "581770d81abc00a04468c665a50526c7a20e2ebd5973db2cee23d87e1d7eb2b8"
+    },
+    {
+      "path": "docs/migrations/115g-phone-callback-grants.review.sql",
+      "sha256": "d55fe4bc736a076f9faca9ecf682cc14ab900dde6c87612c6389678c3ad65a6e"
+    },
+    {
+      "path": "docs/migrations/115w-phone-callback-worker.review.sql",
+      "sha256": "f17dbd7b26368ab5fd0ab9556a872d5e336b551fc28c35c5456a3a34f30d9879"
+    },
+    {
+      "path": "docs/migrations/115i-phone-callback-inbound-save.review.sql",
+      "sha256": "05867d3bf19bf9b89208e98e68589e60f7c1ddaf8e54a726e063d33820a9d3e0"
+    },
+    {
+      "path": "docs/migrations/115o-phone-callback-outbound.review.sql",
+      "sha256": "9caab05f194745747493b214a6dcb3c70abe4880a17d41470b2341cca08e5023"
+    }
+  ],
+  "rollback": "One transaction rolls back on installation failure. Retain additive schema and records during any later application rollback.",
+  "provisionsLoginOrSecrets": false
+}

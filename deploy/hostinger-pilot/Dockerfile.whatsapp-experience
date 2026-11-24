@@ -1,0 +1,20 @@
+# Step 108.22 + 108.23: WhatsApp Web-style UI, contacts endpoint, read-only Chat commands, image preview route
+# (reports not_configured: no media provider or token on the pilot). No SQL, no secrets, sending stays disabled.
+# Paused Phone code must not enter the pilot: app.js, policy registry and conversations.js are NOT replaced;
+# conversations.js gets an exact-match patch of the pilot's own copy.
+# Expected base: sha256:75682e644d96b15745091bbb4c1ce2914d72e826b1de0162e6adbdcc679010f8 (108.21).
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 contracts/ /app/packages/contracts/dist/
+COPY --chown=1000:1000 api-services/ /app/apps/api/dist/services/
+COPY --chown=1000:1000 api-routes/ /app/apps/api/dist/routes/
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+COPY --chown=1000:1000 patch-conversations.mjs /tmp/patch-conversations.mjs
+RUN node /tmp/patch-conversations.mjs && rm /tmp/patch-conversations.mjs
+RUN node --input-type=module -e "import {copyFileSync,realpathSync,readFileSync} from 'node:fs'; import {dirname,join} from 'node:path'; import {fileURLToPath} from 'node:url'; \
+  const source='/app/packages/contracts/dist/whatsapp-n8n.js', target=realpathSync(join(dirname(fileURLToPath(import.meta.resolve('@thaara/contracts'))),'whatsapp-n8n.js')); \
+  if(!target.startsWith('/app/apps/api/node_modules/') && target!==source)throw Error('Unexpected installed package path'); if(target!==source)copyFileSync(source,target); \
+  const contracts=await import('@thaara/contracts'); if(!contracts.N8nWhatsAppContactsSchema || typeof contracts.isN8nWhatsAppContacts!=='function' || !contracts.isMetaWhatsAppStoredMedia)throw Error('Missing runtime contracts'); \
+  for(const f of ['dist/app.js','dist/routes/conversations.js'])if(/PhoneCallingService|PHONE_AI_CALL_ACTION/.test(readFileSync(f,'utf8')))throw Error('Paused Phone code must not enter pilot image'); \
+  await import('./dist/services/chat-whatsapp-read.js'); await import('./dist/services/whatsapp-durable.js'); await import('./dist/routes/whatsapp-inbox.js'); await import('./dist/routes/conversations.js'); await import('./dist/app.js'); \
+  console.log('Runtime contracts, services, routes and app verified');"

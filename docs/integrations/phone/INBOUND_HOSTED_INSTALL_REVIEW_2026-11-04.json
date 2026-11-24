@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "reviewOnly": true,
+  "installationAllowed": false,
+  "runtimeEnabled": false,
+  "productionReady": false,
+  "targetDatabase": "thaara_vps_pilot",
+  "postgresMajor": 16,
+  "inventoryReceiptSha256": "a41ae3d366ae5c4ca43c3ea9e3afd41e7e05ef6786856733a5fec1d2c94633b0",
+  "inventoryMeaning": "historical_preparation_evidence_only_revalidate_before_any_install",
+  "ownerIdentity": null,
+  "principalIdentity": null,
+  "backupVerification": null,
+  "hostingExceptionApproval": null,
+  "secretReferences": null,
+  "sequence": [
+    "112h",
+    "113h"
+  ],
+  "partialInstallRecovery": "keep_reporting_disabled_preserve_data_forward_review_only",
+  "pending": [
+    "isolated_validation_of_new_hosted_sql_gates",
+    "fresh_backup_and_isolated_restore_approval",
+    "hosting_and_secret_storage_compliance_or_explicit_pilot_exception",
+    "authenticated_thaara_owner_binding",
+    "base_ownership_role_membership_and_privilege_review",
+    "live_provider_auth_and_metadata_review",
+    "shared_ingress_and_runtime_admission_review",
+    "scoped_install_identity_secret_deployment_approvals",
+    "controlled_end_to_end_acceptance"
+  ],
+  "sqlSha256": {
+    "docs/migrations/112h-phone-inbound-events.hosted-review.sql": "064ac927a1e059e25f2026a0251fa06e15e5849b4d35641d106273a641049a9f",
+    "docs/migrations/113h-phone-inbound-principals.hosted-review.sql": "688922f79a552699028ce7e1cd450128a5156d585b13803e478f6412a3aee275"
+  }
+}

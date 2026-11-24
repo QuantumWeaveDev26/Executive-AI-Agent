@@ -1,0 +1,21 @@
+# Step108.25–108.27 pilot review only. Backup + reviewed10825 SQL must precede API replacement.
+# Expected base85fea59e…; no live-on, workflow activation, token entry, provider calls or migrations during build.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 contracts/ /app/packages/contracts/dist/
+COPY --chown=1000:1000 db/whatsapp-postgres.js /app/packages/db/dist/repositories/
+COPY --chown=1000:1000 api-services/ /app/apps/api/dist/services/
+COPY --chown=1000:1000 api-routes/ /app/apps/api/dist/routes/
+COPY --chown=1000:1000 api-root/pilot-config.mjs /app/apps/api/pilot-config.mjs
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+COPY --chown=1000:1000 patch-whatsapp-compose.mjs pilot-compose-base.json /app/apps/api/
+RUN node /app/apps/api/patch-whatsapp-compose.mjs --approved-image-build && rm /app/apps/api/patch-whatsapp-compose.mjs /app/apps/api/pilot-compose-base.json
+RUN node --input-type=module -e "import{readFileSync}from'node:fs'; \
+  const c=await import('@thaara/contracts'); if(c.WHATSAPP_MEDIA_UPLOAD_ACTION!=='whatsapp.meta.media.upload'||!c.N8nWhatsAppMediaDraftRequestSchema)throw Error('Missing rich/upload runtime contracts'); \
+  const p=await import('@thaara/policy'); const upload=p.defaultActionRegistry.get(c.WHATSAPP_MEDIA_UPLOAD_ACTION); \
+  if(upload?.approvalMode!=='explicit'||!upload.idempotencyRequired||!upload.auditRequired||!p.defaultActionRegistry.get('whatsapp.media.preview'))throw Error('Missing upload/preview policy'); \
+  const db=await import('@thaara/db');if(!db.PostgresWhatsAppStateStore.toString().includes('media_metadata'))throw Error('Missing runtime media repository'); \
+  const app=await import('./dist/app.js');if(typeof app.buildApp!=='function')throw Error('Pilot app import failed'); \
+  for(const path of ['dist/app.js','dist/routes/conversations.js'])if(/PhoneCallingService|PHONE_AI_CALL_ACTION/.test(readFileSync(path,'utf8')))throw Error('Paused Phone inclusion'); \
+  const config=await import('./pilot-config.mjs');if(config.pilotSendSettings({THAARA_WHATSAPP_SEND_ENABLED:'false'})!==null)throw Error('Send-off default changed'); \
+  console.log('Pilot rich compose services and fail-closed upload contracts imported; sending remains off');"

@@ -1,0 +1,41 @@
+# Thaara Chat Modernization Overlay on thaara-v2-pilot-api
+# Base image: sha256:b1b13df2fb1b51817765f099c2645e25bafa6934251add0d71c890c6f29d7117
+# Preserves Phone, WhatsApp, Calendar, Gmail, and n8n workflows.
+ARG BASE_IMAGE=sha256:b1b13df2fb1b51817765f099c2645e25bafa6934251add0d71c890c6f29d7117
+FROM ${BASE_IMAGE}
+
+COPY --chown=1000:1000 contracts/ /app/packages/contracts/dist/
+COPY --chown=1000:1000 api-services/ /app/apps/api/dist/services/
+COPY --chown=1000:1000 api-routes/ /app/apps/api/dist/routes/
+RUN rm -rf /app/apps/web/dist/assets
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+
+# In-container smoke verification
+RUN node --input-type=module -e "import fs from 'node:fs'; import { dirname, join } from 'node:path'; import { fileURLToPath } from 'node:url'; \
+  const contractsDir = dirname(fs.realpathSync(fileURLToPath(import.meta.resolve('@thaara/contracts')))); \
+  for (const f of ['conversations.js', 'conversations.d.ts']) { \
+    const src = '/app/packages/contracts/dist/' + f, dst = join(contractsDir, f); \
+    if (src !== dst) fs.copyFileSync(src, dst); \
+  } \
+  const c = await import('@thaara/contracts'); \
+  if (!c.InitiateAssistantStreamInputSchema) throw Error('Missing InitiateAssistantStreamInputSchema'); \
+  if (!c.PHONE_AI_CALL_ACTION || !c.PHONE_CALL_RESULT_READ_ACTION) throw Error('Missing Phone contracts'); \
+  if (!c.WhatsAppStoredFailureMetadataSchema) throw Error('Missing WhatsApp contracts'); \
+  const qk = await import('./dist/services/quantum-weave-knowledge.js'); \
+  if (typeof qk.buildRelevantKnowledgeSnippet !== 'function') throw Error('Missing quantum-weave-knowledge'); \
+  const cc = await import('./dist/services/chat-business-classifier.js'); \
+  if (typeof cc.ChatBusinessClassifier.classify !== 'function') throw Error('Missing chat-business-classifier'); \
+  const ca = await import('./dist/services/chat-attachments.js'); \
+  if (typeof ca.verifyFileSignature !== 'function' && typeof ca.validateMagicBytes !== 'function') throw Error('Missing chat-attachments'); \
+  const pc = await import('./dist/services/phone-calling.js'); \
+  if (typeof pc.PhoneCallingService !== 'function') throw Error('Missing PhoneCallingService'); \
+  const dur = await import('./dist/services/whatsapp-durable.js'); \
+  if (typeof dur.DurableWhatsAppService !== 'function') throw Error('Missing whatsapp-durable'); \
+  const app = await import('./dist/app.js'); \
+  if (typeof app.buildApp !== 'function') throw Error('Missing buildApp'); \
+  const assets = fs.readdirSync('/app/apps/web/dist/assets'); \
+  const jsBundle = assets.find((n) => n.endsWith('.js')); \
+  if (!jsBundle) throw Error('Missing web JS bundle'); \
+  const webJs = fs.readFileSync('/app/apps/web/dist/assets/' + jsBundle, 'utf8'); \
+  if (!webJs.includes('chat-attachment-toggle-btn') || !webJs.includes('chat-jump-to-latest-btn')) throw Error('Web bundle missing Chat attachment or jump-to-latest button'); \
+  console.log('Thaara Chat Modernization candidate verified in-container: Phone, WhatsApp, and Chat intact.');"

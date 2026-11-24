@@ -1,0 +1,18 @@
+In Thaara AI Voice Assistant v22 Draft, fix only the pronunciation of the brand WhatsApp. If the draft version differs, report it before editing. The owner reports it currently sounds like “what is up”; this has not been independently heard by Codex.
+
+Use the pronunciation dictionary on Speakers & voice, rather than changing the brand spelling in the knowledge base, customer records or service descriptions. Merge with existing entries and preserve unrelated pronunciations. Do not replace an existing dictionary with this small delta.
+
+English candidate: WhatsApp / Whatsapp / whatsapp → “wots app”, with “app” as in mobile app; never “what is up”.
+Kannada candidate: WhatsApp / Whatsapp / whatsapp → “ವಾಟ್ಸಾಪ್”.
+Hindi candidate: WhatsApp / Whatsapp / whatsapp → “वॉट्सऐप”.
+
+These are plain-text candidate replacements, not supported IPA/phoneme markup or an audio-verified guarantee. Read back the exact changes. Preserve displayed brand spelling as WhatsApp. Do not globally replace the real phrase “what is up”.
+
+Keep the current voice/model, pitch, pace, supported languages, interruptions ON, volume threshold Sensitive, response timing Patient, No sound, and five-minute cap. Do not publish, deploy, place calls, send emails, run paid tests or change credentials.
+
+After editing, let the owner preview the existing voice saying:
+1. “We build WhatsApp automation for businesses.”
+2. “Our WhatsApp Business integration supports customer follow-up.”
+3. “ನಾವು WhatsApp automation ಮಾಡುತ್ತೇವೆ.”
+
+Check the brand alone and in a sentence, including English/Kannada switching. Report the actual draft version, merged dictionary entries and any unsupported language mapping. If the candidate still mispronounces it, adjust that word's replacement only after hearing the preview; do not retune the working interruption settings.

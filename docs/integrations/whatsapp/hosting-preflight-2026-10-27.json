@@ -1,0 +1,585 @@
+{
+  "observedAt": "2026-10-27T07:57:19.000Z",
+  "scope": "read-only Hostinger API; no SSH, deployment, DNS changes, service restart or provider messaging",
+  "vm": {
+    "id": 1871828,
+    "hostname": "srv1871828.hstgr.cloud",
+    "state": "running",
+    "plan": "KVM 2",
+    "cpus": 2,
+    "memoryRaw": 8192,
+    "diskRaw": 102400,
+    "publicIPv4": [
+      "76.13.217.50"
+    ],
+    "template": "Ubuntu 24.04 with n8n"
+  },
+  "metrics": {
+    "range": {
+      "from": "2026-10-26T07:57:19.000Z",
+      "to": "2026-10-27T07:57:19.000Z"
+    },
+    "metrics": {
+      "cpu_usage": {
+        "unit": "%",
+        "samples": 48,
+        "min": 7.43,
+        "max": 10.05,
+        "mean": 8.344583333333334,
+        "latest": [
+          "1793087382",
+          8.6
+        ]
+      },
+      "ram_usage": {
+        "unit": "bytes",
+        "samples": 48,
+        "min": 2774380544,
+        "max": 3186405376,
+        "mean": 2889392725.3333335,
+        "latest": [
+          "1793087382",
+          2976219136
+        ]
+      },
+      "disk_space": {
+        "unit": "bytes",
+        "samples": 48,
+        "min": 34173030400,
+        "max": 35123281920,
+        "mean": 34977703253.333336,
+        "latest": [
+          "1793087382",
+          35115806720
+        ]
+      },
+      "outgoing_traffic": {
+        "unit": "bytes",
+        "samples": 48,
+        "min": 597976,
+        "max": 90787901,
+        "mean": 12227312.979166666,
+        "latest": [
+          "1793087382",
+          7419316
+        ]
+      },
+      "incoming_traffic": {
+        "unit": "bytes",
+        "samples": 48,
+        "min": 605474,
+        "max": 96349010,
+        "mean": 14053896.3125,
+        "latest": [
+          "1793087382",
+          16016251
+        ]
+      },
+      "uptime": {
+        "unit": "seconds",
+        "samples": 48,
+        "min": 821147,
+        "max": 905733,
+        "mean": 863317.4583333334,
+        "latest": [
+          "1793087382",
+          905733
+        ]
+      }
+    }
+  },
+  "projects": [
+    {
+      "name": "agent-arjun-brahmastra",
+      "path": "/docker/agent-arjun-brahmastra/docker-compose.yml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "69a011dea359",
+          "name": "agent-arjun-brahmastra-portal-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "running",
+          "health": "healthy",
+          "ports": [
+            {
+              "type": "exposed",
+              "protocol": "tcp",
+              "host_ip": null,
+              "host_port": null,
+              "container_port": 8080,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        },
+        {
+          "id": "e1f789b8f8f5",
+          "name": "agent-arjun-brahmastra-release-upload-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "exited",
+          "health": "",
+          "ports": []
+        }
+      ]
+    },
+    {
+      "name": "agent-arjun-full",
+      "path": "/docker/agent-arjun-full/docker-compose.yml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "0b004022a6a1",
+          "name": "agent-arjun-full-portal-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "running",
+          "health": "healthy",
+          "ports": [
+            {
+              "type": "exposed",
+              "protocol": "tcp",
+              "host_ip": null,
+              "host_port": null,
+              "container_port": 8080,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        },
+        {
+          "id": "b681df4359d3",
+          "name": "agent-arjun-full-release-upload-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "exited",
+          "health": "",
+          "ports": []
+        }
+      ]
+    },
+    {
+      "name": "agent-arjun-guides",
+      "path": "/docker/agent-arjun-guides/docker-compose.yml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "78e2ba45b481",
+          "name": "agent-arjun-guides-portal-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "running",
+          "health": "healthy",
+          "ports": [
+            {
+              "type": "exposed",
+              "protocol": "tcp",
+              "host_ip": null,
+              "host_port": null,
+              "container_port": 8080,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        },
+        {
+          "id": "3595e5b3f44f",
+          "name": "agent-arjun-guides-release-upload-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "exited",
+          "health": "",
+          "ports": []
+        }
+      ]
+    },
+    {
+      "name": "agent-arjun-staging",
+      "path": "/docker/agent-arjun-staging/docker-compose.yml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "c13471cbec48",
+          "name": "agent-arjun-staging-portal-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "running",
+          "health": "healthy",
+          "ports": [
+            {
+              "type": "exposed",
+              "protocol": "tcp",
+              "host_ip": null,
+              "host_port": null,
+              "container_port": 8080,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        },
+        {
+          "id": "cfe3d71187fb",
+          "name": "agent-arjun-staging-release-upload-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "exited",
+          "health": "",
+          "ports": []
+        }
+      ]
+    },
+    {
+      "name": "agent-arjun-workspace",
+      "path": "/docker/agent-arjun-workspace/docker-compose.yml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "769e9dea27db",
+          "name": "agent-arjun-workspace-portal-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "running",
+          "health": "healthy",
+          "ports": [
+            {
+              "type": "exposed",
+              "protocol": "tcp",
+              "host_ip": null,
+              "host_port": null,
+              "container_port": 8080,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        },
+        {
+          "id": "6c7790f793a2",
+          "name": "agent-arjun-workspace-release-upload-1",
+          "image": "python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce",
+          "state": "exited",
+          "health": "",
+          "ports": []
+        }
+      ]
+    },
+    {
+      "name": "aicampus",
+      "path": "/var/www/aicampus/docker-compose.production.yml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "0ec52c2f0c78",
+          "name": "aicampus",
+          "image": "aicampus-aicampus:hardened",
+          "state": "running",
+          "health": "",
+          "ports": [
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "127.0.0.1",
+              "host_port": 3100,
+              "container_port": 3100,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "n8n",
+      "path": "/docker/n8n/docker-compose.yml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "79e3594ca7b3",
+          "name": "n8n-n8n-1",
+          "image": "docker.n8n.io/n8nio/n8n",
+          "state": "running",
+          "health": "",
+          "ports": [
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "127.0.0.1",
+              "host_port": 5678,
+              "container_port": 5678,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        },
+        {
+          "id": "32274fa46df0",
+          "name": "n8n-traefik-1",
+          "image": "traefik",
+          "state": "running",
+          "health": "",
+          "ports": [
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "0.0.0.0",
+              "host_port": 80,
+              "container_port": 80,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            },
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "::",
+              "host_port": 80,
+              "container_port": 80,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            },
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "0.0.0.0",
+              "host_port": 443,
+              "container_port": 443,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            },
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "::",
+              "host_port": 443,
+              "container_port": 443,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "praja-seva-pilot",
+      "path": "/opt/praja-seva-pilot/compose.yaml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "314a58e528a0",
+          "name": "praja-seva-pilot-app-1",
+          "image": "praja-seva-pilot:20261024-citizen-intake-final",
+          "state": "running",
+          "health": "",
+          "ports": [
+            {
+              "type": "exposed",
+              "protocol": "tcp",
+              "host_ip": null,
+              "host_port": null,
+              "container_port": 8080,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        },
+        {
+          "id": "5e4dc0ad975e",
+          "name": "praja-seva-pilot-praja-sql-1",
+          "image": "mcr.microsoft.com/mssql/server:2022-latest",
+          "state": "running",
+          "health": "",
+          "ports": [
+            {
+              "type": "exposed",
+              "protocol": "tcp",
+              "host_ip": null,
+              "host_port": null,
+              "container_port": 1433,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "thaara-ai-platform",
+      "path": "/root/thaara-ai-platform/docker-compose.yml",
+      "state": "running",
+      "containers": [
+        {
+          "id": "1ebe0d6e48b9",
+          "name": "thaara-ai-platform-backend-1",
+          "image": "thaara-ai-platform-backend",
+          "state": "running",
+          "health": "healthy",
+          "ports": [
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "0.0.0.0",
+              "host_port": 5000,
+              "container_port": 5000,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            },
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "::",
+              "host_port": 5000,
+              "container_port": 5000,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        },
+        {
+          "id": "c0cc85c70882",
+          "name": "thaara-ai-platform-frontend-1",
+          "image": "thaara-ai-platform-frontend",
+          "state": "running",
+          "health": "healthy",
+          "ports": [
+            {
+              "type": "exposed",
+              "protocol": "tcp",
+              "host_ip": null,
+              "host_port": null,
+              "container_port": 80,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            },
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "0.0.0.0",
+              "host_port": 8080,
+              "container_port": 8080,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            },
+            {
+              "type": "published",
+              "protocol": "tcp",
+              "host_ip": "::",
+              "host_port": 8080,
+              "container_port": 8080,
+              "host_port_start": null,
+              "host_port_end": null,
+              "container_port_start": null,
+              "container_port_end": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "hostingerFirewall": {
+    "associatedGroup": null,
+    "listTotal": 0,
+    "osFirewall": "unverified"
+  },
+  "backups": [
+    {
+      "id": 57095981,
+      "createdAt": "2026-10-25T00:05:09Z",
+      "sizeRaw": 44122112,
+      "restoreTimeRaw": 3921,
+      "restoreTest": "not performed"
+    },
+    {
+      "id": 56305132,
+      "createdAt": "2026-10-17T11:41:05Z",
+      "sizeRaw": 15220736,
+      "restoreTimeRaw": 3921,
+      "restoreTest": "not performed"
+    }
+  ],
+  "proposedHostname": "thaara-v2.quantumweaveai.io",
+  "dns": {
+    "zone": "quantumweaveai.io",
+    "newLabelAbsent": true,
+    "existingRecords": [
+      {
+        "name": "resend._domainkey",
+        "type": "TXT",
+        "ttl": 14400,
+        "recordCount": 1
+      },
+      {
+        "name": "www",
+        "type": "CNAME",
+        "ttl": 300,
+        "recordCount": 1
+      },
+      {
+        "name": "ftp",
+        "type": "A",
+        "ttl": 1800,
+        "recordCount": 1
+      },
+      {
+        "name": "rsend",
+        "type": "CNAME",
+        "ttl": 3600,
+        "recordCount": 1
+      },
+      {
+        "name": "send",
+        "type": "CNAME",
+        "ttl": 3600,
+        "recordCount": 1
+      },
+      {
+        "name": "_dmarc",
+        "type": "TXT",
+        "ttl": 3600,
+        "recordCount": 1
+      },
+      {
+        "name": "@",
+        "type": "ALIAS",
+        "ttl": 300,
+        "recordCount": 1
+      },
+      {
+        "name": "@",
+        "type": "TXT",
+        "ttl": 14400,
+        "recordCount": 1
+      }
+    ],
+    "mutation": "none"
+  },
+  "sharedWebHostingThaaraMatches": 0,
+  "limits": [
+    "docker network/mount/proxy resolver and OS firewall not exposed by reviewed metadata",
+    "managed PostgreSQL/Redis/secret services not established",
+    "no production migrations, LIVE mode/provider/HTTPS/receipt acceptance"
+  ]
+}

@@ -1,0 +1,28 @@
+# REVIEW ONLY. Dockerfile-specific allowlist excludes secrets, local modules,
+# logs and legacy material. Build on Linux to preserve portable pnpm links.
+ARG NODE_IMAGE=node@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
+FROM ${NODE_IMAGE} AS build
+WORKDIR /src
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY packages/config/package.json ./packages/config/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
+COPY packages/db/package.json ./packages/db/package.json
+COPY packages/observability/package.json ./packages/observability/package.json
+COPY packages/policy/package.json ./packages/policy/package.json
+RUN pnpm --filter @thaara/api... install --frozen-lockfile --ignore-scripts
+COPY build-context-manifest.json ./
+COPY . .
+RUN node --input-type=module -e "import {verifyBuildContext} from './deploy/hostinger-pilot/prepare-build-context.mjs'; verifyBuildContext('/src',true);"
+RUN pnpm --filter @thaara/api... build
+RUN pnpm --filter @thaara/api deploy --prod --frozen-lockfile --ignore-scripts /out/apps/api
+RUN node deploy/hostinger-pilot/stage-built.mjs
+WORKDIR /out/apps/api
+RUN node --input-type=module -e "await import('./dist/app.js'); await import('@thaara/db'); console.log('Portable API import check passed');"
+FROM ${NODE_IMAGE} AS runtime
+WORKDIR /app/apps/api
+COPY --from=build --chown=1000:1000 /out/ /app/
+USER 1000:1000
+EXPOSE 3002
+CMD ["node","pilot-start.mjs"]

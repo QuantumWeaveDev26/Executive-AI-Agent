@@ -1,0 +1,67 @@
+# Thaara V2 — Google Drive Governed Release Overlay (Reconciled onto Phone Step 115 Production Baseline)
+# Exact Base Image: sha256:352cc60a6b5c89bacde094c8bb8ce9060e94009d86816010d050e759ae1ca02d (thaara-v2-pilot-api:phone115-r2)
+# Preserves 100% of Phone Step 115 (ownerCallback runtime, callback reports, callback authorization, Sarvam),
+# WhatsApp, Gmail, Google Calendar, Chat Modernization, Bulk Campaigns, and n8n links.
+ARG BASE_IMAGE=sha256:352cc60a6b5c89bacde094c8bb8ce9060e94009d86816010d050e759ae1ca02d
+ARG FINAL_USER=node
+FROM ${BASE_IMAGE}
+ARG FINAL_USER
+
+# Note: Do NOT set ENV N8N_* in the container image; pilot-config.mjs pilotEnvironment() rejects N8N_* env vars.
+# GoogleDriveService resolves http://n8n-n8n-1:5678/webhook/sub-gmail-operations automatically under THAARA_VPS_PILOT_ACK.
+
+USER root
+COPY --chown=1000:1000 pilot-start/pilot-start.mjs /app/apps/api/pilot-start.mjs
+COPY --chown=1000:1000 contracts/ /app/packages/contracts/dist/
+COPY --chown=1000:1000 policy/ /app/packages/policy/dist/
+COPY --chown=1000:1000 api-app/ /app/apps/api/dist/
+COPY --chown=1000:1000 api-services/ /app/apps/api/dist/services/
+COPY --chown=1000:1000 api-routes/ /app/apps/api/dist/routes/
+RUN rm -rf /app/apps/web/dist/assets
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+RUN chmod -R u=rwX,go=rX /app/apps/api/pilot-start.mjs /app/packages/contracts/dist /app/packages/policy/dist /app/apps/api/dist /app/apps/web/dist
+
+RUN cd /app/apps/api && node --input-type=module -e "import fs from 'node:fs'; import { dirname, join } from 'node:path'; import { fileURLToPath } from 'node:url'; \
+  const pcfg = await import('./pilot-config.mjs'); \
+  pcfg.pilotEnvironment({ ...process.env, NODE_ENV: 'development', THAARA_VPS_PILOT_ACK: 'isolated_synthetic_only', THAARA_WHATSAPP_SEND_ENABLED: 'true' }); \
+  const contractsDir = dirname(fs.realpathSync(fileURLToPath(import.meta.resolve('@thaara/contracts')))); \
+  for (const f of ['google-drive.js', 'google-drive.d.ts', 'index.js', 'index.d.ts']) { \
+    const src = '/app/packages/contracts/dist/' + f, dst = join(contractsDir, f); \
+    if (fs.existsSync(src) && src !== dst) { fs.copyFileSync(src, dst); fs.chownSync(dst, 1000, 1000); fs.chmodSync(dst, 0o644); } \
+  } \
+  const policyDir = dirname(fs.realpathSync(fileURLToPath(import.meta.resolve('@thaara/policy')))); \
+  for (const f of ['registry.js', 'registry.d.ts', 'index.js', 'index.d.ts']) { \
+    const src = '/app/packages/policy/dist/' + f, dst = join(policyDir, f); \
+    if (fs.existsSync(src) && src !== dst) { fs.copyFileSync(src, dst); fs.chownSync(dst, 1000, 1000); fs.chmodSync(dst, 0o644); } \
+  } \
+  const c = await import('@thaara/contracts'); \
+  if (!c.GOOGLE_DRIVE_STATUS_ACTION || !c.GOOGLE_DRIVE_SHARE_FILE_ACTION || !c.GOOGLE_DRIVE_DELETE_FILE_ACTION) throw Error('Missing Google Drive contracts'); \
+  if (!c.PHONE_AI_CALL_ACTION || !c.PHONE_CALL_RESULT_READ_ACTION || typeof c.capturePhoneCallEvidence !== 'function' || typeof c.isPhoneProviderCallId !== 'function') throw Error('Missing Phone Step 115 contracts'); \
+  if (!c.BULK_CAMPAIGN_EXECUTE_ACTION) throw Error('Missing Bulk Campaign contracts'); \
+  if (!c.WhatsAppStoredFailureMetadataSchema) throw Error('Missing WhatsApp contracts'); \
+  const p = await import('@thaara/policy'); \
+  if (!p.defaultActionRegistry.get('google_drive.files.summarize') || !p.defaultActionRegistry.get('google_drive.files.delete') || !p.defaultActionRegistry.get('google_drive.files.rename_move')) throw Error('Missing Google Drive policy actions'); \
+  if (!p.defaultActionRegistry.get('phone.ai.calls.result_read') || p.defaultActionRegistry.get('campaign.bulk.execute')?.requiredRole !== 'owner') throw Error('Phone/Bulk policy baseline altered'); \
+  const ownerRt = await import('./phone-callback-owner-runtime.mjs'); \
+  const ownerAdm = await import('./phone-callback-owner-admission.mjs'); \
+  const cbRep = await import('./dist/routes/phone-callback-reports.js'); \
+  const cbAuth = await import('./dist/routes/phone-callback-authorization.js'); \
+  if (typeof ownerRt.createPhoneCallbackOwnerRuntime !== 'function' || typeof ownerAdm.isAdmittedPhoneCallbackOwnerPort !== 'function' || typeof cbRep.phoneCallbackReportRoutes !== 'function' || typeof cbAuth.phoneCallbackAuthorizationRoutes !== 'function') throw Error('Phone Step 115 runtime/routes missing'); \
+  const pilotStart = fs.readFileSync('/app/apps/api/pilot-start.mjs', 'utf8'); \
+  if (!pilotStart.includes('createPhoneCallbackOwnerRuntime') || !pilotStart.includes('/integrations/drive')) throw Error('pilot-start.mjs missing Phone Step 115 or Drive SPA route'); \
+  const gd = await import('./dist/services/google-drive.js'); \
+  if (typeof gd.GoogleDriveService !== 'function' || typeof gd.sanitizeUntrustedDriveText !== 'function') throw Error('Missing GoogleDriveService'); \
+  const routeMod = await import('./dist/routes/google-drive.js'); \
+  if (typeof routeMod.googleDriveRoutes !== 'function') throw Error('Missing googleDriveRoutes'); \
+  const asst = await import('./dist/services/chat-google-drive-assistant.js'); \
+  if (typeof asst.detectGoogleDriveChatRequest !== 'function' || typeof asst.executeChatGoogleDriveRequest !== 'function') throw Error('Missing chat-google-drive-assistant'); \
+  const app = await import('./dist/app.js'); \
+  if (typeof app.buildApp !== 'function') throw Error('Missing buildApp'); \
+  const assets = fs.readdirSync('/app/apps/web/dist/assets'); \
+  const jsBundle = assets.find((n) => n.endsWith('.js')); \
+  if (!jsBundle) throw Error('Missing web JS bundle'); \
+  const webJs = fs.readFileSync('/app/apps/web/dist/assets/' + jsBundle, 'utf8'); \
+  if (!webJs.includes('/integrations/drive') || !webJs.includes('drive-verify-btn') || !webJs.includes('/integrations/phone/inbound')) throw Error('Web bundle missing Google Drive or Phone Step 115 screens'); \
+  console.log('Google Drive + Phone Step 115 compatible container verification passed');"
+
+USER ${FINAL_USER}

@@ -1,0 +1,31 @@
+ARG BASE_IMAGE=sha256:6f18f77eccaf224a0279c89d69b196e9670d6161e6e4465683f0781e9f99e195
+FROM ${BASE_IMAGE}
+
+USER root
+
+# Copy contracts dist to monorepo package AND pnpm link
+COPY --chown=1000:1000 contracts/ /app/packages/contracts/dist/
+COPY --chown=1000:1000 contracts/ /app/apps/api/node_modules/.pnpm/@thaara+contracts@file+packages+contracts/node_modules/@thaara/contracts/dist/
+
+# Copy policy dist to monorepo package AND pnpm link
+COPY --chown=1000:1000 policy/ /app/packages/policy/dist/
+COPY --chown=1000:1000 policy/ /app/apps/api/node_modules/.pnpm/@thaara+policy@file+packages+policy/node_modules/@thaara/policy/dist/
+
+# Copy API services, routes and knowledge
+COPY --chown=1000:1000 api-services/ /app/apps/api/dist/services/
+COPY --chown=1000:1000 api-routes/ /app/apps/api/dist/routes/
+COPY --chown=1000:1000 api-knowledge/ /app/apps/api/dist/knowledge/
+COPY --chown=1000:1000 api-app/app.js /app/apps/api/dist/app.js
+COPY --chown=1000:1000 api-app/app.d.ts /app/apps/api/dist/app.d.ts
+COPY --chown=1000:1000 pilot-start.mjs /app/apps/api/pilot-start.mjs
+
+# Copy Web dist
+RUN rm -rf /app/apps/web/dist/assets
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+RUN chmod -R u=rwX,go=rX /app/apps/web/dist
+
+# In-container smoke verification via dedicated script
+COPY --chown=1000:1000 smoke-check.mjs /app/apps/api/smoke-check.mjs
+RUN node /app/apps/api/smoke-check.mjs && rm /app/apps/api/smoke-check.mjs
+
+USER 1000:1000

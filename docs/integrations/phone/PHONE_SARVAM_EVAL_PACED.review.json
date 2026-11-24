@@ -1,0 +1,25 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "scope": "ONE connection; post-PATCH & post-mapping rate-paced (>=22s inter-request, <=3 requests per 62s rolling window, 30s run poll per Sarvam docs, rate-limit header aware up to 65s, HTTP 429 immediate stop without retry, sanitized HTTP 429 diagnostic capture, async chunked stdin streaming) idempotent Stage B v6 eval on existing app-bound suite using trusted VPS receipt suiteId & mapId; skips completed PATCH and POST /mappings; preserves 6 existing cases and all prior guards; appends 7th case if absent and runs ONLY 7th case once; no telephone calls",
+  "minimumPaceSeconds": 22,
+  "pollPaceSeconds": 30,
+  "rollingWindowSeconds": 62,
+  "maxRequestsPerWindow": 3,
+  "maximumProviderRequests": 16,
+  "maximumPaidRuns": 1,
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-eval-paced.review.ps1",
+      "sha256": "57be37ef8c6b32db9398d09b7bbb8c105c651f264017d746b3861783f1fee64a"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-eval-paced.review.py",
+      "sha256": "f4ff9fec17ff90d4335c05b48f4798792ba386814db4f0e156a7fe54f4747e9c"
+    },
+    {
+      "path": "docs/integrations/phone/knowledge/eval-review-v1/request-plan.review.json",
+      "sha256": "76b6885c16496202d7bcad26e11bc0f099f7611215be2b8579b701cf4aadec52"
+    }
+  ]
+}

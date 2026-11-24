@@ -1,0 +1,6 @@
+# Step 108.19: UI-only overlay. Before building, verify BASE_IMAGE resolves to
+# sha256:eb47f512b0f9bf2e475e1602c6c5191b1500883fcc01d153efe23ea5e2dc8bee.
+# Build only after owner deployment approval, from the reviewed staged context.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/

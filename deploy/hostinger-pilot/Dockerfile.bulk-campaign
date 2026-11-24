@@ -1,0 +1,22 @@
+# Thaara V2 — October Antigravity — Unified WhatsApp R3 + Bulk Campaigns Option A Compatibility Overlay
+# Rebased strictly onto latest verified production image: thaara-v2-pilot-api:two-way-transcript-r7-20261120
+# Digest: sha256:24581095b4aafede405e2cc2368e834ec63a6be55c412d139cebbe7b6d2ec945
+# Preserves Main Antigravity WhatsApp R3 (whatsapp-ai-service.js 610649d6e972, whatsapp-durable.js 2c0ba74c4a6d,
+# whatsapp-mobile-style.js a06df626adfe, whatsapp-enquiries.js), Codex WhatsApp Leads / Sheets / Redis release,
+# Chaitra Chat Voice + Cancel Fix, Phone History UI (20261118), Phone n8n Call History Sync & Callback Email (Path A r2),
+# Phone Calling Agent v26/v6, Phone Step 115 callback notifications, Gmail, Calendar, and Drive byte-identically.
+ARG BASE_IMAGE=sha256:24581095b4aafede405e2cc2368e834ec63a6be55c412d139cebbe7b6d2ec945
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=1000:1000 contracts/ /app/packages/contracts/dist/
+COPY --chown=1000:1000 api-services/ /app/apps/api/dist/services/
+COPY --chown=1000:1000 api-routes/ /app/apps/api/dist/routes/
+RUN rm -rf /app/apps/web/dist && mkdir -p /app/apps/web/dist
+COPY --chown=1000:1000 web-dist/ /app/apps/web/dist/
+COPY --chown=1000:1000 reconcile-bulk-campaign.mjs /app/apps/api/reconcile-bulk-campaign.mjs
+RUN chmod -R u=rwX,go=rX /app/apps/web/dist \
+ && node /app/apps/api/reconcile-bulk-campaign.mjs \
+ && chown -R 1000:1000 /app/packages/contracts/dist /app/apps/api/dist /app/apps/web/dist \
+ && rm -f /app/apps/api/reconcile-bulk-campaign.mjs
+USER 1000:1000

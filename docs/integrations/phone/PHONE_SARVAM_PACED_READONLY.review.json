@@ -1,0 +1,16 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "scope": "ONE connection; read retained receipt phases only from /opt/thaara-v2-pilot-private/phone-eval-stage-b-20261103-v6-paced-once (or confirm guard directory absent if SSH timed out before python3 started); no provider requests, key reads, remote writes or simulations",
+  "maximumProviderRequests": 0,
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-paced-readonly.review.ps1",
+      "sha256": "854a431b006231b24e50991970e7c0e87eac9bd1ed620cdd5f87d509752e2b98"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-paced-readonly.review.py",
+      "sha256": "d65471890be3345b485531e5643f87c7802e0e4360a3d4466bcadc2a4a0bebaf"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: thaara-v2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: thaara_v2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d thaara_v2"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - thaara-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: thaara-v2-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - thaara-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  thaara-network:
+    driver: bridge

@@ -1,0 +1,27 @@
+{
+  "remoteExecutionAllowed": true,
+  "authorization": "One isolated routing refresh only, if the pinned rolled-back API is healthy internally and still unavailable publicly.",
+  "scope": {
+    "vpsId": 1871828,
+    "temporaryContainers": 1,
+    "network": "none",
+    "imagePulls": 0,
+    "serviceRestarts": 0,
+    "profileChanges": false,
+    "databaseCommands": 0,
+    "providerRequests": 0,
+    "realCalls": 0,
+    "oneRunMarker": "node_modules/.cache/phone-sarvam-public-route-recovery-20261108.used.json",
+    "resultReceipt": "node_modules/.cache/phone-sarvam-public-route-recovery-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-public-route-recovery-20261108.review.ps1",
+      "sha256": "e88cb0e1af85afd854f48b4e6313973ae851e5d443c55711cf85220ae7f31bb2"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-public-route-recovery-20261108.review.py",
+      "sha256": "daf8913e8f92b3139e96061d1417a8907172ccd5dde7b62e6f0177bee101ee44"
+    }
+  ]
+}

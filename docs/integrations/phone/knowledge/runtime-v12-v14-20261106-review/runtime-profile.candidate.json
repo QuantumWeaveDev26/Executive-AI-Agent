@@ -1,0 +1,32 @@
+{
+  "reviewOnly": true,
+  "runtimeProfile": false,
+  "orgId": "01a10103-1b5d-78a1-9902-f391242c7537",
+  "workspaceId": "01a10103-1b66-7123-96b1-43a6e96e016b",
+  "appId": "Thaara-AI-V-db336de4-5453",
+  "appVersion": 12,
+  "connectionId": "255c00af-3e-542ffe50-6043",
+  "agentPhoneNumber": "+918064269780",
+  "requiredMaxCallLengthMinutes": 5,
+  "verifiedMaxCallLengthMinutes": null,
+  "variableMapping": {
+    "call_purpose": "approvedDraft.purpose",
+    "user_name": "approvedDraft.recipient.displayName"
+  },
+  "verificationBasis": "REVIEW ONLY: candidate settings configured to five minutes; provider acceptance and rollout approval are missing. Live profile untouched.",
+  "companyKnowledge": {
+    "reviewOnly": true,
+    "providerAcceptanceVerified": false,
+    "direction": "outbound",
+    "appVersion": 12,
+    "inboundAppVersion": 14,
+    "maxDurationSeconds": 300,
+    "knowledgeBaseId": "01a19bee-d7ed-778c-b0db-e320e8209de9",
+    "knowledgeVersion": "qw-company-kb-v1",
+    "knowledgeSha256": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+    "policyVersion": "qw-route-policy-v1",
+    "policySha256": "1b2e3003effc3b5e067957baa6bb66609c38a113087c86e5ae405e839b329b00",
+    "commonPolicySha256": "ba7526b71e38f308b90953594e8e02c9480c04b34ee899f9404e3d1f750a4183",
+    "acceptanceEvidenceSha256": "312a7ba5888defc0b4f87aff5d4c460e1f5e112478c190994f3b3eca74ea3244"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "pronunciations": {
+    "English": {
+      "WhatsApp": "wots app",
+      "Whatsapp": "wots app",
+      "whatsapp": "wots app"
+    },
+    "Kannada": {
+      "WhatsApp": "ವಾಟ್ಸಾಪ್",
+      "Whatsapp": "ವಾಟ್ಸಾಪ್",
+      "whatsapp": "ವಾಟ್ಸಾಪ್"
+    },
+    "Hindi": {
+      "WhatsApp": "वॉट्सऐप",
+      "Whatsapp": "वॉट्सऐप",
+      "whatsapp": "वॉट्सऐप"
+    }
+  }
+}

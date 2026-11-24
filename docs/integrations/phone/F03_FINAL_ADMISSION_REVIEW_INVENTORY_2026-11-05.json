@@ -1,0 +1,194 @@
+{
+  "purpose": "independent-review-only",
+  "productionAdmission": false,
+  "executionAuthorized": false,
+  "unresolvedEffects": 10,
+  "unverifiedPreconditions": 269,
+  "verifiedEvidenceCount": 0,
+  "tests": {
+    "fresh": 135,
+    "previousUnchangedSourceModel": 80
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "982795600281d3d5e1e70ae110375101b7b5cc9b0b8464ed6610cdc04a55836c"
+    },
+    {
+      "path": "docs/integrations/phone/F03_FINAL_ADMISSION_REVIEW_HANDOFF_2026-11-05.md",
+      "sha256": "bb12a83456d9875b756f74edce5ed905238d1dc43d653185fa506a762ad33685"
+    },
+    {
+      "path": "docs/integrations/phone/F03_PRECONDITION_EVIDENCE_REQUIREMENTS_2026-11-05.json",
+      "sha256": "d9e08061ff179deb50f713b5751bd7f7bf72616b7bdb53acb8bb137ffaa89f14"
+    },
+    {
+      "path": "docs/integrations/phone/F03_EFFECTIVE_SOURCE_CONTRACT_2026-11-04.json",
+      "sha256": "fe0388bb6a2493f16b1ab8fe482204779c33093fb7d5e117e399eb8f997c6405"
+    },
+    {
+      "path": "docs/integrations/phone/INBOUND_EXPECTED_SCHEMA_SOURCE_CANDIDATE_2026-11-04.json",
+      "sha256": "e4ea1287bc6129e3f15f54d66afc63f3548f26e91b8fa340c3a8caf5d433a1b8"
+    },
+    {
+      "path": "docs/integrations/phone/INBOUND_EXPECTED_SCHEMA_DESIGN_2026-11-04.md",
+      "sha256": "80a6d6575e95c827ecaf28cdad92b1821cea6b69f066431d4d08da5b04315cae"
+    },
+    {
+      "path": "docs/integrations/phone/F03_PG16_CATALOG_QUERY.review.sql",
+      "sha256": "a5e50f9afc4215ec62324e9e38dd84e623605509248d98e13ff5e5a7084c8edc"
+    },
+    {
+      "path": "packages/db/src/migrations/0001_initial_schema.sql",
+      "sha256": "3217934202738044421d03877b51517c03b5608d813cf1aed28844f0361b3ebf"
+    },
+    {
+      "path": "packages/db/src/migrations/0002_rls_policies.sql",
+      "sha256": "bbd6ab272efa12f544c3dfc96266157e48315064d1e62065cb82397e70e07207"
+    },
+    {
+      "path": "packages/db/src/migrations/0003_plans_and_receipts.sql",
+      "sha256": "96573100861560d38d9004b77ae76f60b2d415577c7f050627612eb18d0921b4"
+    },
+    {
+      "path": "packages/db/src/migrations/0004_context_and_memory.sql",
+      "sha256": "3d8313750af5258522d8d26412f7be5e19734a72b9917ba2083eb6104041c612"
+    },
+    {
+      "path": "packages/db/src/migrations/0005_task003_runtime_fixes.sql",
+      "sha256": "d102ae3fffb8e7862f8328eb1cb275075bdbde35f586f672a58793200605b501"
+    },
+    {
+      "path": "packages/db/src/migrations/0006_task003_procedure_hardening.sql",
+      "sha256": "bbdd983e0c637ab5d24d61b94cdaf543d59eb62ff4174cdbc4b78b0942e149c8"
+    },
+    {
+      "path": "packages/db/src/migrations/0007_task003_token_bound_auxiliary_rls.sql",
+      "sha256": "ea756e9b197a7b4745040bf6b9cbb7c888c8a0ff5b7596255f83048d4ff45b9c"
+    },
+    {
+      "path": "packages/db/src/migrations/0008_task003_assistant_stream_lifecycle.sql",
+      "sha256": "554eecebc003f09bb2f8cdf4720c2d093cdb1565a08ba30fb802102078ca8d13"
+    },
+    {
+      "path": "packages/db/src/migrations/0009_task003_privacy_purge_and_outbox_hardening.sql",
+      "sha256": "e96a524f60906d03a9ef280bf425f58e7450ed499092319cf11ccbae7e884fd9"
+    },
+    {
+      "path": "packages/db/src/migrations/0010_task003_purge_recovery_after_claim.sql",
+      "sha256": "c296a17c06c8d569b0b078564ad800d8d2e4b148c76357cdcc9bb7445bfd5584"
+    },
+    {
+      "path": "packages/db/src/migrations/0011_task003_purge_recovery_hardening.sql",
+      "sha256": "7aed4b8185f9bcf07573856d414f4ca1ab146f3246d909d5844a65938de3918d"
+    },
+    {
+      "path": "packages/db/src/migrations/0012_task004_governed_capabilities_and_personas.sql",
+      "sha256": "57a77c9c6b2983e465ceea22d2f94bb0dbef1c10ce5afafb7977163b3e41a7d0"
+    },
+    {
+      "path": "docs/migrations/112h-phone-inbound-events.hosted-review.sql",
+      "sha256": "064ac927a1e059e25f2026a0251fa06e15e5849b4d35641d106273a641049a9f"
+    },
+    {
+      "path": "docs/migrations/113h-phone-inbound-principals.hosted-review.sql",
+      "sha256": "688922f79a552699028ce7e1cd450128a5156d585b13803e478f6412a3aee275"
+    },
+    {
+      "path": "scripts/phone-schema-acl-effects.mjs",
+      "sha256": "465b0cfa83dd012e83cb7197fdc3d4c5e088e17af350d88e7d42d90e637a715c"
+    },
+    {
+      "path": "scripts/phone-schema-acl-effects.test.ts",
+      "sha256": "3e4a03a1991956f360aaef8a8e6a392ddce9fed6aeb2dc9fe785372d6876bc63"
+    },
+    {
+      "path": "scripts/phone-schema-composition.mjs",
+      "sha256": "f72ac1b2e8167976cbe85b27bb60e15153726e6f99390110d79316aac06194f2"
+    },
+    {
+      "path": "scripts/phone-schema-composition.test.ts",
+      "sha256": "e13aeba2acc86cff68346d0b50a301d670cf5a31c42b281a83750f5476f183e0"
+    },
+    {
+      "path": "scripts/phone-schema-ddl-grammar.mjs",
+      "sha256": "f9af41694509712d618747f25884fe4a5cef1dac2cbeea2cf3b4d36c0d6d406d"
+    },
+    {
+      "path": "scripts/phone-schema-effective-contract.mjs",
+      "sha256": "2d66f49394e5407b8ca551671d6177324b7a1ae4a3f5c8a960573f0313a206f0"
+    },
+    {
+      "path": "scripts/phone-schema-effective-contract.test.ts",
+      "sha256": "5f6a29b4e0ebc5960ff132ad8da701de80857d4fe9763925119eb7c174676f73"
+    },
+    {
+      "path": "scripts/phone-schema-helper-recipes.mjs",
+      "sha256": "c48bcd5423d6e6abae5a84feca6807c89656c69bc69230d3f73f01b4d50e6e83"
+    },
+    {
+      "path": "scripts/phone-schema-helper-recipes.test.ts",
+      "sha256": "9ab5e3f6747a5c1a93d3cfd76316368af8a97d53e0fbe3f6c3a177a03ef25287"
+    },
+    {
+      "path": "scripts/phone-schema-pg16-extractor.mjs",
+      "sha256": "c7dd8ae0cff663f5617929a696f3c5d90fc0a623d12e65edbac5fce882bb7a62"
+    },
+    {
+      "path": "scripts/phone-schema-pg16.mjs",
+      "sha256": "428b77f2a1ccfe5e939faddd0149660db39b494ff074b1194ecb8b2ca1b6f8d6"
+    },
+    {
+      "path": "scripts/phone-schema-procedural-effects.mjs",
+      "sha256": "2a5c031ea65a54052451af22dcb1d867a1df9a27e6d0fee6b6b2c121353f8a6a"
+    },
+    {
+      "path": "scripts/phone-schema-procedural-effects.test.ts",
+      "sha256": "bca859de402ad35cc006c0c502ef28a6f567ee6bd9bc80f1025f9f335f4fe772"
+    },
+    {
+      "path": "scripts/phone-schema-procedural-recipes.mjs",
+      "sha256": "ffc2b37fcac585039a4248b67205abc97c3a7f267de92e2d84cdbca08b3844e9"
+    },
+    {
+      "path": "scripts/phone-schema-query-adapter.mjs",
+      "sha256": "cca0e6e059f93bb2ee7974ca65874e4ee05a6e4ae4e7e402f15de5350a78ed99"
+    },
+    {
+      "path": "scripts/phone-schema-query-adapter.test.ts",
+      "sha256": "0e534a95743a53ba8e065c42ef93fb37ea31f5207d894618359c388ca174d8c8"
+    },
+    {
+      "path": "scripts/phone-schema-review-verifier.mjs",
+      "sha256": "38d8ebe39ca3949073da8b5c47aab2e397b0b3336453a9b1bcc72415b6f5fcc6"
+    },
+    {
+      "path": "scripts/phone-schema-security.test.ts",
+      "sha256": "baa95eaae1814494128b5c63fa7df3ec3eee9e1778a5718e5a8fd1a21595a650"
+    },
+    {
+      "path": "scripts/phone-schema-session-effects.test.ts",
+      "sha256": "92928de63f24da39a7ee75c82479c358b1c9a56c5cf503c52751bcde6d76f87f"
+    },
+    {
+      "path": "scripts/phone-schema-source-evidence.mjs",
+      "sha256": "834642e92fb8c034cb50b7712a1a5cc82ff0edd69356f7a6c09fd4656c46afb7"
+    },
+    {
+      "path": "scripts/phone-inbound-expected-schema.mjs",
+      "sha256": "fabe111758a03904865dd0fdc3e3a7c32e6dba5993aa4bdb10a90ba9fc012225"
+    },
+    {
+      "path": "scripts/phone-inbound-expected-schema.test.ts",
+      "sha256": "28f4bbf877afdd97d13c169d933b7048602628a5b914c01e83d3d5899724df6e"
+    },
+    {
+      "path": "package.json",
+      "sha256": "2da3056d6576688079001ebfb432ac93357a62706ad3a62ca4fba3db82b83eca"
+    },
+    {
+      "path": "vitest.config.ts",
+      "sha256": "88fd5ce78c2749ce7bfd912352474c25dd746407e35c85f11e8a2a781fcf2a01"
+    }
+  ]
+}

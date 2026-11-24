@@ -1,0 +1,40 @@
+name: thaara-step74-test
+services:
+  postgres:
+    image: postgres:16-alpine
+    pull_policy: never
+    restart: "no"
+    labels: { thaara.purpose: step74-disposable-test }
+    environment:
+      POSTGRES_DB: thaara_step74_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${THAARA_STEP74_PG_PASSWORD:?Prepare test settings first}
+    ports: ["127.0.0.1:15432:5432"]
+    tmpfs: ["/var/lib/postgresql/data"]
+    networks: [isolated]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d thaara_step74_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    pull_policy: never
+    restart: "no"
+    read_only: true
+    labels: { thaara.purpose: step74-disposable-test }
+    environment:
+      THAARA_STEP74_REDIS_PASSWORD: ${THAARA_STEP74_REDIS_PASSWORD:?Prepare test settings first}
+    command: ["/bin/sh", "-c", 'exec redis-server --save "" --appendonly no --requirepass "$$THAARA_STEP74_REDIS_PASSWORD"']
+    ports: ["127.0.0.1:16379:6379"]
+    tmpfs: ["/data", "/tmp"]
+    networks: [isolated]
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$THAARA_STEP74_REDIS_PASSWORD" redis-cli ping | grep -qx PONG']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+networks:
+  isolated:
+    name: thaara-step74-test-bridge
+    driver: bridge

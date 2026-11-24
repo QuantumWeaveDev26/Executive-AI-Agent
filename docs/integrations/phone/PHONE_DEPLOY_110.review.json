@@ -1,0 +1,28 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "artifacts": [
+    {
+      "path": "scripts/phone-backup-restore.review.ps1",
+      "sha256": "d9d8521a79c4610ac827577925651be6a55f0f192f15773f3fff5a46362c77be"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-publish.review.py",
+      "sha256": "f0b44d6341fb575968660486fcbcf33c8d55e425df178e28bb1aa7b1691b541e"
+    },
+    {
+      "path": "node_modules/.cache/phone110-image.tar.gz",
+      "sha256": "c70c2c3df69bb096109ba9e92230ac180afffc0e60119be16382004da8d0c3d3"
+    },
+    {
+      "path": "deploy/hostinger-pilot/pilot-sarvam-key-entry.sh",
+      "sha256": "b8885be270b15b1c0b2fd66d2fc1302c58eae40872f0dea7f0a0c0ec1ded6ab8"
+    },
+    {
+      "path": "docs/integrations/phone/sarvam-runtime-profile.pilot.json",
+      "sha256": "7a41b4f34482ccf833fcdab6b7bb0c8a5c198f52a994ec4d8c0ca11a19596447"
+    }
+  ],
+  "preparationOnly": true,
+  "command": "pwsh -NoProfile -NonInteractive -File scripts/phone-backup-restore.review.ps1 -ApprovedPhoneDeploy"
+}

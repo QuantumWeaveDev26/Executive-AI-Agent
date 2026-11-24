@@ -1,0 +1,31 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "sourceContainerId": "340a0ab86ef4156d87651433676978473f58c82b32e1fa4c279664261ace7893",
+  "sourceImageId": "sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea",
+  "database": "thaara_vps_pilot",
+  "artifacts": [
+    {
+      "path": "scripts/phone-backup-restore.review.ps1",
+      "sha256": "d9d8521a79c4610ac827577925651be6a55f0f192f15773f3fff5a46362c77be"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-backup-restore.review.py",
+      "sha256": "650464fee1a727eeeccbf938d4e474fde3b3b336e58e812b1c55948ad326916e"
+    },
+    {
+      "path": "docs/migrations/110a-phone-contacts.review.sql",
+      "sha256": "7c2066959edd4b129751bf858e31af1dbed5ae9b300226597e4ce4e160c06a8e"
+    },
+    {
+      "path": "docs/migrations/110b-phone-calls.review.sql",
+      "sha256": "1030cd5b9d2015cad94221cce19c34699fa049b541606f9b081f65f6acc5aa6e"
+    },
+    {
+      "path": "docs/migrations/110c-phone-live-mode.review.sql",
+      "sha256": "479c06d456577a120a95382b25f29d703366ac624dcae71f1d4839e346a67b5d"
+    }
+  ],
+  "preparationOnly": true,
+  "command": "pwsh -NoProfile -NonInteractive -File scripts/phone-backup-restore.review.ps1 -ApprovedMigration"
+}

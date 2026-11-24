@@ -1,0 +1,15 @@
+{
+  "executionAuthorized": false,
+  "ownerAdmissionPending": true,
+  "baselineProfileSha256": "7a41b4f34482ccf833fcdab6b7bb0c8a5c198f52a994ec4d8c0ca11a19596447",
+  "artifacts": [
+    {
+      "path": "docs/integrations/phone/knowledge/outbound-v6-20261106-review/observed-evidence.review.json",
+      "sha256": "2607ae874f0b04ac52711f95059b626aebe90b44df820565304d4a1639c2f7ba"
+    },
+    {
+      "path": "docs/integrations/phone/knowledge/outbound-v6-20261106-review/runtime-profile.candidate.json",
+      "sha256": "ade998e7e33be0ed5849c9df781e4147412bbf40a601d07eb8008c81db252377"
+    }
+  ]
+}

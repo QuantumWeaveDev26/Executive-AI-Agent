@@ -1,0 +1,32 @@
+{
+  "reviewOnly": true,
+  "runtimeProfile": false,
+  "orgId": "01a10103-1b5d-78a1-9902-f391242c7537",
+  "workspaceId": "01a10103-1b66-7123-96b1-43a6e96e016b",
+  "appId": "Thaara-AI-V-db336de4-5453",
+  "appVersion": 6,
+  "connectionId": "255c00af-3e-542ffe50-6043",
+  "agentPhoneNumber": "+918064269780",
+  "requiredMaxCallLengthMinutes": 5,
+  "verifiedMaxCallLengthMinutes": 5,
+  "variableMapping": {
+    "call_purpose": "approvedDraft.purpose",
+    "user_name": "approvedDraft.recipient.displayName"
+  },
+  "verificationBasis": "Owner confirmed the five-minute cap on committed v2 in the Sarvam dashboard on 31 Oct 2026; not read from a provider API. Non-secret; installed only with explicit approval.",
+  "companyKnowledge": {
+    "reviewOnly": true,
+    "providerAcceptanceVerified": false,
+    "direction": "outbound",
+    "appVersion": 6,
+    "inboundAppVersion": 5,
+    "maxDurationSeconds": 300,
+    "knowledgeBaseId": "01a19bee-d7ed-778c-b0db-e320e8209de9",
+    "knowledgeVersion": "qw-company-kb-v1",
+    "knowledgeSha256": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+    "policyVersion": "qw-route-policy-v1",
+    "policySha256": "33b999ea92a185f9fd7c71f9f42951e67c96635a02a55c83a503c174a5d3ac56",
+    "commonPolicySha256": "c3ca0c9156d03121d2691c5c37b12a9ca2259976744220d15ea29b99fba3c8d9",
+    "acceptanceEvidenceSha256": "2607ae874f0b04ac52711f95059b626aebe90b44df820565304d4a1639c2f7ba"
+  }
+}

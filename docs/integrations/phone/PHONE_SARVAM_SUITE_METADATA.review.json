@@ -1,0 +1,21 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "scope": "ONE connection; max2 fixed-scope GETs; metadata comparisons only; no provider mutations or remote writes",
+  "maximumProviderRequests": 2,
+  "allowedMethod": "GET",
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-suite-metadata.review.ps1",
+      "sha256": "f630b760b20b5aae970c9a2f380a6a18570507d7b1b6d12c61812d558e13bd86"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-suite-metadata.review.py",
+      "sha256": "6e8c8ea059aa8fff7eba4b3c4cbb63b11a06a5d6be7b32a1a4a9d1e871de0a44"
+    },
+    {
+      "path": "docs/integrations/phone/knowledge/eval-review-v1/request-plan.review.json",
+      "sha256": "76b6885c16496202d7bcad26e11bc0f099f7611215be2b8579b701cf4aadec52"
+    }
+  ]
+}

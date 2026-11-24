@@ -1,0 +1,24 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "scope": {
+    "server": "VPS 1871828",
+    "applicationFileHashes": 9,
+    "applicationFileExports": 0,
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "oneRunMarker": "node_modules/.cache/phone-baseline-hashes-stable-post-v8.used.json",
+    "resultReceipt": "node_modules/.cache/phone-baseline-hashes-stable-post-v8.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-baseline-hashes-stable-post-v8.readonly.ps1",
+      "sha256": "a522176fa4b7aa4039f979e55cce701c5558583868ff2a6ffd82f7dfcdddbd26"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-baseline-hashes-stable-post-v8.readonly.py",
+      "sha256": "3d3a1733bc47d02aeede0248a8778fa760f714d6341adab2059117510af35747"
+    }
+  ]
+}

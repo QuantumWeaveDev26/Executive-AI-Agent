@@ -1,0 +1,16 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "artifacts": [
+    {
+      "path": "scripts/phone-backup-restore.review.ps1",
+      "sha256": "d9d8521a79c4610ac827577925651be6a55f0f192f15773f3fff5a46362c77be"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-publish.review.py",
+      "sha256": "f0b44d6341fb575968660486fcbcf33c8d55e425df178e28bb1aa7b1691b541e"
+    }
+  ],
+  "preparationOnly": true,
+  "command": "pwsh -NoProfile -NonInteractive -File scripts/phone-backup-restore.review.ps1 -ApprovedPhoneLiveOff"
+}

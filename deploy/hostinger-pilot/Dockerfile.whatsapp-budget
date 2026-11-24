@@ -1,0 +1,7 @@
+# Local configuration-only overlay; never build from the dirty monorepo context.
+# The build command must first verify the base tag resolves to the reviewed 108.16 image ID.
+ARG BASE_IMAGE=thaara-v2-whatsapp-send-base:10816-reviewed
+FROM ${BASE_IMAGE}
+COPY --chown=1000:1000 pilot-config.mjs pilot-send-cli.mjs pilot-seed.mjs /app/apps/api/
+COPY --chown=1000:1000 validate-budget.mjs /app/apps/api/validate-budget.mjs
+RUN node /app/apps/api/validate-budget.mjs

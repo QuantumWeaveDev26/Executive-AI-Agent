@@ -1,0 +1,29 @@
+{
+  "localTests": {
+    "passed": 19,
+    "failed": 0
+  },
+  "extensionQueryExecuted": false,
+  "productionAdmission": false,
+  "executionAuthorized": false,
+  "expectedCatalogApproved": false,
+  "files": [
+    {
+      "sha256": "d9c873748f46564976ab9544039be202b1c1d9b75119f83c614dffde6d088d88",
+      "path": "scripts/phone-schema-dependency-evidence.mjs"
+    },
+    {
+      "sha256": "1748b84045517499c38aeb579ddf0cef33da7b525c378a982d47471e883fb58a",
+      "path": "scripts/phone-schema-dependency-evidence.test.ts"
+    },
+    {
+      "sha256": "39c993e45639db3aed1ddad35b09c3b4132f918151968686d40329e16d29bb3b",
+      "path": "docs/integrations/phone/F03_PG16_EXTENSION_PROVENANCE.review.sql"
+    },
+    {
+      "sha256": "26ea52afdca1231521508826ecb29a9e1f1c81048699ce8a0a7b883cbdfedee5",
+      "path": "docs/integrations/phone/F03_MIGRATOR_BOOTSTRAP.review.json"
+    }
+  ],
+  "purpose": "local dependency evidence review only"
+}

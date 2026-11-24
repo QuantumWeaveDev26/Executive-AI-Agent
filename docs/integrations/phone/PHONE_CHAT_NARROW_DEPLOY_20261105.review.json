@@ -1,0 +1,22 @@
+{
+  "reviewOnly": true,
+  "executionAuthorized": false,
+  "ownerApprovalRequired": true,
+  "packagePath": "output/THAARA_PHONE_CHAT_NARROW_DEPLOY_2026-11-05.zip",
+  "packageSha256": "ada9bb9714c8e398f028270b6fcd8d77180e81c81af9dc4b7d6e719f48f55d69",
+  "baseImage": "sha256:0287204a4b9ba3db5febc37e5bf022e0d615f4c600d23a4452288f07a7533161",
+  "artifacts": [
+    {
+      "path": "scripts/phone-chat-deploy.review.ps1",
+      "sha256": "f97b9b4ca590c5fce112c484fed30f3af852c36531a1fae3942983a13af224fb"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-chat-deploy-bootstrap.review.py",
+      "sha256": "cc23d480493d74d2c230200c99c315c6a96010d6a33e1a6c05444a4280f2d239"
+    },
+    {
+      "path": "output/THAARA_PHONE_CHAT_NARROW_DEPLOY_2026-11-05.zip",
+      "sha256": "ada9bb9714c8e398f028270b6fcd8d77180e81c81af9dc4b7d6e719f48f55d69"
+    }
+  ]
+}

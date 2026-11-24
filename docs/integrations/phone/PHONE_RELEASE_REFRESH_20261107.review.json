@@ -1,0 +1,37 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "PREPARED ONLY; one separate explicit owner approval; no retry",
+  "scope": {
+    "server": "VPS 1871828",
+    "container": "thaara-v2-pilot-api-1",
+    "dockerSocket": "unix:///var/run/docker.sock",
+    "liveImage": "discover, verify identity/health unchanged before and after",
+    "publicFrontend": {
+      "index.html": "938ca42875b32a9faa601fd0735977ff406a2120f306aa8e4ab337cfead3da6c",
+      "assets/index-BiqDT2zG.js": "094fc1b5c0af278109bdf8e5c693f474148e57612b4b655cec5c9d9e27e6ea73",
+      "assets/index-Co2o2hIb.css": "ed715f21be63f91a95091267354402101c750b39666ff5f6a8b52d853ff63309"
+    },
+    "sameFourCodePathsAsPriorExport": true,
+    "exportOnlyChangedFiles": true,
+    "fileLimitBytes": 196608,
+    "totalLimitBytes": 524288,
+    "databaseCommands": 0,
+    "providerRequests": 0,
+    "serviceChanges": false,
+    "secretFileReads": false,
+    "oneRunMarker": "node_modules/.cache/phone-release-refresh-20261107.used.json",
+    "requireReadonlyRoot": true,
+    "denyMountsCoveringApp": true
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-release-refresh-20261107.readonly.ps1",
+      "sha256": "549e256233bd0bc3006f24446fa8d4b9062b29ef0ecd2e80ae2c1ba02ba0f29c"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-release-refresh-20261107.readonly.py",
+      "sha256": "e09ae501faad2ad61bd68d0d2b99257f9e2c4b01212924ce515aebb41f8fb726"
+    }
+  ]
+}

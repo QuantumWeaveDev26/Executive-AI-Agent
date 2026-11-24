@@ -1,0 +1,32 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "PREPARED ONLY; separate explicit owner approval required; one execution; no retry",
+  "requiredImage": "sha256:44387266137de5747b3bd68a647af0cbbbce9387cd66239dcfcdfb0dd6aab927",
+  "scope": {
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "readApiKeyFiles": false,
+    "readProfile": false,
+    "files": [
+      "/app/apps/api/dist/app.js",
+      "/app/apps/api/pilot-start.mjs",
+      "/app/apps/api/dist/services/phone-pilot-startup.js",
+      "/app/apps/api/node_modules/@thaara/contracts/dist/index.js"
+    ],
+    "fileLimitBytes": 196608,
+    "totalLimitBytes": 524288,
+    "oneRunMarker": "node_modules/.cache/phone-release-source-20261107.used.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-release-source-20261107.readonly.ps1",
+      "sha256": "e8a2219b1cce52738cba03684b54f7161f4d005d07067ef32f0a8061be73b4b9"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-release-source-20261107.readonly.py",
+      "sha256": "e64e7d6c2784bd618d5d587ca060ab422ef5f8e2c06f42f589bc76f530e26708"
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "status": "F-03 OPEN; SYNTHETIC LOCAL COMPOSITION ONLY",
+  "newFiles": [
+    "scripts/phone-schema-composition.mjs",
+    "scripts/phone-schema-pg16-extractor.mjs",
+    "scripts/phone-schema-composition.test.ts",
+    "docs/integrations/phone/F03_COMPOSITION_STAGE_2026-11-04.md"
+  ],
+  "modifiedFiles": [
+    "scripts/phone-schema-review-verifier.mjs",
+    "docs/THAARA_DAILY_HANDOVER_2026-11-04.md",
+    "docs/tasks/111-inbound-enquiries-and-callbacks.md",
+    "docs/integrations/phone/PHONE_WORKSTREAM_CHECKPOINT_2026-11-04.md"
+  ],
+  "hashes": [
+    {
+      "path": "scripts/phone-schema-composition.mjs",
+      "sha256": "f72ac1b2e8167976cbe85b27bb60e15153726e6f99390110d79316aac06194f2"
+    },
+    {
+      "path": "scripts/phone-schema-pg16-extractor.mjs",
+      "sha256": "c7dd8ae0cff663f5617929a696f3c5d90fc0a623d12e65edbac5fce882bb7a62"
+    },
+    {
+      "path": "scripts/phone-schema-composition.test.ts",
+      "sha256": "3449744f6134061f69f41488098914e84c760c2bcfed1e6695f1af1959c2ab77"
+    },
+    {
+      "path": "docs/integrations/phone/F03_COMPOSITION_STAGE_2026-11-04.md",
+      "sha256": "980fa50a351fa807ea1d50ff3b352edf4843b4e4a40d7d23f7dacd08bc0d17e1"
+    },
+    {
+      "path": "scripts/phone-schema-review-verifier.mjs",
+      "sha256": "38d8ebe39ca3949073da8b5c47aab2e397b0b3336453a9b1bcc72415b6f5fcc6"
+    },
+    {
+      "path": "docs/THAARA_DAILY_HANDOVER_2026-11-04.md",
+      "sha256": "85274a9acdd4dd29df36e8ce172107cdffc35e7bde7b53c776695dd2ba0dfcb6"
+    },
+    {
+      "path": "docs/tasks/111-inbound-enquiries-and-callbacks.md",
+      "sha256": "df1c7542c1a643a462e7f6ab0145d931c4a51465df9d33aafd6e7eacdb944d6d"
+    },
+    {
+      "path": "docs/integrations/phone/PHONE_WORKSTREAM_CHECKPOINT_2026-11-04.md",
+      "sha256": "15f458879f94d90d405f1fd7fc60297865d309f9aa2fd095c77faaaa5ea48f70"
+    }
+  ],
+  "preservedReferenceFiles": [
+    {
+      "path": "scripts/phone-schema-pg16.mjs",
+      "sha256": "44d9e6d2b52822e4f05873a0ce6c7c6d9598a76bbe8a0e1c1277eae1760a3e9f"
+    },
+    {
+      "path": "scripts/phone-schema-source-evidence.mjs",
+      "sha256": "834642e92fb8c034cb50b7712a1a5cc82ff0edd69356f7a6c09fd4656c46afb7"
+    },
+    {
+      "path": "scripts/phone-schema-security.test.ts",
+      "sha256": "d1ccd32313d835f665c35a8d435671a7480b7e465276cfc2c36d5f19d6bdfa04"
+    },
+    {
+      "path": "scripts/phone-inbound-expected-schema.mjs",
+      "sha256": "fabe111758a03904865dd0fdc3e3a7c32e6dba5993aa4bdb10a90ba9fc012225"
+    },
+    {
+      "path": "scripts/phone-inbound-expected-schema.test.ts",
+      "sha256": "28f4bbf877afdd97d13c169d933b7048602628a5b914c01e83d3d5899724df6e"
+    },
+    {
+      "path": "scripts/phone-inbound-install-sequence.mjs",
+      "sha256": "1fc250321af7d1faa8eb8dec4b7500d71928ba4a0b3300686f7353816230d6a2"
+    },
+    {
+      "path": "scripts/phone-inbound-install-sequence.test.ts",
+      "sha256": "ae541172ce9a7b95a7e46f93737719fe6affdab87a61ec924e6374ab8b5f7c86"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-inbound-recovery-rehearsal.review.py",
+      "sha256": "ae0a97f07d7b5a06754ebec751a3206082f4abc611efc0979f4e86c51f5b5b9a"
+    },
+    {
+      "path": "docs/integrations/phone/PHONE_INBOUND_RECOVERY_REHEARSAL_V1.review.json",
+      "sha256": "4bad27600da28ffe3eed2fb2d18a919e652a14016e9d8c5bf94ddb60a04f036a"
+    },
+    {
+      "path": "docs/integrations/phone/INBOUND_SCHEMA_COMPLETE_SOURCE_EVIDENCE_2026-11-04.json",
+      "sha256": "f2886b9166346ee721f8d9dd2c4100ace43cd1062b52156f0fb179732193f6f9"
+    },
+    {
+      "path": "scripts/phone-inbound-recovery-rehearsal.review.ps1",
+      "sha256": "1f89b251c3253be2ddff36f449713a0b802f946e7996cf4dae8b2852acc4ecd2"
+    }
+  ],
+  "sqlArtifactsUnchanged": 14,
+  "tests": {
+    "passed": 142,
+    "failed": 0,
+    "composition": 39,
+    "previousSecurity": 65,
+    "previousModel": 27,
+    "unchangedInstallKernel": 11
+  },
+  "independentReviewComplete": false,
+  "executionAuthorized": false,
+  "productionAdmission": false,
+  "independentCodeReviewRequired": true,
+  "remainingGaps": [
+    "R1 real final effective independently reviewed schema contract",
+    "R3 catalog SQL and trusted query-to-projection driver",
+    "real protected trust anchors/reference loader and durable checkpoint adapter",
+    "actual ownership-transfer/grantor proof",
+    "real transaction-bound verification driver"
+  ],
+  "inventorySelfHash": "reported externally; not recursively embedded"
+}

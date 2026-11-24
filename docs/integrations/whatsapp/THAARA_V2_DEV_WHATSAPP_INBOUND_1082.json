@@ -1,0 +1,92 @@
+{
+  "name": "THAARA_V2_DEV_WHATSAPP_INBOUND_1082",
+  "active": false,
+  "nodes": [
+    {
+      "id": "thaara1082-in-trigger",
+      "name": "WhatsApp messages and statuses",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {
+          "messageStatusUpdates": [
+            "sent",
+            "delivered",
+            "read",
+            "failed"
+          ]
+        }
+      },
+      "position": [
+        0,
+        0
+      ],
+      "disabled": true,
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-in-relay",
+      "name": "Relay untrusted event to Thaara",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "parameters": {
+        "method": "POST",
+        "url": "https://thaara.invalid/api/v1/connectors/whatsapp/n8n/relay/REPLACE_CONNECTION/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { event: $json } }}",
+        "options": {
+          "timeout": 5000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json",
+              "neverError": false
+            }
+          }
+        }
+      },
+      "position": [
+        300,
+        0
+      ],
+      "disabled": true,
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "WhatsApp messages and statuses": {
+      "main": [
+        [
+          {
+            "node": "Relay untrusted event to Thaara",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "executionTimeout": 30
+  }
+}

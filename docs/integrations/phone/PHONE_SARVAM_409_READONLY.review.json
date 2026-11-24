@@ -1,0 +1,15 @@
+{
+  "reviewOnly": true,
+  "remoteExecutionAllowed": false,
+  "scope": "ONE read-only retained-receipt inspection; no identifiers, provider requests, credential-file reads or remote writes",
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-409-readonly.review.ps1",
+      "sha256": "c961662490028daff753e95d1046c486c8344e6199bfc6ce80338793c883645d"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-409-readonly.review.py",
+      "sha256": "1102209220d6cea56db8db74d76230e8344bb41527311fdf75b10ad68e14386a"
+    }
+  ]
+}

@@ -1,0 +1,321 @@
+name: CI Quality Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, Typecheck, Test, and Build
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build monorepo packages and apps
+        run: pnpm run build
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Unit & Integration Tests
+        run: pnpm run test:all
+
+      - name: Start isolated PostgreSQL 16 container with ephemeral password
+        shell: bash
+        run: |
+          BOOTSTRAP_PW=$(openssl rand -hex 16)
+          echo "::add-mask::$BOOTSTRAP_PW"
+          echo "EPHEMERAL_BOOTSTRAP_PASSWORD=$BOOTSTRAP_PW" >> $GITHUB_ENV
+          BOOTSTRAP_URL="postgresql://postgres:$BOOTSTRAP_PW@localhost:5432/thaara_v2"
+          echo "::add-mask::$BOOTSTRAP_URL"
+          echo "BOOTSTRAP_DATABASE_URL=$BOOTSTRAP_URL" >> $GITHUB_ENV
+          echo "MIGRATION_DATABASE_URL=$BOOTSTRAP_URL" >> $GITHUB_ENV
+
+          docker run -d \
+            --name postgres \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD="$BOOTSTRAP_PW" \
+            -e POSTGRES_DB=thaara_v2 \
+            -p 5432:5432 \
+            postgres:16-alpine
+
+      - name: Await Service Readiness
+        shell: bash
+        run: |
+          echo "Verifying PostgreSQL and Redis connectivity from host runner..."
+          PG_READY=false
+          for i in {1..30}; do
+            if pnpm --filter @thaara/db exec node -e "const { Client } = require('pg'); const c = new Client({ connectionString: process.env.MIGRATION_DATABASE_URL }); c.connect().then(() => { c.end(); process.exit(0); }).catch(() => process.exit(1));"; then
+              echo "PostgreSQL is ready and accepting connections!"
+              PG_READY=true
+              break
+            fi
+            echo "Waiting for PostgreSQL ($i/30)..."
+            sleep 1
+          done
+          if [ "$PG_READY" != "true" ]; then
+            echo "PostgreSQL service failed to become ready within 30 seconds."
+            docker logs postgres || true
+            exit 1
+          fi
+
+          REDIS_READY=false
+          for i in {1..30}; do
+            if node -e "const net = require('net'); const s = net.createConnection(6379, 'localhost', () => { s.end(); process.exit(0); }); s.on('error', () => process.exit(1));"; then
+              echo "Redis is ready and accepting connections!"
+              REDIS_READY=true
+              break
+            fi
+            echo "Waiting for Redis ($i/30)..."
+            sleep 1
+          done
+          if [ "$REDIS_READY" != "true" ]; then
+            echo "Redis service failed to become ready within 30 seconds."
+            exit 1
+          fi
+
+      - name: Run Database Migrations (Admin Connection)
+        run: pnpm run db:migrate
+
+      - name: Provision Ephemeral thaara_app Credentials
+        shell: bash
+        run: |
+          EPHEMERAL_APP_SECRET=$(openssl rand -hex 16)
+          echo "::add-mask::$EPHEMERAL_APP_SECRET"
+          echo "EPHEMERAL_APP_SECRET=$EPHEMERAL_APP_SECRET" >> $GITHUB_ENV
+          export EPHEMERAL_APP_SECRET
+          pnpm run db:provision-role
+          echo "DATABASE_URL=postgresql://thaara_app:$EPHEMERAL_APP_SECRET@localhost:5432/thaara_v2" >> $GITHUB_ENV
+
+      - name: Provision Ephemeral Task 003 Runtime Identities
+        shell: bash
+        run: |
+          ADMIN_PW=$(openssl rand -hex 16)
+          WORKER_PW=$(openssl rand -hex 16)
+          SEEDER_PW=$(openssl rand -hex 16)
+          echo "::add-mask::$ADMIN_PW"
+          echo "::add-mask::$WORKER_PW"
+          echo "::add-mask::$SEEDER_PW"
+          export THAARA_DB_ADMIN_PASSWORD=$ADMIN_PW
+          export THAARA_DB_WORKER_PASSWORD=$WORKER_PW
+          export THAARA_DB_SEEDER_PASSWORD=$SEEDER_PW
+          pnpm run db:bootstrap-identities
+          echo "THAARA_DB_ADMIN_PASSWORD=$ADMIN_PW" >> $GITHUB_ENV
+          echo "THAARA_DB_WORKER_PASSWORD=$WORKER_PW" >> $GITHUB_ENV
+          echo "THAARA_DB_SEEDER_PASSWORD=$SEEDER_PW" >> $GITHUB_ENV
+
+      - name: Provision Task 004 Isolated Database and Non-Superuser Migration Identity
+        shell: bash
+        run: |
+          MIGRATOR_PW=$(openssl rand -hex 16)
+          echo "::add-mask::$MIGRATOR_PW"
+          echo "TASK004_MIGRATOR_PASSWORD=$MIGRATOR_PW" >> $GITHUB_ENV
+          export TASK004_MIGRATOR_PASSWORD=$MIGRATOR_PW
+          pnpm run db:provision-task004-fresh
+
+      - name: Real PostgreSQL & Redis Runtime Tests
+        run: |
+          set -o pipefail
+          pnpm run test:runtime 2>&1 | tee runtime-tests.log
+
+      - name: CI Credential and Runtime Secret-Safety Assertions
+        shell: bash
+        run: |
+          set -eo pipefail
+
+          echo "1. Asserting no full database URL with password was printed in runtime logs..."
+          if grep -qE 'postgresql://[^:]+:[^@]+@' runtime-tests.log; then
+            echo "Secret-safety failure: full password-bearing database URL detected in runtime logs."
+            exit 1
+          fi
+          echo "No password-bearing database URL found in logs: PASSED"
+
+          echo "2. Asserting no postgres:postgres or github.token database password is used..."
+          if grep -qE 'postgres:postgres' runtime-tests.log; then
+            echo "Secret-safety failure: postgres:postgres credentials detected in runtime logs."
+            exit 1
+          fi
+          if grep -rnE 'postgresql://postgres:postgres@' packages/ apps/; then
+            echo "Secret-safety failure: hardcoded postgres:postgres fallback detected in source code."
+            exit 1
+          fi
+          if grep -nE 'POSTGRES_[P]ASSWORD:[[:space:]]*\$\{\{[[:space:]]*github\.token' .github/workflows/*.yml; then
+            echo "Secret-safety failure: github.token used as POSTGRES_PASSWORD in workflows."
+            exit 1
+          fi
+          if grep -nE 'postgresql://.*github\.token' .github/workflows/*.yml; then
+            echo "Secret-safety failure: github.token detected in database URL in workflows."
+            exit 1
+          fi
+          echo "No postgres:postgres or github.token database password used: PASSED"
+
+          echo "3. Asserting runtime logs exist and contain no raw password literals..."
+          if [ ! -s runtime-tests.log ]; then
+            echo "Secret-safety error: runtime-tests.log is missing or empty."
+            exit 1
+          fi
+
+          REQUIRED_SECRETS=(
+            "EPHEMERAL_BOOTSTRAP_PASSWORD"
+            "EPHEMERAL_APP_SECRET"
+            "TASK004_MIGRATOR_PASSWORD"
+            "TASK004_APP_PASSWORD"
+            "THAARA_DB_ADMIN_PASSWORD"
+            "THAARA_DB_WORKER_PASSWORD"
+            "THAARA_DB_SEEDER_PASSWORD"
+          )
+          for var_name in "${REQUIRED_SECRETS[@]}"; do
+            secret_val="${!var_name}"
+            if [ -z "$secret_val" ] || [ ${#secret_val} -lt 8 ]; then
+              echo "Secret-safety error: Expected secret variable $var_name is empty, unset, or shorter than 8 chars."
+              exit 1
+            fi
+            if grep -qF "$secret_val" runtime-tests.log; then
+              echo "Secret-safety failure: secret literal for $var_name detected in runtime logs."
+              exit 1
+            fi
+          done
+          echo "No password literals detected in runtime logs: PASSED"
+
+      - name: Production dependency security audit
+        run: pnpm audit --prod
+
+      - name: Secret Scan (no committed secrets or keys)
+        shell: bash
+        run: |
+          set -eo pipefail
+
+          echo "Scanning for accidental secret commits..."
+          status=0
+          grep -rnE --exclude-dir={node_modules,.git,dist} "(BEGIN [P]RIVATE KEY|[A]KIA[0-9A-Z]{16}|[A]Iza[0-9A-Za-z_-]{35})" . >/dev/null || status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "General secret scan failure: potential secret patterns detected."
+            exit 1
+          elif [ "$status" -ne 1 ]; then
+            echo "General secret scan error: grep exited with status $status."
+            exit 1
+          fi
+
+          echo "Scanning workflow files for prohibited literal assignments to POSTGRES_PASSWORD..."
+          for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
+            if [ -f "$wf" ]; then
+              status=0
+              grep -nE 'POSTGRES_[P]ASSWORD[[:space:]]*[:=][[:space:]]*(("[^$[:space:]"][^"]*")|('\''[^$[:space:]'\''][^'\'']*'\'')|([^$[:space:]'\''"]+)|""|'\'''\''|$)' "$wf" >/dev/null || status=$?
+              if [ "$status" -eq 0 ]; then
+                echo "Secret scan failure: prohibited literal value assigned to POSTGRES_PASSWORD detected in $wf"
+                exit 1
+              elif [ "$status" -ne 1 ]; then
+                echo "Secret scan error: grep exited with status $status scanning $wf"
+                exit 1
+              fi
+            fi
+          done
+
+          echo "Scanning Task 003 files for committed password literals..."
+          TASK003_FILES=(
+            "packages/db/src/migrations/0004_context_and_memory.sql"
+            "packages/db/src/migrations/0006_task003_procedure_hardening.sql"
+            "packages/db/src/migrations/0008_task003_assistant_stream_lifecycle.sql"
+            "packages/db/scripts/bootstrap-runtime-identities.ts"
+            "packages/db/test/task003-security.runtime.test.ts"
+            "packages/db/test/task003-repositories.runtime.test.ts"
+            "packages/db/test/task003-streaming.runtime.test.ts"
+            "packages/db/test/bootstrap-identities.test.ts"
+            "packages/db/src/client.ts"
+            ".github/workflows/ci.yml"
+            "package.json"
+            "packages/db/package.json"
+          )
+          for file in "${TASK003_FILES[@]}"; do
+            if [ -f "$file" ]; then
+              status=0
+              grep -nE "PASSWORD '[^%'\$]{2,}'" "$file" >/dev/null || status=$?
+              if [ "$status" -eq 0 ]; then
+                echo "Secret scan failure: prohibited static SQL PASSWORD literal detected in $file"
+                exit 1
+              elif [ "$status" -ne 1 ]; then
+                echo "Secret scan error: grep exited with status $status scanning $file"
+                exit 1
+              fi
+
+              status=0
+              grep -nE '(adminPassword|workerPassword|seederPassword|adminPw|workerPw|seederPw)[[:space:]]*[:=][[:space:]]*(('\''[^$%[:space:]'\''][^'\'']*'\'')|("[^$%[:space:]"][^"]*")|'\'''\''|"")' "$file" >/dev/null || status=$?
+              if [ "$status" -eq 0 ]; then
+                echo "Secret scan failure: prohibited static password assignment detected in $file"
+                exit 1
+              elif [ "$status" -ne 1 ]; then
+                echo "Secret scan error: grep exited with status $status scanning $file"
+                exit 1
+              fi
+
+              status=0
+              grep -nE 'POSTGRES_[P]ASSWORD[[:space:]]*[:=][[:space:]]*(("[^$[:space:]"][^"]*")|('\''[^$[:space:]'\''][^'\'']*'\'')|([^$[:space:]'\''"]+)|""|'\'''\''|$)' "$file" >/dev/null || status=$?
+              if [ "$status" -eq 0 ]; then
+                echo "Secret scan failure: prohibited literal value assigned to POSTGRES_PASSWORD detected in $file"
+                exit 1
+              elif [ "$status" -ne 1 ]; then
+                echo "Secret scan error: grep exited with status $status scanning $file"
+                exit 1
+              fi
+            fi
+          done
+
+          echo "No secrets or committed password literals detected."
+
+      - name: Collect Test & Build Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-001-verification-artifacts
+          path: |
+            apps/*/dist
+            packages/*/dist
+          if-no-files-found: ignore

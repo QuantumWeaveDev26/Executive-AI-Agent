@@ -1,0 +1,19 @@
+{
+  "source": "owner_report_in_chat_with_settings_screenshots",
+  "date": "2026-11-11",
+  "scope": "v22 Draft; Test agent workflow suggested immediately before owner reported success",
+  "observedSettings": {
+    "letCallersInterrupt": true,
+    "volumeThresholdLabel": "Sensitive",
+    "eagernessToRespondLabel": "Patient",
+    "backgroundSound": "No sound"
+  },
+  "ownerReportedWorking": true,
+  "measuredStopLatencyMs": null,
+  "languagesIndividuallyVerified": false,
+  "productionBindingVerified": false,
+  "liveTelephoneAcceptanceVerified": false,
+  "knowledgeObservation": "Instruction screenshot referenced qw-company-kb-v5-linktree; settings attachment displayed truncated qw-company-kb-v3…; full names/content not read back",
+  "preserveWorkingSettings": true,
+  "providerPromotionAuthorized": false
+}

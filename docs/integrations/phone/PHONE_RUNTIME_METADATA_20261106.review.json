@@ -1,0 +1,23 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "NOT EXECUTED. Requires separate explicit owner approval of this exact manifest and command. One execution only.",
+  "scope": {
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "allowedProfilePath": "/run/secrets/sarvam_profile",
+    "readApiKeyFiles": false,
+    "oneRunMarker": "node_modules/.cache/phone-runtime-metadata-20261106.used.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-runtime-metadata-20261106.readonly.ps1",
+      "sha256": "36beb3c02226abc9072b269871ee90fb764f231474dca9a418842450df742df6"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-runtime-metadata-20261106.readonly.py",
+      "sha256": "707e434cb342b9eaf30730aab0dc817ebaac27c448f99409bb1bd5613aa01d6d"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "reviewOnly": true,
+  "providerAcceptanceVerified": false,
+  "browserReadback": {
+    "rollbackCommittedVersion": 15,
+    "inboundCommittedVersion": 16,
+    "outboundCommittedVersion": 17,
+    "workingDraftVersion": 18,
+    "sourcePromptReadback": "Outbound v17 full prompt matched reviewed linktree-v3 source after normalizing editor whitespace and native user_name/call_purpose variable chips; inbound v16 uses help-first English greeting",
+    "translationWarning": "Sarvam flags v16 inbound Kannada and Hindi greeting translations as outdated after help-first English greeting update; refresh before live inbound v16 activation",
+    "knowledge": "quantum-weave-public.md Ready in qw-company-kb-v3-linktree and attached to both v16 and v17",
+    "voice": "Chaitra",
+    "configuredMaxMinutes": 5,
+    "listening": "v16 and v17: allowInterruptions=true, responseTiming=Patient, background=No sound"
+  },
+  "liveObserved": {
+    "inboundVersion": 5,
+    "outboundVersion": 2,
+    "outboundKnowledgeBinding": false,
+    "image": "sha256:b61157e5fab01145bac06c9a9bd5aa38525d1e956a28cb9e703090e66fe63eb1"
+  },
+  "notVerified": [
+    "Browser voice interruption test on v18/v16/v17 not yet completed by owner",
+    "v16 Kannada and Hindi greeting translations flagged outdated in Sarvam",
+    "No live telephone interruption or language-switching test on v16 or v17",
+    "No independent five-minute automatic termination observation on v17"
+  ],
+  "activationAuthorized": false
+}

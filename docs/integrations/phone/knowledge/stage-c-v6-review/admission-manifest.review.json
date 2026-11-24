@@ -1,0 +1,45 @@
+{
+  "reviewOnly": true,
+  "installationAuthorized": false,
+  "liveIntegration": false,
+  "outboundAppVersion": 6,
+  "inboundAppVersion": 5,
+  "preservedFiles": {
+    "docs/integrations/phone/sarvam-runtime-profile.pilot.json": "7a41b4f34482ccf833fcdab6b7bb0c8a5c198f52a994ec4d8c0ca11a19596447",
+    "apps/web/vite.config.ts": "a9417a262d8290a66002c09aafee6705268285dc04a7095e3b475f68a792b706",
+    "docs/integrations/phone/INBOUND_V5_ROLLOUT_APPROVAL_2026-11-03.md": "aa6ad1a19ea12caacd862902566d9dc4b249f470f50a9a739372af546efd6f76"
+  },
+  "gates": [
+    "docs/integrations/phone/PHONE_SARVAM_409_READONLY.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_429_READONLY.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_EVAL_ADDITIVE.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_EVAL_EXECUTION.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_EVAL_PACED.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_KEY_COMPARE.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_PACED_READONLY.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_PATCH_DIAG.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_SUITE_MAPPING.review.json",
+    "docs/integrations/phone/PHONE_SARVAM_SUITE_METADATA.review.json"
+  ],
+  "inputs": {
+    "docs/integrations/phone/knowledge/review-v1/quantum-weave-public.md": "7305b37a82c67fede9951b7e77acb41b5ae4d8f782c7b7a9fadc3de1f93a2e25",
+    "docs/integrations/phone/knowledge/language-fix-v2/inbound-instructions.proposed.txt": "073a8337945dc1df71fd9750e63249c0ab96022952938a1c933840cae360352a",
+    "docs/integrations/phone/knowledge/language-fix-v2/outbound-instructions.proposed.txt": "33b999ea92a185f9fd7c71f9f42951e67c96635a02a55c83a503c174a5d3ac56",
+    "node_modules/.cache/sarvam-eval-paced-20261103-execution-v4.json": "930375093c4611cb74cbe6c0e2c8b1ad24bdf7750af6026dbb53cde439c6801d",
+    "scripts/prepare-phone-stage-c-candidate.mjs": "82af60b50dbf8979fa5c20d07822c33ecbe3d88a035544a91d3171bf0e4b65c3"
+  },
+  "artifacts": {
+    "docs/integrations/phone/sarvam-runtime-profile.stage-c-v6.review.json": {
+      "sha256": "f115d89ba8ea46801b614d88d2a9667c3192794fca79e0b4901a9bb57a003155",
+      "utf8Bytes": 1470
+    },
+    "docs/integrations/phone/knowledge/stage-c-v6-review/admission-evidence.review.json": {
+      "sha256": "790a15709260c85535416405238cb6511655c8db59fdb73fcd876804e46c05a2",
+      "utf8Bytes": 2340
+    }
+  },
+  "policyHashBasis": {
+    "policySha256": "Exact full committed outbound v6 instruction artifact; route v1 and voice v2.",
+    "commonPolicySha256": "Exact shared instruction suffix beginning You are Thaara, identical in v5/v6 artifacts."
+  }
+}

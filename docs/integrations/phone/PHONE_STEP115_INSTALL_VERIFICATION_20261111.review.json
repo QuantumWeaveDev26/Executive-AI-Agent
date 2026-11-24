@@ -1,0 +1,19 @@
+{
+  "remoteExecutionAllowed": true,
+  "readOnly": true,
+  "authorization": "Read-only catalog verification of the owner-approved disabled installation after an unverified command result; no retry or DDL",
+  "artifacts": [
+    {
+      "path": "scripts/phone-step115-install-verification-20261111.readonly.ps1",
+      "sha256": "4b63929255b44417a633b0309efc10beef63e8c41b5d77e9fa6bd36d7b7ab2e7"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-step115-schema-20261111.readonly.py",
+      "sha256": "8e1e366c3432d5fe0f9f418b7f7d043637269c39e0d71beb92a6c8c845375a5e"
+    },
+    {
+      "path": "docs/integrations/phone/STEP115_PRODUCTION_SCHEMA_PREFLIGHT.review.sql",
+      "sha256": "a4448d05d9323ae510e448acb6d0f09a08c24e1511f62071a63b00c7e742872c"
+    }
+  ]
+}

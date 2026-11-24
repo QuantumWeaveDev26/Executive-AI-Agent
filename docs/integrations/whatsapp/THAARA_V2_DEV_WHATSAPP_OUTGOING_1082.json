@@ -1,0 +1,368 @@
+{
+  "name": "THAARA_V2_DEV_WHATSAPP_OUTGOING_1082",
+  "active": false,
+  "nodes": [
+    {
+      "id": "thaara1082-out-trigger",
+      "name": "Authenticated Thaara dispatch",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "thaara-v2-dev-whatsapp-approved-1082",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "position": [
+        0,
+        0
+      ],
+      "disabled": true,
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-out-claim",
+      "name": "Claim approved dispatch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "parameters": {
+        "method": "POST",
+        "url": "https://thaara.invalid/api/v1/connectors/whatsapp/n8n/relay/REPLACE_CONNECTION/claim",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { dispatchId: $json.body.dispatchId, connectionRevision: $json.body.connectionRevision } }}",
+        "options": {
+          "timeout": 5000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json",
+              "neverError": false
+            }
+          }
+        }
+      },
+      "position": [
+        260,
+        0
+      ],
+      "disabled": true,
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-out-gate",
+      "name": "Deployment send gate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "never-enable-from-request",
+              "leftValue": false,
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "thaara-server-authorization",
+              "leftValue": "={{ $json.authorized === true && $json.dispatchEnabled === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        520,
+        0
+      ],
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-out-send",
+      "name": "Send only after Thaara authorization",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "={{ $json.phoneNumberId }}",
+        "recipientPhoneNumber": "={{ $json.recipientPhoneNumber }}",
+        "messageType": "text",
+        "textBody": "={{ $json.textBody }}"
+      },
+      "position": [
+        800,
+        -100
+      ],
+      "disabled": true,
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-out-receipt",
+      "name": "Report provider acknowledgement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "parameters": {
+        "method": "POST",
+        "url": "https://thaara.invalid/api/v1/connectors/whatsapp/n8n/relay/REPLACE_CONNECTION/receipts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { dispatchId: $(\"Claim approved dispatch\").item.json.dispatchId, providerMessageId: $json.messages?.[0]?.id, recipientAddress: $(\"Claim approved dispatch\").item.json.recipientPhoneNumber.replace(/^\\+/, \"\") } }}",
+        "options": {
+          "timeout": 5000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json",
+              "neverError": false
+            }
+          }
+        }
+      },
+      "position": [
+        1080,
+        -100
+      ],
+      "disabled": true,
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-out-unknown",
+      "name": "Return unverified outcome",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "thaara1082-out-unknownstatus",
+              "name": "status",
+              "value": "unverified",
+              "type": "string"
+            },
+            {
+              "id": "thaara1082-out-unknowndispatch",
+              "name": "dispatchId",
+              "value": "={{ $(\"Authenticated Thaara dispatch\").item.json.body.dispatchId }}",
+              "type": "string"
+            },
+            {
+              "id": "thaara1082-out-unknownverified",
+              "name": "verified",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {
+          "includeBinary": false
+        }
+      },
+      "position": [
+        1350,
+        -100
+      ],
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-out-blocked",
+      "name": "Return not configured",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "thaara1082-out-blockedstatus",
+              "name": "status",
+              "value": "not_configured",
+              "type": "string"
+            },
+            {
+              "id": "thaara1082-out-blockeddispatch",
+              "name": "dispatchId",
+              "value": "={{ $(\"Authenticated Thaara dispatch\").item.json.body.dispatchId }}",
+              "type": "string"
+            },
+            {
+              "id": "thaara1082-out-blockedverified",
+              "name": "verified",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {
+          "includeBinary": false
+        }
+      },
+      "position": [
+        800,
+        150
+      ],
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-future-template",
+      "name": "Future approved templates - disconnected",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "message",
+        "operation": "sendTemplate",
+        "phoneNumberId": "REPLACE_VERIFIED_PHONE_ID",
+        "recipientPhoneNumber": "REPLACE_APPROVED_RECIPIENT",
+        "template": "REPLACE_APPROVED_TEMPLATE"
+      },
+      "position": [
+        0,
+        450
+      ],
+      "disabled": true,
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    },
+    {
+      "id": "thaara1082-future-media",
+      "name": "Future approved media - disconnected",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUpload",
+        "phoneNumberId": "REPLACE_VERIFIED_PHONE_ID",
+        "mediaPropertyName": "data",
+        "additionalFields": {}
+      },
+      "position": [
+        350,
+        450
+      ],
+      "disabled": true,
+      "retryOnFail": false,
+      "notes": "Step 108.2 offline export. Do not enable or bind credentials before separate approval. No existing workflow or Meta app subscription may be reused or changed.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Authenticated Thaara dispatch": {
+      "main": [
+        [
+          {
+            "node": "Claim approved dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim approved dispatch": {
+      "main": [
+        [
+          {
+            "node": "Deployment send gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deployment send gate": {
+      "main": [
+        [
+          {
+            "node": "Send only after Thaara authorization",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return not configured",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send only after Thaara authorization": {
+      "main": [
+        [
+          {
+            "node": "Report provider acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report provider acknowledgement": {
+      "main": [
+        [
+          {
+            "node": "Return unverified outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "executionTimeout": 30
+  }
+}

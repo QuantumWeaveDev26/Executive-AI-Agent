@@ -1,0 +1,42 @@
+{
+  "readOnly": true,
+  "remoteExecutionAllowed": true,
+  "authorization": "One read-only shared-image inventory. Report only checksums and allowed absence markers. No server changes.",
+  "scope": {
+    "vpsId": 1871828,
+    "sshSessions": 1,
+    "exactPaths": [
+      "/app/apps/api/dist/services/phone-sarvam-runtime.js",
+      "/app/apps/api/dist/services/phone-sarvam-knowledge-binding.js",
+      "/app/apps/api/dist/services/phone-sarvam-calls.js",
+      "/app/apps/api/dist/services/phone-sarvam-results.js",
+      "/app/apps/api/dist/services/whatsapp-durable.js",
+      "/app/apps/api/dist/services/whatsapp-enquiries.js",
+      "/app/apps/api/dist/services/phone-pilot-startup.js",
+      "/app/apps/api/node_modules/@thaara/contracts/dist/index.js",
+      "/app/apps/api/node_modules/@thaara/contracts/dist/phone-sarvam-compat.js",
+      "/app/apps/api/dist/app.js",
+      "/app/apps/api/pilot-start.mjs",
+      "/app/apps/web/dist/index.html",
+      "/app/apps/web/dist/assets/index-BJGkboGa.js",
+      "/app/apps/web/dist/assets/index-C_8sjcAM.css"
+    ],
+    "checksumsOrMissingOnly": true,
+    "sourceExports": 0,
+    "providerRequests": 0,
+    "databaseCommands": 0,
+    "serviceChanges": false,
+    "marker": "node_modules/.cache/phone-sarvam-shared-baseline-20261108.used.json",
+    "receipt": "node_modules/.cache/phone-sarvam-shared-baseline-20261108.result.json"
+  },
+  "artifacts": [
+    {
+      "path": "scripts/phone-sarvam-shared-baseline-20261108.readonly.ps1",
+      "sha256": "4621ee37826ec00df7e500d4301e7ce8a51186f7f42c60da745bcb6b51d9f4ca"
+    },
+    {
+      "path": "deploy/hostinger-pilot/phone-sarvam-shared-baseline-20261108.readonly.py",
+      "sha256": "5efb67e31b7ca629d9e27964a80b22496af79c3418f13d872a4caa4d1670f662"
+    }
+  ]
+}

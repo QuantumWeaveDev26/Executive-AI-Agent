@@ -1,0 +1,319 @@
+{
+  "id": "ThaaraBulkCall01",
+  "name": "Thaara Bulk Campaigns — AI Calling",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "id": "call-webhook-trigger",
+      "name": "Campaign AI Calling Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "thaara-bulk-campaign-calling-v1",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "thaara-bulk-campaign-calling-v1",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "call-claim-next",
+      "name": "Verify & Claim Eligible Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign AI Calling Webhook').item.json.body.jobId}}/claim-next",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ executionToken: $('Campaign AI Calling Webhook').item.json.body.executionToken, workspaceId: $('Campaign AI Calling Webhook').item.json.body.workspaceId, campaignId: $('Campaign AI Calling Webhook').item.json.body.campaignId, channel: 'phone_call' }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "id": "call-should-proceed",
+      "name": "Authorized & Eligible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "proceed-true",
+              "leftValue": "={{ $json.proceed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "call-stop-ineligible",
+      "name": "Report Stopped (Not Eligible)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 480],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign AI Calling Webhook').item.json.body.jobId}}/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workspaceId: $('Campaign AI Calling Webhook').item.json.body.workspaceId, campaignId: $('Campaign AI Calling Webhook').item.json.body.campaignId, status: ($json.reason === 'BATCH_QUEUE_COMPLETE' ? 'completed' : 'stopped'), failureReason: ($json.reason === 'BATCH_QUEUE_COMPLETE' ? undefined : ($json.reason || 'Not authorized or eligible')), n8nExecutionId: $execution.id }) }}"
+      }
+    },
+    {
+      "id": "call-execute-phone",
+      "name": "Invoke Existing Sarvam Phone API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign AI Calling Webhook').item.json.body.jobId}}/execute-phone",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contactId: $json.contactId, workspaceId: $('Campaign AI Calling Webhook').item.json.body.workspaceId, campaignId: $('Campaign AI Calling Webhook').item.json.body.campaignId }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      }
+    },
+    {
+      "id": "call-wait-completion",
+      "name": "Wait for Call Outcome",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1160, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 30,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "call-poll-result",
+      "name": "Fetch Call Outcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1380, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign AI Calling Webhook').item.json.body.jobId}}/poll-phone",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contactId: $('Verify & Claim Eligible Contact').item.json.contactId, workspaceId: $('Campaign AI Calling Webhook').item.json.body.workspaceId, campaignId: $('Campaign AI Calling Webhook').item.json.body.campaignId }) }}"
+      }
+    },
+    {
+      "id": "call-is-batch-mode",
+      "name": "Batch Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1600, 200],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "batch-mode-true",
+              "leftValue": "={{ $('Verify & Claim Eligible Contact').item.json.mode === 'multi_contact_batch' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "call-record-contact-outcome",
+      "name": "Record Batch Call Outcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1840, 120],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign AI Calling Webhook').item.json.body.jobId}}/contact-outcome",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workspaceId: $('Campaign AI Calling Webhook').item.json.body.workspaceId, campaignId: $('Campaign AI Calling Webhook').item.json.body.campaignId, contactId: $('Verify & Claim Eligible Contact').item.json.contactId, status: ($('Fetch Call Outcome').item.json.status === 'failed' ? 'failed' : 'completed'), providerId: $('Invoke Existing Sarvam Phone API').item.json.providerCallId || $('Invoke Existing Sarvam Phone API').item.json.callId || null, outcome: $('Fetch Call Outcome').item.json.summary || ('Call status: ' + $('Fetch Call Outcome').item.json.status), failureReason: $('Invoke Existing Sarvam Phone API').item.json.failureReason || null }) }}"
+      }
+    },
+    {
+      "id": "call-has-more",
+      "name": "More Batch Contacts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2080, 120],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-more-true",
+              "leftValue": "={{ $('Verify & Claim Eligible Contact').item.json.hasMore === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "call-rate-limit-wait",
+      "name": "Rate Limit Cooldown",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2320, 40],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": "={{ $('Verify & Claim Eligible Contact').item.json.rateLimitDelaySeconds || 12 }}",
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "call-report-complete",
+      "name": "Report Call Outcome to Bulk Campaigns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2320, 280],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://thaara-v2-pilot-api-1:3002/api/v1/campaigns/bulk/n8n/jobs/{{$('Campaign AI Calling Webhook').item.json.body.jobId}}/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-thaara-bulk-campaign-n8n-token",
+              "value": "={{$env.THAARA_BULK_CAMPAIGN_N8N_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workspaceId: $('Campaign AI Calling Webhook').item.json.body.workspaceId, campaignId: $('Campaign AI Calling Webhook').item.json.body.campaignId, status: ($('Fetch Call Outcome').item.json.status === 'failed' ? 'failed' : 'completed'), outcomeSummary: $('Fetch Call Outcome').item.json.summary || ('Call status: ' + $('Fetch Call Outcome').item.json.status), n8nExecutionId: $execution.id }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Campaign AI Calling Webhook": {
+      "main": [[{ "node": "Verify & Claim Eligible Contact", "type": "main", "index": 0 }]]
+    },
+    "Verify & Claim Eligible Contact": {
+      "main": [[{ "node": "Authorized & Eligible?", "type": "main", "index": 0 }]]
+    },
+    "Authorized & Eligible?": {
+      "main": [
+        [{ "node": "Invoke Existing Sarvam Phone API", "type": "main", "index": 0 }],
+        [{ "node": "Report Stopped (Not Eligible)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Invoke Existing Sarvam Phone API": {
+      "main": [[{ "node": "Wait for Call Outcome", "type": "main", "index": 0 }]]
+    },
+    "Wait for Call Outcome": {
+      "main": [[{ "node": "Fetch Call Outcome", "type": "main", "index": 0 }]]
+    },
+    "Fetch Call Outcome": {
+      "main": [[{ "node": "Batch Mode?", "type": "main", "index": 0 }]]
+    },
+    "Batch Mode?": {
+      "main": [
+        [{ "node": "Record Batch Call Outcome", "type": "main", "index": 0 }],
+        [{ "node": "Report Call Outcome to Bulk Campaigns", "type": "main", "index": 0 }]
+      ]
+    },
+    "Record Batch Call Outcome": {
+      "main": [[{ "node": "More Batch Contacts?", "type": "main", "index": 0 }]]
+    },
+    "More Batch Contacts?": {
+      "main": [
+        [{ "node": "Rate Limit Cooldown", "type": "main", "index": 0 }],
+        [{ "node": "Report Call Outcome to Bulk Campaigns", "type": "main", "index": 0 }]
+      ]
+    },
+    "Rate Limit Cooldown": {
+      "main": [[{ "node": "Verify & Claim Eligible Contact", "type": "main", "index": 0 }]]
+    }
+  }
+}

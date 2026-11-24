@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-26",
+  "branch": "dev-thaara-continuation",
+  "head": "6936e386f0b811614cbaa2acf0fc85378d24bc4c",
+  "syntheticRuns": [
+    {
+      "executionId": "36001",
+      "case": "initial manual-entry smoke",
+      "status": "success"
+    },
+    {
+      "case": "literal_false_gate_dispatchEnabled_false",
+      "executionId": "36006",
+      "status": "success"
+    },
+    {
+      "case": "literal_false_gate_dispatchEnabled_true",
+      "executionId": "36007",
+      "status": "success"
+    },
+    {
+      "executionId": "36010",
+      "status": "error",
+      "error": "SYNTHETIC_SEND_BRANCH_REACHED",
+      "case": "direct sentinel control; error expected"
+    }
+  ],
+  "initialDisabledTriggerAttempts": {
+    "incoming": "rejected; no execution",
+    "outgoing": "rejected; no execution"
+  },
+  "localApiProbe": {
+    "origin": "http://127.0.0.1:3002",
+    "paths": [
+      "/api/v1/health",
+      "/api/v1/connectors/whatsapp/n8n/status",
+      "/api/v1/connectors/whatsapp/n8n/messages"
+    ],
+    "result": "ECONNREFUSED",
+    "authenticatedCommunicationVerified": false
+  },
+  "focusedTests": {
+    "passed": 58,
+    "failed": 0,
+    "files": 4,
+    "exitCode": 0
+  },
+  "historicalPostgresAcceptance": {
+    "passed": 21,
+    "artifactSha256": "4ad4e53f5d1c30b6a2806728359b79ab47695399c79db354bcac1d479d18228e",
+    "rerun": false
+  },
+  "workflows": [
+    {
+      "id": "ezIrlr7y9dEowujw",
+      "name": "THAARA_V2_DEV_WHATSAPP_INBOUND_1082",
+      "versionId": "2624cdbf-e87e-46b0-9cdc-d367605fa0ac",
+      "active": false,
+      "activeVersionId": null,
+      "nodeCount": 2,
+      "allIODisabled": true,
+      "credentialAssignments": [],
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "saveExecutionProgress": false,
+        "saveManualExecutions": false,
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "executionTimeout": 30,
+        "binaryMode": "separate"
+      }
+    },
+    {
+      "id": "RrqXTplIBXginMSD",
+      "name": "THAARA_V2_DEV_WHATSAPP_OUTGOING_1082",
+      "versionId": "0ecb733c-fb60-4fb0-a6d5-144ba17ae056",
+      "active": false,
+      "activeVersionId": null,
+      "nodeCount": 9,
+      "allIODisabled": true,
+      "credentialAssignments": [],
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "saveExecutionProgress": false,
+        "saveManualExecutions": false,
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "executionTimeout": 30,
+        "binaryMode": "separate"
+      }
+    }
+  ]
+}

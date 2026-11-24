@@ -1,0 +1,429 @@
+{
+  "name": "Thaara — Sarvam Call History Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "sync-schedule-trigger-01",
+      "name": "Every 2 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "sync-manual-trigger-02",
+      "name": "Manual Backfill Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        220,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://172.16.1.13:3002/api/v1/connectors/phone/n8n/checkpoint",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "sync-get-checkpoint-03",
+      "name": "Load Sync Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraPhoneBackendSyncAuth",
+          "name": "Thaara Phone Backend Sync"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cp = $input.first()?.json || {};\nconst nowMs = Date.now();\nconst startDatetime = cp.cursorStartDatetime || new Date(nowMs - 30 * 86400 * 1000).toISOString();\nconst endDatetime = new Date(nowMs + 5 * 60 * 1000).toISOString();\nconst advanceCursorTo = new Date(nowMs).toISOString();\nconst pageOffsets = cp.backfillCompleted ? [0, 50] : [0, 50, 100, 150];\nreturn pageOffsets.map(offset => ({\n  json: {\n    startDatetime,\n    endDatetime,\n    advanceCursorTo,\n    limit: 50,\n    offset\n  }\n}));"
+      },
+      "id": "sync-build-pages-04",
+      "name": "Build Paginated Offsets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://apps.sarvam.ai/api/analytics/v1/01a10103-1b5d-78a1-9902-f391242c7537/01a10103-1b66-7123-96b1-43a6e96e016b/Thaara-AI-V-db336de4-5453/attempts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_datetime",
+              "value": "={{ $json.startDatetime }}"
+            },
+            {
+              "name": "end_datetime",
+              "value": "={{ $json.endDatetime }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ String($json.limit) }}"
+            },
+            {
+              "name": "offset",
+              "value": "={{ String($json.offset) }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "sync-fetch-attempts-05",
+      "name": "Fetch Inbound & Outbound Attempts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraSarvamAnalyticsAuth",
+          "name": "Thaara Sarvam Analytics API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const pages = $input.all();\nconst seen = new Set();\nconst attempts = [];\nfor (const page of pages) {\n  const list = Array.isArray(page.json?.items) ? page.json.items : [];\n  for (const item of list) {\n    if (!item || !item.attempt_id) continue;\n    if (item.channel_direction !== 'inbound' && item.channel_direction !== 'outbound') continue;\n    const key = `${item.channel_direction}:${item.interaction_id || item.attempt_id}`;\n    if (seen.has(key)) continue;\n    seen.add(key);\n    attempts.push(item);\n  }\n}\nif (attempts.length === 0) {\n  return [{\n    json: {\n      emptyBatch: true,\n      advanceCursorTo: $('Build Paginated Offsets').first().json.advanceCursorTo\n    }\n  }];\n}\nreturn attempts.map(attempt => ({\n  json: {\n    emptyBatch: false,\n    attempt,\n    needsTranscript: Boolean(attempt.connectivity_status === 'connected' && attempt.interaction_id),\n    encodedInteractionId: attempt.interaction_id ? encodeURIComponent(attempt.interaction_id) : ''\n  }\n}));"
+      },
+      "id": "sync-dedupe-attempts-06",
+      "name": "Deduplicate Call Attempts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-needs-transcript",
+              "leftValue": "={{ $json.needsTranscript }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-if-transcript-07",
+      "name": "Has Connected Transcript?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1380,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://apps.sarvam.ai/api/analytics/v1/01a10103-1b5d-78a1-9902-f391242c7537/01a10103-1b66-7123-96b1-43a6e96e016b/Thaara-AI-V-db336de4-5453/transcripts/{{ $json.encodedInteractionId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 12000
+        }
+      },
+      "id": "sync-fetch-transcript-08",
+      "name": "Retrieve Conversation Transcript",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1620,
+        220
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraSarvamAnalyticsAuth",
+          "name": "Thaara Sarvam Analytics API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const connectedInputs = $('Has Connected Transcript?').all(0);\nconst txOutputs = $input.all();\nconst paired = [];\nfor (let i = 0; i < connectedInputs.length; i++) {\n  const attempt = connectedInputs[i]?.json?.attempt;\n  const tx = txOutputs[i]?.json;\n  if (!attempt) continue;\n  paired.push({\n    json: {\n      attempt,\n      messages: Array.isArray(tx?.messages) ? tx.messages : []\n    }\n  });\n}\nreturn paired;"
+      },
+      "id": "sync-pair-transcripts-09",
+      "name": "Pair Connected Transcripts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const nonConnected = $input.all().filter(x => !x.json?.emptyBatch && x.json?.attempt);\nreturn nonConnected.map(x => ({\n  json: {\n    attempt: x.json.attempt,\n    messages: []\n  }\n}));"
+      },
+      "id": "sync-format-unanswered-10",
+      "name": "Pass Unanswered & Failed Attempts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "sync-merge-branches-11",
+      "name": "Merge All Synced Calls",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2080,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst advanceCursorTo = $('Build Paginated Offsets').first().json.advanceCursorTo;\nconst calls = [];\nfor (const item of allItems) {\n  const a = item.json?.attempt;\n  if (!a || !a.attempt_id) continue;\n  const av = a.agent_variables && typeof a.agent_variables === 'object' ? a.agent_variables : {};\n  const messages = Array.isArray(item.json?.messages)\n    ? item.json.messages.slice(0, 200).map(m => ({\n        role: String(m.role || 'user'),\n        content: typeof m.content === 'string' ? m.content.slice(0, 4000) : '',\n        ...(typeof m.english_content === 'string' ? { english_content: m.english_content.slice(0, 4000) } : {}),\n        ...(typeof m.language_name === 'string' ? { language_name: m.language_name.slice(0, 64) } : {}),\n        ...(m.turn_id !== undefined ? { turn_id: m.turn_id } : {})\n      }))\n    : [];\n  calls.push({\n    attemptId: String(a.attempt_id),\n    interactionId: a.interaction_id || null,\n    direction: a.channel_direction === 'inbound' ? 'inbound' : 'outbound',\n    connectivityStatus: ['connected', 'no_answer', 'busy', 'failed'].includes(a.connectivity_status) ? a.connectivity_status : 'unknown',\n    failureReason: a.failure_reason || null,\n    endedBy: a.ended_by || null,\n    durationSeconds: typeof a.duration_in_seconds === 'number' ? a.duration_in_seconds : null,\n    startDatetime: a.start_datetime || null,\n    endDatetime: a.end_datetime || null,\n    attemptedAt: a.attempted_at || null,\n    userContact: a.user_contact || null,\n    userContactMasked: a.user_contact_masked || null,\n    recordingAvailable: Boolean(a.audio_url && a.interaction_id),\n    appVersion: a.app_version ?? null,\n    languageName: a.language_name || null,\n    agentVariables: {\n      user_name: av.user_name ?? null,\n      call_purpose: av.call_purpose ?? null,\n      call_summary: av.call_summary ?? null,\n      business_name: av.business_name ?? null,\n      service_needed: av.service_needed ?? null,\n      preferred_callback_time: av.preferred_callback_time ?? null\n    },\n    messages\n  });\n}\nconst batches = [];\nfor (let i = 0; i < Math.max(1, calls.length); i += 50) {\n  const slice = calls.slice(i, i + 50);\n  const isLast = i + 50 >= calls.length;\n  batches.push({\n    json: {\n      calls: slice,\n      advanceCursorTo: isLast ? advanceCursorTo : null,\n      markBackfillCompleted: isLast\n    }\n  });\n}\nreturn batches;"
+      },
+      "id": "sync-build-batches-12",
+      "name": "Assemble Normalized Batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.16.1.13:3002/api/v1/connectors/phone/n8n/calls/sync",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "sync-post-thaara-13",
+      "name": "Sync Calls to Thaara Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2540,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "thaaraPhoneBackendSyncAuth",
+          "name": "Thaara Phone Backend Sync"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 2 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Load Sync Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Backfill Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Sync Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Sync Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Build Paginated Offsets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Paginated Offsets": {
+      "main": [
+        [
+          {
+            "node": "Fetch Inbound & Outbound Attempts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Inbound & Outbound Attempts": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate Call Attempts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate Call Attempts": {
+      "main": [
+        [
+          {
+            "node": "Has Connected Transcript?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Connected Transcript?": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Conversation Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pass Unanswered & Failed Attempts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Conversation Transcript": {
+      "main": [
+        [
+          {
+            "node": "Pair Connected Transcripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pair Connected Transcripts": {
+      "main": [
+        [
+          {
+            "node": "Merge All Synced Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pass Unanswered & Failed Attempts": {
+      "main": [
+        [
+          {
+            "node": "Merge All Synced Calls",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge All Synced Calls": {
+      "main": [
+        [
+          {
+            "node": "Assemble Normalized Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Normalized Batches": {
+      "main": [
+        [
+          {
+            "node": "Sync Calls to Thaara Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
