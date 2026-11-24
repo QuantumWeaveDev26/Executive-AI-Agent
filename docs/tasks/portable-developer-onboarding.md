@@ -7,3 +7,5 @@ Deliverables: root `DEVELOPER.md`, local-only Compose file, a no-overwrite rando
 Acceptance: helper creates only local configuration, keeps keys out of output, preserves existing files, and the guide uses the frontend's actual API port. Compose publishes both services only on loopback. Repository includes schema/migrations; production data and secrets stay excluded. Application build and full fresh-database boot must be reported as unverified unless actually exercised.
 
 Validation: `node --test scripts/setup-local.test.mjs`; `node --check scripts/setup-local.mjs`; Compose syntax validation with synthetic configuration only. Full clean-machine and optional-provider acceptance remain separate.
+
+24 November 2026 follow-up: fresh locked installation, full build, native local PostgreSQL migrations/roles, idempotent second migration pass, restricted worker identity, API/OpenAPI, frontend and frontend-to-API proxy passed. See `docs/verification/local-onboarding-20261124.md`. No optional provider or interactive product acceptance is claimed.

@@ -65,6 +65,8 @@ Open `http://localhost:5173`; API documentation is at `http://localhost:3002/doc
 
 The core database is now independent on your machine. Optional Phone/WhatsApp/Google/voice features may still report `not_configured`; obtain their approved development credentials and apply only their reviewed local schema/setup. No live integrations are automatically transferred or enabled. Add server-side keys only to private configuration; never `VITE_*` variables or frontend code. Do not point development webhooks at live accounts without owner approval.
 
+After stopping the three foreground processes, you can reproduce the startup check with `node scripts/verify-local-stack.mjs`. Keep the local database/Redis running. The check requires ports 3002 and 5173 to be free, starts its own API/worker/frontend, checks health, worker role and the frontend proxy, and stops those child processes afterward. It refuses non-local database addresses or inherited provider credentials. It does not create an owner or send messages.
+
 Stop local services without deleting their data:
 
 ```sh
@@ -81,7 +83,7 @@ pnpm test
 pnpm build
 ```
 
-Run the task-specific integration/runtime gates from `docs/tasks` when changing database or connector behavior. These commands are not a claim that the complete current source has passed on every operating system. The new setup helper is verified separately; clean-machine application/database acceptance still needs a developer run.
+Run the task-specific integration/runtime gates from `docs/tasks` when changing database or connector behavior. Fresh dependency installation, the full workspace build, all 12 migrations, role provisioning and API/worker/frontend startup were verified in an isolated Windows checkout on 24 November 2026. See [the exact evidence](docs/verification/local-onboarding-20261124.md). macOS/Linux execution, Node 22 execution, interactive owner/conversation flows and optional live providers were not exercised in that check. Do not treat a startup smoke test as full product acceptance.
 
 Read `AGENTS.md`, `docs/THAARA_PROJECT_HANDOFF.md`, the latest dated handover, and the relevant task before editing. Keep workspace/tenant scope, row-level security, approvals, audit events and idempotency intact. A successful HTTP acknowledgment alone is not a verified external outcome.
 
