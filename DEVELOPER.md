@@ -4,6 +4,8 @@ Start here when cloning on a different computer. This is a pnpm/TypeScript monor
 
 ## What GitHub contains
 
+Anyone able to clone this repository can create a separate development installation and modify its source. Pushing changes upstream still requires GitHub write permission; production deployment requires separate owner approval. The fresh setup was verified on Windows; other operating systems and complete provider-enabled behavior have not been verified. This repository is a development snapshot, **not yet proven to reproduce every patch in the current live image**.
+
 - `apps/api`: Fastify API, authentication, conversations, integrations and orchestration.
 - `apps/web`: React/Vite interface. Its development proxy targets API port **3002**.
 - `apps/worker`: BullMQ workers, recovery and background processing.
@@ -98,7 +100,7 @@ There are two separate needs:
 
 For a transfer, the database owner must identify the source, target and permitted data, then make a PostgreSQL custom-format backup (`pg_dump`), encrypt it, restrict access and send it through an approved private channel. Verify its checksum and restore it to a fresh isolated database; review role/ownership mappings, schema version, row counts and tenant boundaries. Prefer sanitized synthetic data for development. Keep all outbound providers and workers disabled during restore validation. Do not restore raw production data to a general developer laptop without explicit authorization. Never commit a dump or reuse the production login on another machine.
 
-An existing production backup has **not** been exported as part of this repository task. Actual production-data portability remains pending secure owner-approved transfer, if required. API keys/OAuth grants, n8n workflow configuration and provider webhooks require their own authorized setup; a database restore alone does not recreate those external services.
+A separately owner-approved encrypted real database backup was privately exported and restored on 24 November 2026: all 49 public tables, ownership/grants and 14 password-free role definitions were verified. The encrypted backup, separate unlock key and authorized destination configuration are **not in GitHub**. The existing owner has the private restore guide. The restored application was checked locally with outbound access blocked and workers disabled. This does not grant a new developer access to customer data or live providers. API keys/OAuth grants, n8n bindings and provider webhooks require their own authorized setup. See [current release and recovery status](docs/verification/release-and-recovery-status-20261124.md).
 
 ## Known troubleshooting
 
