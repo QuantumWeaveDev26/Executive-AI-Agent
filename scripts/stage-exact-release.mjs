@@ -3,10 +3,12 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 const args=process.argv.slice(2),options={};
-for(let i=0;i<args.length;i+=2){if(!['--built-root','--output'].includes(args[i])||!args[i+1])throw Error('Use --built-root PATH --output NEW_DIRECTORY');options[args[i]]=args[i+1];}
+for(let i=0;i<args.length;i+=2){if(!['--built-root','--output','--release'].includes(args[i])||!args[i+1])throw Error('Use --built-root PATH --output NEW_DIRECTORY');options[args[i]]=args[i+1];}
 if(!options['--output'])throw Error('An explicit new output directory is required');
 const built=path.resolve(options['--built-root']||'.'),output=path.resolve(options['--output']);
-const release=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../deploy/releases/bulk-auto-followup-consolidated-20261124');
+const selected=options['--release']||'bulk-auto-followup-consolidated-20261124';
+if(!['bulk-auto-followup-consolidated-20261124','bulk-consent-ui-20261124'].includes(selected))throw Error('Unknown release');
+const release=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../deploy/releases/'+selected);
 const manifest=JSON.parse(await fs.readFile(path.join(release,'manifest.json'),'utf8'));
 const inside=(base,name)=>{if(path.isAbsolute(name)||name.split(/[\\/]/).some(x=>x==='..'||x===''))throw Error('Invalid manifest path');const p=path.resolve(base,name);if(!p.startsWith(base+path.sep))throw Error('Path escape refused');return p;};
 try{await fs.lstat(output);throw Error('Output already exists; choose a new directory');}catch(e){if(e.code!=='ENOENT')throw e;}

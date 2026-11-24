@@ -1077,11 +1077,28 @@ export function parseBulkCampaignContacts(input: {
       'lead_source',
       'whatsapp_consent',
       'phone_consent',
+      'call_consent',
+      'calling_consent',
+      'consent',
+      'consent_given',
+      'opt_in',
+      'marketing_consent',
+      'consent_source',
+      'consent_evidence',
+      'consent_recorded_at',
+      'consent_timestamp',
+      'consent_date',
+      'lead_id',
+      'source_lead_id',
+      'created_time',
+      'ad_name',
+      'form_name',
       'email_consent',
       'dnd'
     ].includes(h)
   );
 
+  const seenLeadIds = new Set<string>();
   const startIndex = hasHeader ? 1 : 0;
   for (let idx = startIndex; idx < lines.length; idx++) {
     const rawLine = lines[idx]!;
@@ -1093,6 +1110,7 @@ export function parseBulkCampaignContacts(input: {
     let customerRequirement = '';
     let enquiryDate = '';
     let leadSource = '';
+    let sourceLeadId = '';
     let customFields: Record<string, string> = {};
     let rawPhone = '';
     let rawWhatsapp = '';
@@ -1102,8 +1120,11 @@ export function parseBulkCampaignContacts(input: {
     let phoneConsentCol: boolean | null = null;
     let emailConsentCol: boolean | null = null;
     let consentSourceDetail = '';
+    let consentRecordedAt = '';
     let dndCol = false;
+    let hasDndCol = false;
     let optedOutCol = false;
+    let hasOptedOutCol = false;
 
     if (hasHeader) {
       const cols = splitDelimitedLine(rawLine, delimiter);
@@ -1119,6 +1140,7 @@ export function parseBulkCampaignContacts(input: {
       customerRequirement = getCol('customer_requirement', 'requirement', 'requirements', 'enquiry', 'inquiry', 'notes', 'message', 'details', 'pain_point', 'challenge', 'query', 'comments');
       enquiryDate = getCol('enquiry_date', 'inquiry_date', 'submitted_at', 'created_time', 'date', 'lead_date', 'timestamp');
       leadSource = getCol('lead_source', 'source', 'campaign_name', 'ad_name', 'form_name', 'channel', 'utm_source');
+      sourceLeadId = getCol('source_lead_id', 'lead_id', 'meta_lead_id');
       const countryCode = getCol('country_code', 'cc', 'dial_code');
       const basePhone = getCol('phone', 'mobile', 'phone_number', 'mobile_number', 'number', 'contact_number', 'whatsapp_no', 'tel', 'cell');
       rawPhone =
@@ -1144,8 +1166,13 @@ export function parseBulkCampaignContacts(input: {
       );
       emailConsentCol = parseBooleanFlag(getCol('email_consent'));
       consentSourceDetail = getCol('consent_source', 'consent_evidence');
-      dndCol = parseBooleanFlag(getCol('dnd', 'ndnc', 'do_not_disturb', 'telemarketing_restricted')) === true;
-      optedOutCol = parseBooleanFlag(getCol('opted_out', 'dnc', 'do_not_call', 'unsubscribed')) === true;
+      consentRecordedAt = getCol('consent_recorded_at', 'consent_timestamp', 'consent_date', 'consent_at');
+      const rawDndVal = getCol('dnd', 'ndnc', 'do_not_disturb', 'telemarketing_restricted');
+      hasDndCol = Boolean(rawDndVal);
+      dndCol = parseBooleanFlag(rawDndVal) === true;
+      const rawOptedOutVal = getCol('opted_out', 'dnc', 'do_not_call', 'unsubscribed');
+      hasOptedOutCol = Boolean(rawOptedOutVal);
+      optedOutCol = parseBooleanFlag(rawOptedOutVal) === true;
       for (let ci = 0; ci < firstCols.length && ci < cols.length; ci++) {
         if (usedIndexes.has(ci)) continue;
         const headerKey = firstCols[ci]!.slice(0, 64);
@@ -1228,8 +1255,19 @@ export function parseBulkCampaignContacts(input: {
       continue;
     }
 
+    const normalizedLeadId = sourceLeadId.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 128);
+    if (normalizedLeadId && seenLeadIds.has(normalizedLeadId)) {
+      duplicates.push({
+        rowNumber,
+        rawLine: rawLine.slice(0, 500),
+        reason: `Duplicate lead ID ${normalizedLeadId}`
+      });
+      continue;
+    }
+
     if (phoneNorm.e164) seenPhones.add(phoneNorm.e164);
     if (emailValid) seenEmails.add(rawEmail.toLowerCase());
+    if (normalizedLeadId) seenLeadIds.add(normalizedLeadId);
 
     const sanitizedName = name.replace(/^[=+\-@]+/, '').trim();
     const resolvedName = (sanitizedName || `Contact ${validContacts.length + 1}`).slice(0, 120);
@@ -1251,8 +1289,20 @@ export function parseBulkCampaignContacts(input: {
     // - Saved PhoneContactDirectory contacts with active consent are authorized unless explicitly marked false/DND/opted-out.
     // - Unsaved campaign contacts require explicit calling consent (`phone_consent=true` or owner-attested consent) and `!dnd && !optedOut`,
     //   and exist strictly as campaign-scoped contacts (`onecall_`) without altering PhoneContactDirectory.
+    const effectiveDnd = dndCol;
+    const dndStatus: 'unknown' | 'clear' | 'dnd' = effectiveDnd
+      ? 'dnd'
+      : hasDndCol || dirMatch
+        ? 'clear'
+        : 'unknown';
+    const optedOutStatus: 'unknown' | 'clear' | 'opted_out' = optedOutCol
+      ? 'opted_out'
+      : hasOptedOutCol || dirMatch
+        ? 'clear'
+        : 'unknown';
+
     const effectivePhoneConsent =
-      optedOutCol || dndCol
+      optedOutCol || effectiveDnd
         ? false
         : phoneConsentCol === false
           ? false
@@ -1261,13 +1311,18 @@ export function parseBulkCampaignContacts(input: {
             : phoneConsentCol === true;
 
     const effectiveWhatsappConsent =
-      optedOutCol || dndCol
+      optedOutCol || effectiveDnd
         ? false
         : waConsentCol === false
           ? false
           : Boolean(waConsentCol === true || dirWhatsappConsent);
 
     const isInternational = Boolean(phoneNorm.valid && !phoneNorm.isIndianMobile);
+    const sanitizedConsentRecordedAt = consentRecordedAt
+      ? cleanLeadField(consentRecordedAt, 80)
+      : effectivePhoneConsent && sanitizedEnquiryDate
+        ? sanitizedEnquiryDate
+        : '';
 
     validContacts.push({
       contactId: `c_${validContacts.length + 1}_${(phoneNorm.e164 ?? rawEmail).replace(/[^a-zA-Z0-9]/g, '').slice(-6)}`,
@@ -1281,18 +1336,22 @@ export function parseBulkCampaignContacts(input: {
       ...(sanitizedRequirement ? { customerRequirement: sanitizedRequirement } : {}),
       ...(sanitizedEnquiryDate ? { enquiryDate: sanitizedEnquiryDate } : {}),
       ...(sanitizedLeadSource ? { leadSource: sanitizedLeadSource } : {}),
+      ...(normalizedLeadId ? { sourceLeadId: normalizedLeadId } : {}),
       ...(Object.keys(customFields).length > 0 ? { customFields } : {}),
       ...(phoneNorm.e164 ? { phoneE164: phoneNorm.e164, maskedPhone: phoneNorm.masked } : {}),
       ...(waNorm.e164 ? { whatsappE164: waNorm.e164 } : {}),
       ...(emailValid ? { email: rawEmail.toLowerCase() } : {}),
       preferredLanguage: parseLanguageFlag(rawLang),
-      ...(dndCol ? { dnd: true } : {}),
-      ...(consentSourceDetail ? { consentSourceDetail: consentSourceDetail.slice(0, 120) } : {}),
+      ...(effectiveDnd ? { dnd: true } : {}),
+      dndStatus,
+      ...(consentSourceDetail ? { consentSourceDetail: cleanLeadField(consentSourceDetail, 120) } : {}),
+      ...(sanitizedConsentRecordedAt ? { consentRecordedAt: sanitizedConsentRecordedAt } : {}),
       optedOut: optedOutCol,
+      optedOutStatus,
       consent: {
         whatsapp: effectiveWhatsappConsent,
         phone: effectivePhoneConsent,
-        email: optedOutCol || dndCol ? false : (emailConsentCol ?? false),
+        email: optedOutCol || effectiveDnd ? false : (emailConsentCol ?? false),
         source: dirMatch && dirPhoneConsent
           ? 'phone_directory_verified'
           : dirWhatsappConsent && waConsentCol === null && phoneConsentCol === null

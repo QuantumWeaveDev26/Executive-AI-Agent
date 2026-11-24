@@ -1426,13 +1426,68 @@ describe('Bulk Campaign Agent UI — Complete User Experience', () => {
     );
     expect(skippedHtml).toContain('data-testid="auto-followup-historical-skipped-notice"');
     expect(skippedHtml).toContain('data-testid="auto-followup-process-existing-button"');
+    expect(skippedHtml).toContain('Imported Contacts');
     expect(skippedHtml).toContain('Existing Leads Discovered');
     expect(skippedHtml).toContain('New Leads Received');
-    expect(skippedHtml).toContain('Total Eligible Leads');
+    expect(skippedHtml).toContain('Eligible for Calling');
+    expect(skippedHtml).toContain('Awaiting Consent');
+    expect(skippedHtml).toContain('DND / Opt-out Blocked');
     expect(skippedHtml).toContain('Consent-Blocked');
     expect(skippedHtml).toContain('Calls Queued');
     expect(skippedHtml).toContain('Calls Attempted');
     expect(skippedHtml).toContain('Calls Completed');
     expect(skippedHtml).toContain('Follow-ups Scheduled');
+
+    // 7) Consent-blocked contact with phoneStatus: 'queued' must NOT be counted as Calls Attempted: 1
+    const blockedQueuedHtml = renderToStaticMarkup(
+      <BulkCampaignDashboardView
+        {...commonProps}
+        contacts={[
+          {
+            ...commonProps.contacts[0]!,
+            category: 'unauthorized',
+            phoneStatus: 'queued'
+          }
+        ]}
+        sheetMonitor={{
+          ...activated.sheetMonitor!,
+          leadsQueuedCount: 2
+        }}
+        standingAuthorization={activated.standingAuthorization}
+      />
+    );
+    expect(blockedQueuedHtml).toContain('Calls Attempted</div><div style="font-size:1.15rem;font-weight:700;color:#0f172a;margin-top:0.15rem">0</div>');
+    expect(blockedQueuedHtml).toContain('Awaiting Calling Consent Verification');
+    expect(blockedQueuedHtml).toContain(`data-testid="verify-unsaved-consent-${commonProps.contacts[0]!.contact.contactId}"`);
+
+    // 8) One-time review with 2+ raw unsaved contacts shows Imported Successfully, Ready to Call, Awaiting Consent, DND / Opt-out Blocked, and streamlined batch verification bar
+    const rawReviewHtml = renderToStaticMarkup(
+      <BulkCampaignDashboardView
+        {...commonProps}
+        status="draft"
+        contacts={[
+          {
+            ...commonProps.contacts[0]!,
+            contact: { ...commonProps.contacts[0]!.contact, contactId: 'c_raw_1', name: 'Contact 1', maskedPhone: '+91 ******1539', isUnsavedCampaignContact: true },
+            category: 'unauthorized',
+            phoneStatus: 'queued'
+          },
+          {
+            ...commonProps.contacts[0]!,
+            contact: { ...commonProps.contacts[0]!.contact, contactId: 'c_raw_2', name: 'Contact 2', maskedPhone: '+91 ******7894', isUnsavedCampaignContact: true },
+            category: 'unauthorized',
+            phoneStatus: 'queued'
+          }
+        ]}
+        metrics={{ ...commonProps.metrics, totalContacts: 2, eligibleCount: 0, unauthorizedCount: 2 }}
+        onUpdatePlan={() => {}}
+      />
+    );
+    expect(rawReviewHtml).toContain('Imported Successfully: 2 contacts');
+    expect(rawReviewHtml).toContain('Ready to Call: 0');
+    expect(rawReviewHtml).toContain('Awaiting Consent: 2');
+    expect(rawReviewHtml).toContain('DND / Opt-out Blocked: 0');
+    expect(rawReviewHtml).toContain('data-testid="review-batch-consent-bar"');
+    expect(rawReviewHtml).toContain('data-testid="review-confirm-all-consent-button"');
   });
 });

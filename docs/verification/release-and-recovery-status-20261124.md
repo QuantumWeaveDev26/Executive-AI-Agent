@@ -34,3 +34,11 @@ The requested historical release is now reconciled through a full source build p
 Focused regression coverage: 68 tests passed initially; two were blocked by deployment fixtures omitted from the local Docker test image. After mounting the existing fixtures read-only, both passed (2/2). No application behavior was changed to make the tests pass. Total confirmed coverage is 70 tests for the unchanged tested source. No provider requests or production changes occurred.
 
 See deploy/releases/bulk-auto-followup-consolidated-20261124/README.md, manifest.json, build-evidence.json and scripts/stage-exact-release.mjs for the reproducible file assembly. Earlier statements above about the requested source gap describe the state before this reconciliation. The later normalization release and exact historical deployment invocation remain separate.
+
+## Current live release update
+
+A subsequent read-only inspection confirmed bulk-consent-ui-20261124, image sha256:6789a69843b3226f66e80b0ccddfafb10809be1e09cd507f69e5c5959a257cc8, healthy with API health HTTP 200. Actual current Compose labels identify /opt/thaara-v2-pilot/compose.json and project thaara-v2-pilot. Original historical shell invocation is not verified.
+
+Current source builds all eight workspaces successfully. Its source-only output matches 944 of 992 declared live compiled/static files. Forty-eight unchanged historical files complete the assembly. The staging utility verified all 992 expected file hashes. The two focused current-source suites passed all 73 tests. No production deployment, restart, credential change or provider call was performed. See deploy/releases/bulk-consent-ui-20261124/README.md and its manifest/build evidence.
+
+The owner designated team.quantumweaveai@gmail.com for company handover and identified QuantumWeaveDev26 as the GitHub account. That account already owns this repository. Company handover ciphertext is in that Google account's restricted folder; private keys and credentials are excluded. Other service invitations remain unissued because account-administration tools/browser access are unavailable.

@@ -8188,6 +8188,517 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     expect(prevRes.json().preview.previouslyProcessedCount).toBe(102);
     expect(prevRes.json().preview.eligibleCount).toBe(0);
 
+    // 11) Stuck job (webhookDispatched: false, 0 attempts) is NOT auto-triggered on poll without explicit allowStuckJobRecovery
+    const stuckJobCampaign = {
+      ...resumed,
+      n8nJobs: [
+        {
+          ...(resumed.n8nJobs![0]!),
+          jobId: 'n8nbatch_stuck_01',
+          status: 'queued' as const,
+          webhookDispatched: false,
+          processedCount: 0,
+          recipientQueue: [
+            {
+              contactId: resumed.contacts[0]!.contact.contactId,
+              displayName: resumed.contacts[0]!.contact.name,
+              maskedPhone: resumed.contacts[0]!.contact.maskedPhone ?? '+91 ******0001',
+              status: 'pending' as const,
+              attempts: 0,
+              idempotencyKey: 'n8nbatch_stuck_01-c_1_syn',
+              updatedAt: '2026-11-24T05:52:56.653Z'
+            }
+          ]
+        }
+      ],
+      contacts: resumed.contacts.map((r, idx) =>
+        idx === 0 ? { ...r, phoneStatus: 'pending' as const, attendanceOutcome: 'pending' as const } : r
+      )
+    };
+    const beforeTriggers = triggeredPayloads.length;
+    const noAutoRecoverySync = await syncGoogleSheetLeadsForCampaign(stuckJobCampaign, {
+      scope,
+      csvText: sheetWithMidLead,
+      phoneDirectory,
+      liveMultiContactEnabled: true,
+      n8nTrigger: mockTrigger,
+      now: new Date('2026-11-24T05:54:00Z')
+    });
+    expect(noAutoRecoverySync.batchSubmitted).toBe(false);
+    expect(triggeredPayloads.length).toBe(beforeTriggers);
+
+    const recoveredSync = await syncGoogleSheetLeadsForCampaign(stuckJobCampaign, {
+      scope,
+      csvText: sheetWithMidLead,
+      phoneDirectory,
+      liveMultiContactEnabled: true,
+      n8nTrigger: mockTrigger,
+      allowStuckJobRecovery: true,
+      now: new Date('2026-11-24T05:55:00Z')
+    });
+    expect(recoveredSync.batchSubmitted).toBe(true);
+    expect(recoveredSync.jobId).toBe('n8nbatch_stuck_01');
+    expect(triggeredPayloads.length).toBe(beforeTriggers + 1);
+    expect(recoveredSync.campaign.n8nJobs!.find(j => j.jobId === 'n8nbatch_stuck_01')?.webhookDispatched).toBe(true);
+
     await app.close();
+  });
+
+  it('58. MODE B UNSAVED CONSENTED + UNCONSENTED LEADS: Verify consent for blocked unsaved lead (7910) without re-calling 4634/5125, and auto-follow-up future unsaved consented Sheet leads', async () => {
+    const {
+      configureAutomaticLeadFollowup,
+      activateAutomaticLeadFollowup,
+      processExistingSheetBacklogForCampaign,
+      syncGoogleSheetLeadsForCampaign,
+      verifyUnsavedLeadConsentAndReprocessForCampaign
+    } = await import('../src/services/bulk-campaign-auto-followup.js');
+    const {
+      createBulkCampaignPlan,
+      parseBulkCampaignContacts,
+      claimNextBatchContactForN8nJob,
+      executeBulkCampaignN8nPhoneJob,
+      recordBatchContactOutcomeForN8nJob
+    } = await import('../src/services/bulk-campaign.js');
+
+    const scope: any = {
+      workspaceId: 'ws_unsaved_test',
+      userId: 'usr_owner_unsaved',
+      role: 'owner',
+      sessionTokenHash: 'hash_unsaved'
+    };
+    const phoneDirectory: any[] = [
+      {
+        contactId: 'pdir_4634',
+        displayName: 'Contact 1',
+        aliases: [],
+        maskedPhone: '+91 ******4634',
+        phoneE164: '+917019624634',
+        archived: false,
+        consent: { callingAllowed: true, expired: false, dnd: false }
+      },
+      {
+        contactId: 'pdir_5125',
+        displayName: 'Contact 2',
+        aliases: [],
+        maskedPhone: '+91 ******5125',
+        phoneE164: '+919380815125',
+        archived: false,
+        consent: { callingAllowed: true, expired: false, dnd: false }
+      }
+    ];
+    const sheetCsv = [
+      'Name,Phone',
+      'Contact 1,+917019624634',
+      'Contact 2,+919380815125',
+      'Contact 3,+918317397910'
+    ].join('\n');
+
+    let campaign = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction: 'Call Quantum Weave AI Solutions leads',
+      importResult: parseBulkCampaignContacts({
+        sourceType: 'google_sheets',
+        fileName: 'Thaara test.csv',
+        rawText: 'Name,Phone\n',
+        phoneDirectory
+      }),
+      channels: ['phone'],
+      limits: { maxCalls: 250, maxConcurrency: 2, rateLimitPerMinute: 5, dailyPhoneCallLimit: 250, unlimitedDailyCalls: false },
+      phoneDirectory,
+      now: new Date('2026-11-24T05:00:00Z')
+    });
+    campaign = configureAutomaticLeadFollowup(campaign, {
+      spreadsheetId: 'sheet_7910',
+      spreadsheetName: 'Thaara test.csv',
+      tabName: 'Sheet1',
+      processExistingBacklog: false,
+      maxLeadsPerDay: 250
+    });
+    campaign = activateAutomaticLeadFollowup(campaign, {
+      actorUserId: scope.userId,
+      role: scope.role,
+      expectedMaterialHash: campaign.materialHash,
+      baselineCsvText: sheetCsv,
+      phoneDirectory,
+      callingHoursIst: { startHour: 9, endHour: 20 },
+      now: new Date('2026-11-24T05:00:00Z')
+    });
+
+    const triggers: any[] = [];
+    const mockTrigger = {
+      triggerWorkflow: async (req: any) => {
+        triggers.push(req);
+        return { accepted: true, n8nExecutionId: `exec_u_${triggers.length}` };
+      }
+    };
+
+    // Process backlog: 4634 & 5125 eligible, 7910 blocked (unverified)
+    const backlogRes = await processExistingSheetBacklogForCampaign(campaign, {
+      scope,
+      explicitOwnerApproval: true,
+      expectedMaterialHash: campaign.materialHash,
+      csvText: sheetCsv,
+      phoneDirectory,
+      liveMultiContactEnabled: true,
+      n8nTrigger: mockTrigger,
+      now: new Date('2026-11-24T05:05:00Z')
+    });
+    campaign = backlogRes.campaign;
+    expect(backlogRes.eligibleCount).toBe(2);
+    expect(backlogRes.consentBlockedCount).toBe(1);
+    const blocked7910 = campaign.contacts.find(c => c.contact.phoneE164 === '+918317397910')!;
+    expect(blocked7910.category).toBe('unauthorized');
+    expect(blocked7910.contact.isUnsavedCampaignContact).toBe(true);
+
+    // Complete 4634 & 5125
+    const job0 = campaign.n8nJobs![0]!;
+    for (const q of job0.recipientQueue!) {
+      campaign = recordBatchContactOutcomeForN8nJob(campaign, {
+        jobId: job0.jobId,
+        contactId: q.contactId,
+        status: 'completed',
+        thaaraCallId: `call_${q.contactId}`,
+        callOutcome: 'interested'
+      });
+    }
+
+    // Verify genuine consent evidence for 7910 and reprocess ONLY 7910
+    const verifyRes = await verifyUnsavedLeadConsentAndReprocessForCampaign(campaign, {
+      scope,
+      contactId: blocked7910.contact.contactId,
+      consentGranted: true,
+      consentSource: 'lead_form_disclosure',
+      evidenceReference: 'meta_lead_7910_consent_20261124',
+      recordedAt: '2026-11-24T05:00:00Z',
+      channel: 'phone',
+      explicitOwnerApproval: true,
+      phoneDirectory,
+      liveMultiContactEnabled: true,
+      n8nTrigger: mockTrigger,
+      now: new Date('2026-11-24T06:00:00Z')
+    });
+    expect(verifyRes.eligible).toBe(true);
+    expect(verifyRes.batchSubmitted).toBe(true);
+    expect(verifyRes.jobId).toBeTruthy();
+    const job7910 = verifyRes.campaign.n8nJobs!.find(j => j.jobId === verifyRes.jobId)!;
+    expect(job7910.recipientQueue!.map(q => q.contactId)).toEqual([blocked7910.contact.contactId]); // ONLY 7910, NOT 4634 or 5125!
+
+    // Claim & execute unsaved 7910 via mock phoneAdapter -> uses newRecipient (onecall_), never directory!
+    const claimed = claimNextBatchContactForN8nJob(verifyRes.campaign, {
+      jobId: job7910.jobId,
+      executionToken: triggers[triggers.length - 1].payload.executionToken,
+      channel: 'phone_call',
+      phoneDirectory
+    });
+    expect(claimed.proceed).toBe(true);
+    expect(claimed.contactId).toBe(blocked7910.contact.contactId);
+    expect(claimed.displayName).toBe('Contact 3');
+    expect(claimed.callPurpose).toContain('Quantum Weave AI Solutions');
+
+    const preparedPayloads: any[] = [];
+    const mockPhoneAdapter: any = {
+      prepareDraft: async (req: any) => {
+        preparedPayloads.push(req);
+        return { approvalId: 'appr_onecall_7910', contactId: 'onecall_7910' };
+      },
+      approveCallDraft: async () => ({ approved: true }),
+      placeSinglePilotCall: async () => ({ id: 'call_onecall_7910', providerCallId: 'sarvam_7910', state: 'queued' })
+    };
+    const exec7910 = await executeBulkCampaignN8nPhoneJob(claimed.campaign, {
+      jobId: job7910.jobId,
+      scope,
+      phoneAdapter: mockPhoneAdapter,
+      phoneDirectory,
+      contactId: blocked7910.contact.contactId
+    });
+    expect(exec7910.ok).toBe(true);
+    expect(preparedPayloads[0].newRecipient.displayName).toBe('Contact 3');
+    expect(preparedPayloads[0].newRecipient.consentConfirmed).toBe(true);
+    expect(preparedPayloads[0].contactQuery).toBe('+918317397910');
+
+    // Complete 7910 so sheetMonitor returns to active_monitoring
+    campaign = recordBatchContactOutcomeForN8nJob(exec7910.campaign, {
+      jobId: job7910.jobId,
+      contactId: blocked7910.contact.contactId,
+      status: 'completed',
+      thaaraCallId: 'call_onecall_7910',
+      callOutcome: 'interested'
+    });
+    expect(campaign.sheetMonitor?.status).toBe('active_monitoring');
+
+    // Future unsaved lead arriving in Google Sheet WITH phone_consent=true -> auto-dispatched without directory enrollment!
+    const sheetWithFutureUnsaved = [
+      sheetCsv,
+      'Name,Phone,phone_consent,consent_source,service_required',
+    ].slice(0, 1).concat([
+      'Contact 1,+917019624634,,,',
+      'Contact 2,+919380815125,,,',
+      'Contact 3,+918317397910,,,',
+      'Future Unsaved Lead,+919876543210,true,meta_lead_form_20261124,AI Voice Agents'
+    ]).join('\n');
+    const futureSync = await syncGoogleSheetLeadsForCampaign(campaign, {
+      scope,
+      csvText: 'Name,Phone,phone_consent,consent_source,service_required\nContact 1,+917019624634,,,\nContact 2,+919380815125,,,\nContact 3,+918317397910,,,\nFuture Unsaved Lead,+919876543210,true,meta_lead_form_20261124,AI Voice Agents',
+      phoneDirectory,
+      liveMultiContactEnabled: true,
+      n8nTrigger: mockTrigger,
+      now: new Date('2026-11-24T06:05:00Z')
+    });
+    expect(futureSync.newRowsDetected).toBe(1);
+    expect(futureSync.newEligibleCount).toBe(1);
+    expect(futureSync.batchSubmitted).toBe(true);
+    const futureContact = futureSync.campaign.contacts.find(c => c.contact.phoneE164 === '+919876543210')!;
+    expect(futureContact.contact.isUnsavedCampaignContact).toBe(true);
+    expect(futureContact.category).toBe('eligible');
+  });
+
+  it('59. AUTOMATIC UNSAVED NORMALIZATION & SARVAM VIA N8N: Raw numbers, pasted lists, Meta Lead Ads Sheet, unknown DND/opt-out without fabricated consent, and unsaved consented lead reaching Sarvam payload through n8n', async () => {
+    const {
+      parseBulkCampaignContacts,
+      evaluateContactEligibility,
+      createBulkCampaignPlan,
+      claimNextBatchContactForN8nJob,
+      executeBulkCampaignN8nPhoneJob,
+      recordBatchContactOutcomeForN8nJob
+    } = await import('../src/services/bulk-campaign.js');
+    const {
+      configureAutomaticLeadFollowup,
+      activateAutomaticLeadFollowup,
+      syncGoogleSheetLeadsForCampaign
+    } = await import('../src/services/bulk-campaign-auto-followup.js');
+
+    // 1) Single raw unsaved number -> auto-normalized to E.164, Contact 1, consent=false, dndStatus=unknown
+    const singleRaw = parseBulkCampaignContacts({ sourceType: 'paste', rawText: '9876543210' });
+    expect(singleRaw.validContacts.length).toBe(1);
+    expect(singleRaw.validContacts[0]!.name).toBe('Contact 1');
+    expect(singleRaw.validContacts[0]!.phoneE164).toBe('+919876543210');
+    expect(singleRaw.validContacts[0]!.preferredLanguage).toBe('en-IN');
+    expect(singleRaw.validContacts[0]!.consent.phone).toBe(false);
+    expect(singleRaw.validContacts[0]!.consent.source).toBe('unverified');
+    expect(singleRaw.validContacts[0]!.dndStatus).toBe('unknown');
+    expect(singleRaw.validContacts[0]!.optedOutStatus).toBe('unknown');
+
+    // 2) Multiple pasted numbers with duplicates & DND
+    const multiPaste = parseBulkCampaignContacts({
+      sourceType: 'paste',
+      rawText: 'Asha,+91 98765 00001\n9876500002\n9876500001\nRavi,9876500003,dnd'
+    });
+    expect(multiPaste.validContacts.length).toBe(3);
+    expect(multiPaste.duplicates.length).toBe(1);
+    expect(multiPaste.validContacts[1]!.name).toBe('Contact 2');
+    expect(multiPaste.validContacts[2]!.dnd).toBe(true);
+    expect(multiPaste.validContacts[2]!.dndStatus).toBe('dnd');
+
+    // 3) Meta Lead Ads Google Sheet row with documented calling consent + timestamp + lead_id + service_required
+    const metaSheetCsv = [
+      'full_name,phone_number,lead_id,ad_name,service_required,customer_requirement,phone_consent,consent_source,consent_recorded_at,dnd,opted_out',
+      'Kiran Kumar,+91 98765 11111,lead_meta_101,AI Growth Ad,AI Voice Agents,Need 24/7 inbound AI calling,true,meta_lead_form_disclosure,2026-11-24T05:00:00Z,false,false',
+      'Kiran Dup,+91 98765 22222,lead_meta_101,AI Growth Ad,AI Voice Agents,Duplicate lead id,true,meta_lead_form_disclosure,2026-11-24T05:00:00Z,false,false',
+      'No Consent Lead,+91 98765 33333,lead_meta_102,AI Growth Ad,AI Voice Agents,Submitted without phone consent,,,,'
+    ].join('\n');
+    const parsedMeta = parseBulkCampaignContacts({ sourceType: 'google_sheets', fileName: 'Meta.csv', rawText: metaSheetCsv });
+    expect(parsedMeta.validContacts.length).toBe(2);
+    expect(parsedMeta.duplicates.length).toBe(1); // Duplicate lead_meta_101 caught!
+    const kiran = parsedMeta.validContacts[0]!;
+    expect(kiran.isUnsavedCampaignContact).toBe(true);
+    expect(kiran.sourceLeadId).toBe('lead_meta_101');
+    expect(kiran.consent.phone).toBe(true);
+    expect(kiran.consent.source).toBe('explicit_column');
+    expect(kiran.consentRecordedAt).toBe('2026-11-24T05:00:00Z');
+    expect(kiran.dndStatus).toBe('clear');
+    expect(kiran.optedOutStatus).toBe('clear');
+
+    const noConsent = parsedMeta.validContacts[1]!;
+    expect(noConsent.consent.phone).toBe(false);
+    expect(noConsent.consent.source).toBe('unverified');
+
+    const evalMeta = evaluateContactEligibility(
+      parsedMeta.validContacts,
+      new Set(parsedMeta.validContacts.map(c => c.contactId)),
+      ['phone'],
+      { maxCalls: 50, maxConcurrency: 2, rateLimitPerMinute: 5, dailyPhoneCallLimit: 50, unlimitedDailyCalls: false },
+      '',
+      false
+    );
+    expect(evalMeta[0]!.category).toBe('eligible');
+    expect(evalMeta[1]!.category).toBe('unauthorized');
+
+    // 4) Non-sending end-to-end: Unsaved consented Meta Sheet lead -> n8n claim -> executeBulkCampaignN8nPhoneJob -> Sarvam outbound payload
+    const scope: any = { workspaceId: 'ws_meta_e2e', userId: 'usr_owner_e2e', role: 'owner', sessionTokenHash: 'hash_e2e' };
+    let campaign = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction: 'Follow up with Quantum Weave Meta leads',
+      importResult: parseBulkCampaignContacts({ sourceType: 'google_sheets', fileName: 'Meta.csv', rawText: 'Name,Phone\n' }),
+      channels: ['phone'],
+      limits: { maxCalls: 50, maxConcurrency: 2, rateLimitPerMinute: 5, dailyPhoneCallLimit: 50, unlimitedDailyCalls: false },
+      now: new Date('2026-11-24T05:00:00Z')
+    });
+    campaign = configureAutomaticLeadFollowup(campaign, {
+      spreadsheetId: 'sheet_meta_e2e',
+      spreadsheetName: 'Meta.csv',
+      tabName: 'Sheet1',
+      processExistingBacklog: false
+    });
+    campaign = activateAutomaticLeadFollowup(campaign, {
+      actorUserId: scope.userId,
+      role: scope.role,
+      expectedMaterialHash: campaign.materialHash,
+      callingHoursIst: { startHour: 9, endHour: 20 },
+      now: new Date('2026-11-24T05:00:00Z')
+    });
+
+    const n8nTriggers: any[] = [];
+    const syncRes = await syncGoogleSheetLeadsForCampaign(campaign, {
+      scope,
+      csvText: metaSheetCsv,
+      liveMultiContactEnabled: true,
+      n8nTrigger: {
+        triggerWorkflow: async req => {
+          n8nTriggers.push(req);
+          return { accepted: true, n8nExecutionId: 'exec_meta_1' };
+        }
+      },
+      now: new Date('2026-11-24T05:10:00Z')
+    });
+    expect(syncRes.newRowsDetected).toBe(2);
+    expect(syncRes.newEligibleCount).toBe(1);
+    expect(syncRes.newBlockedCount).toBe(1);
+    expect(syncRes.batchSubmitted).toBe(true);
+
+    const job = syncRes.campaign.n8nJobs![0]!;
+    const claimed = claimNextBatchContactForN8nJob(syncRes.campaign, {
+      jobId: job.jobId,
+      executionToken: n8nTriggers[0].payload.executionToken,
+      channel: 'phone_call'
+    });
+    expect(claimed.proceed).toBe(true);
+    expect(claimed.callPurpose).toContain('AI Voice Agents');
+
+    const sarvamPayloads: any[] = [];
+    const execRes = await executeBulkCampaignN8nPhoneJob(claimed.campaign, {
+      jobId: job.jobId,
+      scope,
+      phoneAdapter: {
+        prepareDraft: async req => {
+          sarvamPayloads.push(req);
+          return { approvalId: 'appr_onecall_kiran', contactId: 'onecall_kiran' };
+        },
+        approveCallDraft: async () => ({ approved: true }),
+        placeSinglePilotCall: async () => ({ id: 'call_kiran_1', providerCallId: 'sarvam_kiran_1', state: 'queued' })
+      },
+      contactId: claimed.contactId
+    });
+    expect(execRes.ok).toBe(true);
+    expect(sarvamPayloads[0].contactQuery).toBe('+919876511111');
+    expect(sarvamPayloads[0].newRecipient.displayName).toBe('Kiran Kumar');
+    expect(sarvamPayloads[0].newRecipient.consentConfirmed).toBe(true);
+    expect(sarvamPayloads[0].purpose).toContain('Need 24/7 inbound AI calling');
+
+    const reconciled = recordBatchContactOutcomeForN8nJob(execRes.campaign, {
+      jobId: job.jobId,
+      contactId: claimed.contactId!,
+      status: 'completed',
+      thaaraCallId: 'call_kiran_1',
+      providerId: 'sarvam_kiran_1',
+      callOutcome: 'interested'
+    });
+    expect(reconciled.sheetMonitor?.status).toBe('active_monitoring');
+    expect(reconciled.contacts.find(c => c.contact.contactId === claimed.contactId)?.phoneStatus).toBe('answered');
+  });
+
+  it('60. ONE-TIME BULK CAMPAIGN RAW UNSAVED NUMBERS: Paste 2 raw numbers -> PATCH ownerVerifiedConsent -> approve-and-start -> n8n claim -> onecall_ Sarvam payload -> outcome reconciliation', async () => {
+    const {
+      parseBulkCampaignContacts,
+      createBulkCampaignPlan,
+      updateBulkCampaignPlan,
+      approveBulkCampaign,
+      submitBulkCampaignMultiContactN8nJob,
+      claimNextBatchContactForN8nJob,
+      executeBulkCampaignN8nPhoneJob,
+      recordBatchContactOutcomeForN8nJob
+    } = await import('../src/services/bulk-campaign.js');
+
+    const scope: any = { workspaceId: 'ws_onetime_raw', userId: 'usr_owner_raw', role: 'owner', sessionTokenHash: 'hash_raw' };
+    const pasted = parseBulkCampaignContacts({ sourceType: 'paste', rawText: '+919972831832\n+919876547894' });
+    expect(pasted.validContacts.length).toBe(2);
+    expect(pasted.validContacts[0]!.name).toBe('Contact 1');
+    expect(pasted.validContacts[1]!.name).toBe('Contact 2');
+
+    let camp = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction: 'Call Quantum Weave enquiries',
+      importResult: pasted,
+      channels: ['phone'],
+      limits: { maxCalls: 10, maxConcurrency: 2, rateLimitPerMinute: 5, dailyPhoneCallLimit: 10, unlimitedDailyCalls: false },
+      now: new Date('2026-11-24T08:00:00Z')
+    });
+    // Initially 0 eligible (awaiting consent)
+    expect(camp.contacts.filter(c => c.category === 'eligible').length).toBe(0);
+
+    // Owner confirms genuine consent for both unsaved numbers via PATCH ownerVerifiedConsent
+    camp = updateBulkCampaignPlan(
+      camp,
+      {
+        ownerVerifiedConsent: {
+          [camp.contacts[0]!.contact.contactId]: { phone: true, source: 'written_consent', recordedAt: '2026-11-24' },
+          [camp.contacts[1]!.contact.contactId]: { phone: true, source: 'written_consent', recordedAt: '2026-11-24' }
+        }
+      },
+      new Date('2026-11-24T08:01:00Z')
+    );
+    expect(camp.contacts.filter(c => c.category === 'eligible').length).toBe(2);
+
+    camp = approveBulkCampaign(camp, { userId: scope.userId, role: scope.role, expectedMaterialHash: camp.materialHash });
+    const n8nPayloads: any[] = [];
+    const sub = await submitBulkCampaignMultiContactN8nJob(camp, {
+      scope,
+      channel: 'phone_call',
+      liveMultiContactEnabled: true,
+      n8nTrigger: {
+        triggerWorkflow: async req => {
+          n8nPayloads.push(req);
+          return { accepted: true, n8nExecutionId: 'exec_raw_1' };
+        }
+      }
+    });
+    expect(sub.webhookDispatched).toBe(true);
+
+    const claimed = claimNextBatchContactForN8nJob(sub.campaign, {
+      jobId: sub.job.jobId,
+      executionToken: sub.executionToken,
+      channel: 'phone_call'
+    });
+    expect(claimed.proceed).toBe(true);
+
+    const sarvamCalls: any[] = [];
+    const exec = await executeBulkCampaignN8nPhoneJob(claimed.campaign, {
+      jobId: sub.job.jobId,
+      scope,
+      phoneAdapter: {
+        prepareDraft: async req => {
+          sarvamCalls.push(req);
+          return { approvalId: 'appr_onecall_raw_1', contactId: 'onecall_raw_1' };
+        },
+        approveCallDraft: async () => ({ approved: true }),
+        placeSinglePilotCall: async () => ({ id: 'call_raw_1', providerCallId: 'sarvam_raw_1', state: 'queued' })
+      },
+      contactId: claimed.contactId
+    });
+    expect(exec.ok).toBe(true);
+    expect(sarvamCalls[0].newRecipient.consentConfirmed).toBe(true);
+    expect(sarvamCalls[0].contactQuery).toBe('+919972831832');
+
+    const done = recordBatchContactOutcomeForN8nJob(exec.campaign, {
+      jobId: sub.job.jobId,
+      contactId: claimed.contactId!,
+      status: 'completed',
+      thaaraCallId: 'call_raw_1',
+      providerId: 'sarvam_raw_1',
+      callOutcome: 'interested'
+    });
+    expect(done.contacts[0]!.phoneStatus).toBe('answered');
   });
 });

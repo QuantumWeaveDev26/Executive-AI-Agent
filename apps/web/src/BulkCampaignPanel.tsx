@@ -2038,6 +2038,10 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
   const [consentEvidenceInput, setConsentEvidenceInput] = useState('');
   const [consentExplicitApproved, setConsentExplicitApproved] = useState(false);
   const [consentVerifyBusy, setConsentVerifyBusy] = useState(false);
+  const [batchConsentSource, setBatchConsentSource] = useState('');
+  const [batchConsentDate, setBatchConsentDate] = useState('');
+  const [batchConsentPhone, setBatchConsentPhone] = useState(true);
+  const [batchConsentWhatsapp, setBatchConsentWhatsapp] = useState(false);
 
   const reviewKnowledgeInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -2957,9 +2961,12 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
                   fontWeight: 600
                 }}
               >
-                ✓ Imported {p.metrics.totalContacts} contact{p.metrics.totalContacts === 1 ? '' : 's'}
+                ✓ Imported Successfully: {p.metrics.totalContacts} contact{p.metrics.totalContacts === 1 ? '' : 's'}
                 {p.metrics.invalidEntries > 0 ? ` · ${p.metrics.invalidEntries} invalid skipped` : ''}
                 {p.metrics.duplicateEntries > 0 ? ` · ${p.metrics.duplicateEntries} duplicate skipped` : ''}
+                {' · '}Ready to Call: {eligibleContacts.length}
+                {' · '}Awaiting Consent: {unauthorizedContacts.filter(r => !r.contact.dnd && !r.contact.optedOut).length}
+                {' · '}DND / Opt-out Blocked: {p.contacts.filter(r => r.contact.dnd || r.contact.optedOut).length}
               </div>
             )}
             {isSyntheticFixtureRun ? (
@@ -3016,6 +3023,92 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
                     <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>
                       Verify Existing Consent Per Unsaved Recipient (source, date &amp; channel required):
                     </div>
+                    {(() => {
+                      const awaitingList = unauthorizedContacts.filter(r => !r.contact.optedOut && !r.contact.dnd);
+                      if (awaitingList.length < 2) return null;
+                      const todayIso = new Date().toISOString().slice(0, 10);
+                      const usePhone = p.channels.includes('phone') && batchConsentPhone;
+                      const useWa = p.channels.includes('whatsapp') && batchConsentWhatsapp;
+                      const canBatchConfirm =
+                        Boolean(batchConsentSource) &&
+                        Boolean(batchConsentDate) &&
+                        batchConsentDate <= todayIso &&
+                        (usePhone || useWa) &&
+                        !isViewingEarlierReadOnlyStage;
+                      return (
+                        <div
+                          data-testid="review-batch-consent-bar"
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            padding: '0.45rem 0.55rem',
+                            background: '#eff6ff',
+                            borderRadius: '6px',
+                            border: '1px solid #bfdbfe',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          <strong style={{ color: '#1e3a8a' }}>Apply genuine shared consent ({awaitingList.length}):</strong>
+                          <select
+                            aria-label="Shared consent source"
+                            value={batchConsentSource}
+                            onChange={e => setBatchConsentSource(e.target.value)}
+                            style={{ fontSize: '0.74rem', padding: '0.2rem 0.35rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                          >
+                            <option value="">Select consent source...</option>
+                            <option value="written_consent">Written / form consent</option>
+                            <option value="inbound_enquiry">Inbound enquiry opt-in</option>
+                            <option value="verbal_recorded">Recorded verbal consent</option>
+                          </select>
+                          <input
+                            type="date"
+                            aria-label="Shared consent date"
+                            max={todayIso}
+                            value={batchConsentDate}
+                            onChange={e => setBatchConsentDate(e.target.value)}
+                            style={{ fontSize: '0.74rem', padding: '0.18rem 0.35rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                          />
+                          {p.channels.includes('phone') && (
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <input type="checkbox" checked={batchConsentPhone} onChange={e => setBatchConsentPhone(e.target.checked)} />
+                              Call
+                            </label>
+                          )}
+                          {p.channels.includes('whatsapp') && (
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <input type="checkbox" checked={batchConsentWhatsapp} onChange={e => setBatchConsentWhatsapp(e.target.checked)} />
+                              WhatsApp
+                            </label>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            data-testid="review-confirm-all-consent-button"
+                            disabled={!canBatchConfirm}
+                            onClick={() => {
+                              const patchMap: Record<
+                                string,
+                                { phone?: boolean; whatsapp?: boolean; source: 'written_consent' | 'inbound_enquiry' | 'verbal_recorded'; recordedAt: string }
+                              > = {};
+                              for (const rec of awaitingList) {
+                                patchMap[rec.contact.contactId] = {
+                                  ...(p.channels.includes('phone') && rec.contact.phoneE164 ? { phone: batchConsentPhone } : {}),
+                                  ...(p.channels.includes('whatsapp') && rec.contact.whatsappE164 ? { whatsapp: batchConsentWhatsapp } : {}),
+                                  source: batchConsentSource as 'written_consent' | 'inbound_enquiry' | 'verbal_recorded',
+                                  recordedAt: batchConsentDate
+                                };
+                              }
+                              p.onUpdatePlan?.({ ownerVerifiedConsent: patchMap });
+                            }}
+                            style={{ fontSize: '0.74rem', padding: '0.25rem 0.6rem' }}
+                          >
+                            Confirm Genuine Consent for All ({awaitingList.length})
+                          </button>
+                        </div>
+                      );
+                    })()}
                     {unauthorizedContacts
                       .filter(r => !r.contact.optedOut && !r.contact.dnd)
                       .map(r => {
@@ -3189,6 +3282,92 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
                     <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>
                       Verify Existing Consent Per Unsaved Recipient (source, date &amp; channel required):
                     </div>
+                    {(() => {
+                      const awaitingList = unauthorizedContacts.filter(r => !r.contact.optedOut && !r.contact.dnd);
+                      if (awaitingList.length < 2) return null;
+                      const todayIso = new Date().toISOString().slice(0, 10);
+                      const usePhone = p.channels.includes('phone') && batchConsentPhone;
+                      const useWa = p.channels.includes('whatsapp') && batchConsentWhatsapp;
+                      const canBatchConfirm =
+                        Boolean(batchConsentSource) &&
+                        Boolean(batchConsentDate) &&
+                        batchConsentDate <= todayIso &&
+                        (usePhone || useWa) &&
+                        !isViewingEarlierReadOnlyStage;
+                      return (
+                        <div
+                          data-testid="review-batch-consent-bar"
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            padding: '0.45rem 0.55rem',
+                            background: '#eff6ff',
+                            borderRadius: '6px',
+                            border: '1px solid #bfdbfe',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          <strong style={{ color: '#1e3a8a' }}>Apply genuine shared consent ({awaitingList.length}):</strong>
+                          <select
+                            aria-label="Shared consent source"
+                            value={batchConsentSource}
+                            onChange={e => setBatchConsentSource(e.target.value)}
+                            style={{ fontSize: '0.74rem', padding: '0.2rem 0.35rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                          >
+                            <option value="">Select consent source...</option>
+                            <option value="written_consent">Written / form consent</option>
+                            <option value="inbound_enquiry">Inbound enquiry opt-in</option>
+                            <option value="verbal_recorded">Recorded verbal consent</option>
+                          </select>
+                          <input
+                            type="date"
+                            aria-label="Shared consent date"
+                            max={todayIso}
+                            value={batchConsentDate}
+                            onChange={e => setBatchConsentDate(e.target.value)}
+                            style={{ fontSize: '0.74rem', padding: '0.18rem 0.35rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                          />
+                          {p.channels.includes('phone') && (
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <input type="checkbox" checked={batchConsentPhone} onChange={e => setBatchConsentPhone(e.target.checked)} />
+                              Call
+                            </label>
+                          )}
+                          {p.channels.includes('whatsapp') && (
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <input type="checkbox" checked={batchConsentWhatsapp} onChange={e => setBatchConsentWhatsapp(e.target.checked)} />
+                              WhatsApp
+                            </label>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            data-testid="review-confirm-all-consent-button"
+                            disabled={!canBatchConfirm}
+                            onClick={() => {
+                              const patchMap: Record<
+                                string,
+                                { phone?: boolean; whatsapp?: boolean; source: 'written_consent' | 'inbound_enquiry' | 'verbal_recorded'; recordedAt: string }
+                              > = {};
+                              for (const rec of awaitingList) {
+                                patchMap[rec.contact.contactId] = {
+                                  ...(p.channels.includes('phone') && rec.contact.phoneE164 ? { phone: batchConsentPhone } : {}),
+                                  ...(p.channels.includes('whatsapp') && rec.contact.whatsappE164 ? { whatsapp: batchConsentWhatsapp } : {}),
+                                  source: batchConsentSource as 'written_consent' | 'inbound_enquiry' | 'verbal_recorded',
+                                  recordedAt: batchConsentDate
+                                };
+                              }
+                              p.onUpdatePlan?.({ ownerVerifiedConsent: patchMap });
+                            }}
+                            style={{ fontSize: '0.74rem', padding: '0.25rem 0.6rem' }}
+                          >
+                            Confirm Genuine Consent for All ({awaitingList.length})
+                          </button>
+                        </div>
+                      );
+                    })()}
                     {unauthorizedContacts
                       .filter(r => !r.contact.optedOut && !r.contact.dnd)
                       .map(r => {
@@ -3771,9 +3950,12 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: '0.65rem' }}>
               {[
+                { label: 'Imported Contacts', value: p.contacts.length },
                 { label: 'Existing Leads Discovered', value: existingDiscovered },
                 { label: 'New Leads Received', value: newLeadsReceived },
-                { label: 'Total Eligible Leads', value: mon?.leadsEligibleCount ?? 0 },
+                { label: 'Eligible for Calling', value: mon?.leadsEligibleCount ?? 0 },
+                { label: 'Awaiting Consent', value: p.contacts.filter(c => c.category === 'unauthorized' && !c.contact.dnd && !c.contact.optedOut).length },
+                { label: 'DND / Opt-out Blocked', value: p.contacts.filter(c => c.contact.dnd || c.contact.optedOut).length },
                 { label: 'Consent-Blocked', value: mon?.leadsConsentBlockedCount ?? 0 },
                 { label: 'Calls Queued', value: mon?.leadsQueuedCount ?? 0 },
                 { label: 'Calls Attempted', value: attemptedCalls },

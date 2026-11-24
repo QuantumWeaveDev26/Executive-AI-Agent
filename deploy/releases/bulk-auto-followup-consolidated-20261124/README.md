@@ -6,7 +6,7 @@ Three source files were reconciled with the preserved image. A full Linux worksp
 
 ## Build and assemble on another computer
 
-Use the pinned dependencies and fresh local setup in DEVELOPER.md. From the repository root:
+First check out codex/release-consolidated-20261124 (commit 5b6aea8). The current main source is a later release. Use the pinned dependencies and fresh local setup in DEVELOPER.md. From the repository root:
 
 ```sh
 pnpm install --frozen-lockfile

@@ -1,0 +1,2 @@
+export function hasLeadAuthorization(scope) { return scope.role === 'owner' && ('kind' in scope ? scope.kind === 'whatsapp_leads_service' && /^[a-f0-9-]{36}$/.test(scope.delegationId) : Boolean(scope.sessionTokenHash)); }
+//# sourceMappingURL=whatsapp-lead-scope.js.map

@@ -74,6 +74,7 @@ export const BulkCampaignImportedContactSchema = Type.Object(
     customerRequirement: Type.Optional(Type.String({ maxLength: 500 })),
     enquiryDate: Type.Optional(Type.String({ maxLength: 80 })),
     leadSource: Type.Optional(Type.String({ maxLength: 120 })),
+    sourceLeadId: Type.Optional(Type.String({ maxLength: 128 })),
     sourceRowKey: Type.Optional(Type.String({ maxLength: 128 })),
     sheetRowNumber: Type.Optional(Type.Integer({ minimum: 1 })),
     customFields: Type.Optional(Type.Record(Type.String({ maxLength: 64 }), Type.String({ maxLength: 300 }))),
@@ -83,8 +84,11 @@ export const BulkCampaignImportedContactSchema = Type.Object(
     email: Type.Optional(Type.String({ minLength: 3, maxLength: 254 })),
     preferredLanguage: BulkCampaignLanguageSchema,
     dnd: Type.Optional(Type.Boolean()),
+    dndStatus: Type.Optional(Type.Union([Type.Literal('unknown'), Type.Literal('clear'), Type.Literal('dnd')])),
     consentSourceDetail: Type.Optional(Type.String({ maxLength: 120 })),
+    consentRecordedAt: Type.Optional(Type.String({ maxLength: 80 })),
     optedOut: Type.Boolean(),
+    optedOutStatus: Type.Optional(Type.Union([Type.Literal('unknown'), Type.Literal('clear'), Type.Literal('opted_out')])),
     consent: BulkCampaignContactConsentSchema
   },
   { additionalProperties: false }
