@@ -1,0 +1,32 @@
+# Fresh developer services only. No fixed container names or production network.
+name: thaara-local-development
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: thaara_v2_local
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${THAARA_LOCAL_POSTGRES_PASSWORD:?Run node scripts/setup-local.mjs first}
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - development_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d thaara_v2_local"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:16379:6379"
+    volumes:
+      - development_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  development_postgres:
+  development_redis:

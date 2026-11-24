@@ -2,6 +2,8 @@
 
 > **Core Product Rule**: *Safety before automation, reliability before feature count, truthfulness before personality, and user control before capability.*
 
+**New developer / new computer:** follow [DEVELOPER.md](DEVELOPER.md) for the current local setup, database initialization, architecture, integration boundaries and secure data-transfer requirements. This source snapshot does not include production data or credentials; historical verification below is not a fresh verification of this snapshot.
+
 Thaara V2 is a secure, production-oriented, multi-tenant **Executive AI Partner** for Quantum Weave. It transforms executive intent into governed multi-step plans, drafts, two-person approvals, verified execution receipts, and context-aware conversations across chat, voice, memory, and approved business connectors.
 
 V2 is a clean build engineered with strict zero-trust boundaries: PostgreSQL Row-Level Security (RLS) on every business table, multi-role database privilege isolation, deterministic policy validation before any external execution, and truthful failure reporting without simulated success.
@@ -137,40 +139,39 @@ pnpm audit --prod
 
 1. **Clone the repository and install dependencies**:
    ```bash
-   git clone https://github.com/QuantumWeaveDev26/thaara-ai-agent-v2.git
-   cd thaara-ai-agent-v2
+   git clone https://github.com/QuantumWeaveDev26/Executive-AI-Agent.git
+   cd Executive-AI-Agent
    pnpm install
    ```
 
-2. **Configure environment variables**:
+2. **Configure fresh local environment variables**:
    ```bash
-   cp .env.example .env
+   node scripts/setup-local.mjs
    ```
 
 3. **Start backing services (PostgreSQL & Redis)**:
    ```bash
-   docker compose up -d
+   docker compose --env-file .env.local-dev -f compose.development.yml up -d --wait
+   pnpm build
    ```
 
 4. **Run migrations and bootstrap runtime database roles**:
    ```bash
    # Execute schema migrations (as migration admin)
-   pnpm db:migrate
+   node --env-file=.env.local-dev packages/db/dist/cli/migrate.js
 
-   # Provision thaara_app, thaara_worker, and test identities
-   pnpm db:bootstrap-identities
+   # Provision local application and separate runtime identities
+   node --env-file=.env.local-dev packages/db/dist/cli/provision-role.js
+   node --env-file=.env.local-dev --experimental-strip-types packages/db/scripts/bootstrap-runtime-identities.ts
    ```
 
 5. **Start development processes**:
    ```bash
-   # Run all apps concurrently (API, Worker, Web)
-   pnpm dev
-
-   # Or run individual services:
-   pnpm --filter @thaara/api dev
-   pnpm --filter @thaara/worker dev
+   # Run each in a separate terminal at the repository root:
+   node --env-file=.env.local-dev apps/api/dist/server.js
+   node --env-file=.env.local-dev apps/worker/dist/worker.js
    pnpm --filter @thaara/web dev
    ```
 
 6. **Interactive Documentation**:
-   With the API running, visit `http://localhost:3000/docs` for the OpenAPI specification.
+   With the API running, visit `http://localhost:3002/docs` for the OpenAPI specification.
