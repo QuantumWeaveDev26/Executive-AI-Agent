@@ -94,7 +94,8 @@ import {
   recordSheetSyncFailure,
   resumeAutomaticLeadFollowup,
   stopAutomaticLeadFollowup,
-  syncGoogleSheetLeadsForCampaign
+  syncGoogleSheetLeadsForCampaign,
+  verifyUnsavedLeadConsentAndReprocessForCampaign
 } from '../services/bulk-campaign-auto-followup.js';
 import type { PhoneCallingService, PhoneContactDirectory } from '../services/phone-calling.js';
 import { GoogleSheetsAccessError, GoogleSheetsConnectionsService } from '../services/google-sheets-connections.js';
@@ -2559,7 +2560,7 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       csvText,
       phoneDirectory: rt.phoneDirectory,
       liveMultiContactEnabled: rt.n8nLiveEnabled,
-      n8nTrigger: options.n8nTrigger
+      n8nTrigger
     });
     const saved = await workspaceStore.saveScoped(scope, syncRes.campaign, options.db);
     return {
@@ -2647,7 +2648,7 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       csvText,
       phoneDirectory: rt.phoneDirectory,
       liveMultiContactEnabled: rt.n8nLiveEnabled || Boolean(options.allowBatchOfflineTest),
-      n8nTrigger: options.n8nTrigger
+      n8nTrigger
     });
     const saved = await workspaceStore.saveScoped(scope, backlogRes.campaign, options.db);
     return {
@@ -2662,6 +2663,50 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
         batchSubmitted: backlogRes.batchSubmitted,
         ...(backlogRes.jobId ? { jobId: backlogRes.jobId } : {}),
         ...(backlogRes.skippedReason ? { skippedReason: backlogRes.skippedReason } : {})
+      },
+      ...formatCampaignEnvelope(saved, {
+        liveCallingEnabled: rt.liveCallingEnabled,
+        liveSendingEnabled: rt.liveSendingEnabled,
+        phoneDirectory: rt.phoneDirectory
+      })
+    };
+  });
+
+  app.post(`${base}/:campaignId/auto-followup/contacts/:contactId/verify-consent`, authGuard, async request => {
+    const scope = requireScope(request);
+    const { campaignId, contactId } = request.params as { campaignId: string; contactId: string };
+    const existing = await workspaceStore.getScoped(scope, campaignId, options.db);
+    if (!existing) throw new ValidationError('Campaign not found in workspace.');
+    const body = (request.body ?? {}) as {
+      consentGranted?: boolean;
+      consentSource?: 'written_consent' | 'inbound_enquiry' | 'verbal_recorded' | 'lead_form_disclosure';
+      evidenceReference?: string;
+      recordedAt?: string;
+      channel?: 'phone' | 'whatsapp' | 'email';
+      explicitOwnerApproval?: boolean;
+    };
+    const rt = await resolveWorkspaceRuntime(scope, false);
+    const res = await verifyUnsavedLeadConsentAndReprocessForCampaign(existing, {
+      scope,
+      contactId,
+      consentGranted: Boolean(body.consentGranted),
+      consentSource: body.consentSource ?? 'lead_form_disclosure',
+      evidenceReference: String(body.evidenceReference ?? ''),
+      ...(body.recordedAt ? { recordedAt: body.recordedAt } : {}),
+      ...(body.channel ? { channel: body.channel } : {}),
+      explicitOwnerApproval: Boolean(body.explicitOwnerApproval),
+      phoneDirectory: rt.phoneDirectory,
+      liveMultiContactEnabled: rt.n8nLiveEnabled || Boolean(options.allowBatchOfflineTest),
+      n8nTrigger
+    });
+    const saved = await workspaceStore.saveScoped(scope, res.campaign, options.db);
+    return {
+      verificationResult: {
+        contactId: res.contactId,
+        eligible: res.eligible,
+        batchSubmitted: res.batchSubmitted,
+        ...(res.jobId ? { jobId: res.jobId } : {}),
+        ...(res.skippedReason ? { skippedReason: res.skippedReason } : {})
       },
       ...formatCampaignEnvelope(saved, {
         liveCallingEnabled: rt.liveCallingEnabled,
@@ -2727,7 +2772,7 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
         csvText,
         phoneDirectory: rt.phoneDirectory,
         liveMultiContactEnabled: rt.n8nLiveEnabled || Boolean(options.allowBatchOfflineTest),
-        n8nTrigger: options.n8nTrigger
+        n8nTrigger
       });
       await workspaceStore.saveScoped(scope, syncRes.campaign, options.db);
       results.push({

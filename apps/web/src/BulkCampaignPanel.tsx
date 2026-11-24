@@ -255,6 +255,13 @@ export interface BulkCampaignViewProps {
   } | null;
   onPreviewExistingBacklog?(): Promise<void> | void;
   onProcessExistingBacklog?(expectedMaterialHash: string): Promise<void> | void;
+  onVerifyUnsavedLeadConsent?(input: {
+    contactId: string;
+    consentSource: 'written_consent' | 'inbound_enquiry' | 'verbal_recorded' | 'lead_form_disclosure';
+    evidenceReference: string;
+    recordedAt?: string;
+    explicitOwnerApproval: boolean;
+  }): Promise<void> | void;
   onSchedule?(scheduleAt: string): void;
   onExecute?(mode?: 'simulation' | 'live', batchSize?: number): void;
   onRetryFailed?(): void;
@@ -2026,6 +2033,11 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
   const [showBacklogCard, setShowBacklogCard] = useState(false);
   const [backlogExplicitApproved, setBacklogExplicitApproved] = useState(false);
   const [backlogBusy, setBacklogBusy] = useState(false);
+  const [consentVerifyContactId, setConsentVerifyContactId] = useState<string | null>(null);
+  const [consentSourceInput, setConsentSourceInput] = useState<'lead_form_disclosure' | 'written_consent' | 'inbound_enquiry' | 'verbal_recorded'>('lead_form_disclosure');
+  const [consentEvidenceInput, setConsentEvidenceInput] = useState('');
+  const [consentExplicitApproved, setConsentExplicitApproved] = useState(false);
+  const [consentVerifyBusy, setConsentVerifyBusy] = useState(false);
 
   const reviewKnowledgeInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -3530,7 +3542,13 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
             : isMonError
               ? 'Status: Sync Error (Retrying)'
               : 'Status: Active — Monitoring Leads';
-        const attemptedCalls = p.contacts.filter(c => c.phoneStatus !== 'pending').length;
+        const attemptedCalls = p.contacts.filter(
+          c =>
+            c.phoneStatus === 'attempted' ||
+            c.phoneStatus === 'answered' ||
+            c.phoneStatus === 'not_answered' ||
+            c.phoneStatus === 'failed'
+        ).length;
         const completedCalls = p.contacts.filter(
           c => c.phoneStatus === 'answered' || c.phoneStatus === 'not_answered' || c.phoneStatus === 'failed'
         ).length;
@@ -3768,6 +3786,127 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
                 </div>
               ))}
             </div>
+
+            {(() => {
+              const awaitingConsentLeads = p.contacts.filter(
+                c => c.category === 'unauthorized' && !c.contact.dnd && !c.contact.optedOut
+              );
+              if (awaitingConsentLeads.length === 0 || isMonStopped) return null;
+              return (
+                <div
+                  data-testid="auto-followup-awaiting-consent-section"
+                  style={{
+                    marginTop: '0.9rem',
+                    padding: '0.85rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #fed7aa',
+                    background: '#fff7ed'
+                  }}
+                >
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#9a3412', marginBottom: '0.45rem' }}>
+                    Awaiting Calling Consent Verification ({awaitingConsentLeads.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                    {awaitingConsentLeads.map(c => (
+                      <div
+                        key={c.contact.contactId}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.45rem',
+                          padding: '0.55rem 0.7rem',
+                          borderRadius: '8px',
+                          background: '#ffffff',
+                          border: '1px solid #fdba74'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <div style={{ fontSize: '0.8rem', color: '#1e293b' }}>
+                            <strong>{c.contact.name}</strong> ({c.contact.maskedPhone ?? 'No phone'}) ·{' '}
+                            <span style={{ color: '#9a3412' }}>Awaiting Calling Consent Verification</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            data-testid={`verify-unsaved-consent-${c.contact.contactId}`}
+                            onClick={() => {
+                              setConsentVerifyContactId(
+                                consentVerifyContactId === c.contact.contactId ? null : c.contact.contactId
+                              );
+                              setConsentEvidenceInput('');
+                              setConsentExplicitApproved(false);
+                            }}
+                            style={{ fontSize: '0.76rem', padding: '0.3rem 0.65rem' }}
+                          >
+                            {consentVerifyContactId === c.contact.contactId ? 'Cancel' : 'Verify Calling Consent'}
+                          </button>
+                        </div>
+                        {consentVerifyContactId === c.contact.contactId && (
+                          <div
+                            data-testid={`verify-unsaved-consent-form-${c.contact.contactId}`}
+                            style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', paddingTop: '0.35rem', borderTop: '1px solid #fed7aa' }}
+                          >
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <select
+                                aria-label="Consent Source"
+                                value={consentSourceInput}
+                                onChange={e => setConsentSourceInput(e.target.value as typeof consentSourceInput)}
+                                style={{ fontSize: '0.78rem', padding: '0.3rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                              >
+                                <option value="lead_form_disclosure">Meta / Web Lead-Form Disclosure</option>
+                                <option value="inbound_enquiry">Inbound Enquiry</option>
+                                <option value="written_consent">Written Consent</option>
+                                <option value="verbal_recorded">Verbal Recorded Consent</option>
+                              </select>
+                              <input
+                                type="text"
+                                placeholder="Genuine consent evidence / Lead Form ID"
+                                value={consentEvidenceInput}
+                                onChange={e => setConsentEvidenceInput(e.target.value)}
+                                style={{ flex: 1, minWidth: '210px', fontSize: '0.78rem', padding: '0.3rem 0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                              />
+                            </div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.78rem', color: '#1e293b' }}>
+                              <input
+                                type="checkbox"
+                                checked={consentExplicitApproved}
+                                onChange={e => setConsentExplicitApproved(e.target.checked)}
+                              />
+                              I confirm genuine consent evidence exists and explicitly approve calling this unsaved lead (without saving to Phone Contacts).
+                            </label>
+                            <div>
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                data-testid={`submit-unsaved-consent-${c.contact.contactId}`}
+                                disabled={consentVerifyBusy || !consentExplicitApproved || consentEvidenceInput.trim().length < 3}
+                                onClick={async () => {
+                                  setConsentVerifyBusy(true);
+                                  try {
+                                    await p.onVerifyUnsavedLeadConsent?.({
+                                      contactId: c.contact.contactId,
+                                      consentSource: consentSourceInput,
+                                      evidenceReference: consentEvidenceInput.trim(),
+                                      explicitOwnerApproval: true
+                                    });
+                                    setConsentVerifyContactId(null);
+                                  } finally {
+                                    setConsentVerifyBusy(false);
+                                  }
+                                }}
+                                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                              >
+                                {consentVerifyBusy ? 'Authorizing & Queueing...' : 'Verify Consent & Queue Call'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </section>
         );
       })()}
@@ -5404,6 +5543,33 @@ export function BulkCampaignPanel(props: {
               );
               setEnvelope(updated);
               setExistingBacklogPreview(null);
+              await refreshHistoryAndCsv(updated.campaign.campaignId);
+            } catch (err) {
+              setErrorMsg((err as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+          onVerifyUnsavedLeadConsent={async input => {
+            if (busy) return;
+            setErrorMsg(null);
+            setBusy(true);
+            try {
+              const updated = await request<ApiCampaignEnvelope>(
+                `/api/v1/campaigns/bulk/${encodeURIComponent(envelope.campaign.campaignId)}/auto-followup/contacts/${encodeURIComponent(input.contactId)}/verify-consent`,
+                {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    consentGranted: true,
+                    consentSource: input.consentSource,
+                    evidenceReference: input.evidenceReference,
+                    ...(input.recordedAt ? { recordedAt: input.recordedAt } : {}),
+                    channel: 'phone',
+                    explicitOwnerApproval: input.explicitOwnerApproval
+                  })
+                }
+              );
+              setEnvelope(updated);
               await refreshHistoryAndCsv(updated.campaign.campaignId);
             } catch (err) {
               setErrorMsg((err as Error).message);

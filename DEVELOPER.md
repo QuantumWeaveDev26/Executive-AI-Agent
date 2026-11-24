@@ -17,6 +17,10 @@ Anyone able to clone this repository can create a separate development installat
 
 PostgreSQL is a running database service, not a portable `.db` file. The schema/code is in Git; live customer rows, messages, queues, passwords, OAuth grants and provider credentials are not. Cloning creates a separate development environment, not a copy of production integrations. Historical handovers describe past deployments; their image IDs and approval windows are not current authorization.
 
+## Reconciled historical release
+
+The requested `bulk-auto-followup-consolidated-20261124` source changes and unchanged historical runtime overlays are now in [the release package](deploy/releases/bulk-auto-followup-consolidated-20261124/README.md). The full build passed; the staging utility verified all 993 declared runtime files against the preserved image. Some historical helpers are available only as retained JavaScript/generated files, so this is a source build plus verified overlays, not a pure TypeScript rebuild. The later normalization image is a separate release. Normal local development still uses the fresh setup below.
+
 ## Fresh local installation
 
 Use a new private folder and a terminal without production credentials. The commands below work in PowerShell and POSIX shells. They create only a fresh local database; never run the migration/bootstrap commands against production.

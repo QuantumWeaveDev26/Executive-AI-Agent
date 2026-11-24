@@ -26,3 +26,11 @@ Original TypeScript release provenance remains unverified: the bulk service Type
 Obtain/reconcile the original release source and build invocation; confirm actual current deployment files and migration ledger; validate the final restored-app overlays on another machine; complete company-controlled private delivery and named access. Complete n8n database/credential, Redis state and uploaded-file recovery coverage requires separately scoped protected backups. The definition/image/database artifacts above do not constitute a full VPS or provider-account transfer.
 
 No production deployment, restart, workflow activation, credential change, invitation or sharing change was performed for this handoff. Historical deployment documentation is not permission to operate production.
+
+## Reconciliation update
+
+The requested historical release is now reconciled through a full source build plus unchanged runtime overlays. Three TypeScript/TSX source files were recovered and matched to the preserved output. Linux build passed all eight workspaces; its frontend bundle matches index-DQH3IG5A.js. The source-only comparison matched 933 of 990 declared compiled/static files. Sixty preserved files (including three runtime bootstrap files) complete the assembly, and the staging utility verified all 993 declared files. These overlays preserve compiled-only helpers/generated declarations and are explicitly not presented as recovered original TypeScript.
+
+Focused regression coverage: 68 tests passed initially; two were blocked by deployment fixtures omitted from the local Docker test image. After mounting the existing fixtures read-only, both passed (2/2). No application behavior was changed to make the tests pass. Total confirmed coverage is 70 tests for the unchanged tested source. No provider requests or production changes occurred.
+
+See deploy/releases/bulk-auto-followup-consolidated-20261124/README.md, manifest.json, build-evidence.json and scripts/stage-exact-release.mjs for the reproducible file assembly. Earlier statements above about the requested source gap describe the state before this reconciliation. The later normalization release and exact historical deployment invocation remain separate.

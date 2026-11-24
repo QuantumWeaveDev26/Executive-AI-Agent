@@ -523,8 +523,13 @@ export function previewExistingSheetBacklogForCampaign(
       }
       continue;
     }
+    const preservedOwnerConsent =
+      existingRec?.contact.consent.source === 'owner_verified' && existingRec.contact.consent.phone
+        ? { consent: existingRec.contact.consent }
+        : {};
     contactsToEvaluate.push({
       ...c,
+      ...preservedOwnerConsent,
       contactId: existingRec?.contact.contactId ?? c.contactId,
       sourceRowKey: computeStableSheetRowKey(monitor.spreadsheetId, monitor.tabName, c),
       sheetRowNumber: c.rowNumber
@@ -647,8 +652,13 @@ export async function processExistingSheetBacklogForCampaign(
       previouslyProcessedCount += 1;
       continue;
     }
+    const preservedOwnerConsent =
+      existingRec?.contact.consent.source === 'owner_verified' && existingRec.contact.consent.phone
+        ? { consent: existingRec.contact.consent }
+        : {};
     contactsToEvaluate.push({
       ...c,
+      ...preservedOwnerConsent,
       contactId: existingRec?.contact.contactId ?? c.contactId,
       sourceRowKey: rowKey,
       sheetRowNumber: c.rowNumber
@@ -849,6 +859,7 @@ export async function syncGoogleSheetLeadsForCampaign(
     phoneDirectory?: PhoneContactView[];
     liveMultiContactEnabled?: boolean;
     n8nTrigger?: BulkCampaignN8nTrigger;
+    allowStuckJobRecovery?: boolean;
     now?: Date;
   }
 ): Promise<SyncGoogleSheetLeadsResult> {
@@ -966,6 +977,66 @@ export async function syncGoogleSheetLeadsForCampaign(
   let offHoursDeferredCount = 0;
   let skippedReason: string | undefined;
 
+  // Recover a genuinely undispatched queued batch job ONLY when explicitly owner-authorized
+  // (allowStuckJobRecovery === true) and every pending recipient still passes consent/DND/opt-out/calling-hours checks.
+  if (
+    input.allowStuckJobRecovery === true &&
+    activeBatchJob &&
+    activeBatchJob.status === 'queued' &&
+    activeBatchJob.webhookDispatched === false &&
+    (activeBatchJob.processedCount ?? 0) === 0 &&
+    (activeBatchJob.recipientQueue ?? []).every(q => q.status === 'pending' && q.attempts === 0) &&
+    input.liveMultiContactEnabled &&
+    input.n8nTrigger
+  ) {
+    const phoneInWindow = isWithinIstCallingWindow(auth.callingHoursIst, now);
+    const allRecipientsValid = (activeBatchJob.recipientQueue ?? []).every(q => {
+      const rec = nextCampaign.contacts.find(r => r.contact.contactId === q.contactId);
+      if (!rec || !rec.selectedByOwner || rec.contact.dnd || rec.contact.optedOut) return false;
+      if (rec.phoneStatus !== 'pending' || rec.attendanceOutcome !== 'pending') return false;
+      return activeBatchJob.channel === 'phone_call'
+        ? Boolean(rec.contact.consent.phone && rec.category === 'eligible')
+        : Boolean(rec.contact.consent.whatsapp);
+    });
+    if (allRecipientsValid && (activeBatchJob.channel !== 'phone_call' || phoneInWindow)) {
+      const recoveryToken = crypto.randomBytes(24).toString('base64url');
+      const recoveryTokenHash = crypto.createHash('sha256').update(recoveryToken).digest('hex');
+      const trig = await input.n8nTrigger.triggerWorkflow({
+        webhookPath: activeBatchJob.webhookPath,
+        payload: {
+          jobId: activeBatchJob.jobId,
+          campaignId: nextCampaign.campaignId,
+          workspaceId: nextCampaign.workspaceId,
+          executionToken: recoveryToken,
+          channel: activeBatchJob.channel,
+          mode: 'multi_contact_batch',
+          maxContacts: activeBatchJob.recipientQueue?.length ?? activeBatchJob.totalContacts ?? 1,
+          rateLimitPerMinute: activeBatchJob.batchConfig?.rateLimitPerMinute ?? auth.rateLimitPerMinute
+        }
+      });
+      if (trig.accepted) {
+        nextCampaign = {
+          ...nextCampaign,
+          n8nJobTokenHashes: {
+            ...(nextCampaign.n8nJobTokenHashes ?? {}),
+            [activeBatchJob.jobId]: recoveryTokenHash
+          },
+          n8nJobs: (nextCampaign.n8nJobs ?? []).map(j =>
+            j.jobId === activeBatchJob.jobId
+              ? {
+                  ...j,
+                  webhookDispatched: true,
+                  ...(trig.n8nExecutionId ? { n8nExecutionId: trig.n8nExecutionId } : {})
+                }
+              : j
+          )
+        };
+        batchSubmitted = true;
+        jobId = activeBatchJob.jobId;
+      }
+    }
+  }
+
   if (pendingToDispatch.size > 0) {
     const phoneInWindow = isWithinIstCallingWindow(auth.callingHoursIst, now);
     const remainingLimit = computeRemainingDailyLimit(nextCampaign, auth, now);
@@ -1069,4 +1140,219 @@ export function evaluateFollowUpPolicyForContact(
     };
   }
   return { action: 'none' };
+}
+
+export interface VerifyUnsavedLeadConsentInput {
+  scope: AuthenticatedScope;
+  contactId: string;
+  consentGranted: boolean;
+  consentSource: 'written_consent' | 'inbound_enquiry' | 'verbal_recorded' | 'lead_form_disclosure';
+  evidenceReference: string;
+  recordedAt?: string;
+  channel?: BulkCampaignChannel;
+  explicitOwnerApproval: boolean;
+  phoneDirectory?: PhoneContactView[];
+  liveMultiContactEnabled?: boolean;
+  n8nTrigger?: BulkCampaignN8nTrigger;
+  now?: Date;
+}
+
+export interface VerifyUnsavedLeadConsentResult {
+  campaign: BulkCampaignState;
+  contactId: string;
+  eligible: boolean;
+  batchSubmitted: boolean;
+  jobId?: string;
+  skippedReason?: string;
+}
+
+/**
+ * Verifies genuine consent evidence for a single blocked unsaved Google Sheets lead and,
+ * with explicit owner approval, queues ONLY that contact without re-calling already-processed
+ * leads or enrolling it permanently into PhoneContactDirectory.
+ */
+export async function verifyUnsavedLeadConsentAndReprocessForCampaign(
+  campaign: BulkCampaignState,
+  input: VerifyUnsavedLeadConsentInput
+): Promise<VerifyUnsavedLeadConsentResult> {
+  if (input.scope.role !== 'owner' && input.scope.role !== 'admin') {
+    throw new Error('FORBIDDEN: Only the workspace owner or admin can verify lead calling consent.');
+  }
+  if (!input.explicitOwnerApproval) {
+    throw new Error('OWNER_APPROVAL_REQUIRED: Explicit owner approval is required to authorize this contact.');
+  }
+  if (!input.consentGranted) {
+    throw new Error('CONSENT_NOT_GRANTED: Cannot mark a lead eligible without granted calling consent.');
+  }
+  const evidenceRef = input.evidenceReference.trim();
+  if (evidenceRef.length < 3) {
+    throw new Error('CONSENT_EVIDENCE_REQUIRED: Provide genuine consent evidence reference (e.g., Meta Lead ID or form disclosure).');
+  }
+  if (campaign.mode !== 'automatic_lead_followup' || !campaign.sheetMonitor) {
+    throw new Error('AUTO_FOLLOWUP_NOT_CONFIGURED: Automatic Lead Follow-up is not configured on this campaign.');
+  }
+  const monitor = campaign.sheetMonitor;
+  if (monitor.status === 'stopped') {
+    throw new Error('MONITOR_STOPPED: Stopped campaign cannot dispatch leads.');
+  }
+  const auth = campaign.standingAuthorization;
+  const now = input.now ?? new Date();
+  const nowIso = now.toISOString();
+  if (!auth || auth.revoked || Date.parse(auth.expiresAt) <= now.getTime()) {
+    throw new Error('STANDING_AUTH_INVALID_OR_EXPIRED: Active standing authorization is required.');
+  }
+
+  const targetIdx = campaign.contacts.findIndex(r => r.contact.contactId === input.contactId);
+  if (targetIdx === -1) {
+    throw new Error('CONTACT_NOT_FOUND: Contact not found in campaign.');
+  }
+  const targetRecord = campaign.contacts[targetIdx]!;
+  const activeQueueIds = getActiveQueueContactIds(campaign);
+  if (targetRecord.contact.optedOut || targetRecord.contact.dnd) {
+    throw new Error('CONTACT_SUPPRESSED: Contact is opted out or DND and cannot be authorized.');
+  }
+  if (
+    activeQueueIds.has(targetRecord.contact.contactId) ||
+    (targetRecord.phoneStatus !== 'pending' && targetRecord.phoneStatus !== 'queued') ||
+    targetRecord.attendanceOutcome !== 'pending'
+  ) {
+    throw new Error('CONTACT_ALREADY_PROCESSED: Contact has already been called or queued.');
+  }
+
+  const recordedMs = input.recordedAt ? Date.parse(input.recordedAt) : now.getTime();
+  if (!Number.isFinite(recordedMs) || recordedMs > now.getTime() + 86_400_000) {
+    throw new Error('INVALID_CONSENT_TIMESTAMP: Consent recordedAt timestamp is invalid.');
+  }
+  const channel: BulkCampaignChannel = input.channel ?? 'phone';
+
+  const updatedContact: BulkCampaignImportedContact = {
+    ...targetRecord.contact,
+    consent: {
+      ...targetRecord.contact.consent,
+      phone: channel === 'phone' ? true : targetRecord.contact.consent.phone,
+      whatsapp: channel === 'whatsapp' ? true : targetRecord.contact.consent.whatsapp,
+      email: channel === 'email' ? true : targetRecord.contact.consent.email,
+      source: 'owner_verified'
+    }
+  };
+
+  const reEvaluated = evaluateContactEligibility(
+    [updatedContact],
+    new Set([updatedContact.contactId]),
+    campaign.channels,
+    campaign.limits,
+    campaign.whatsappPlan.messagePreview,
+    campaign.emailConnected,
+    undefined,
+    nowIso,
+    campaign.emailPlan?.bodyPreview
+  )[0]!;
+
+  const updatedContacts = campaign.contacts.map((r, idx) => (idx === targetIdx ? reEvaluated : r));
+  const wasBlocked = targetRecord.category !== 'eligible';
+  const nowEligible = reEvaluated.category === 'eligible';
+
+  let nextCampaign: BulkCampaignState = {
+    ...campaign,
+    updatedAt: nowIso,
+    contacts: updatedContacts,
+    sheetMonitor: {
+      ...monitor,
+      leadsEligibleCount: monitor.leadsEligibleCount + (wasBlocked && nowEligible ? 1 : 0),
+      leadsConsentBlockedCount: Math.max(0, monitor.leadsConsentBlockedCount - (wasBlocked && nowEligible ? 1 : 0))
+    }
+  };
+
+  if (!nowEligible) {
+    return {
+      campaign: nextCampaign,
+      contactId: updatedContact.contactId,
+      eligible: false,
+      batchSubmitted: false,
+      skippedReason: reEvaluated.categoryReason
+    };
+  }
+
+  const primaryChannel: BulkCampaignN8nChannel | null = campaign.channels.includes('phone')
+    ? 'phone_call'
+    : campaign.channels.includes('whatsapp')
+      ? 'whatsapp'
+      : null;
+
+  let batchSubmitted = false;
+  let jobId: string | undefined;
+  let skippedReason: string | undefined;
+
+  if (primaryChannel && monitor.status !== 'paused') {
+    const phoneInWindow = isWithinIstCallingWindow(auth.callingHoursIst, now);
+    const activeJob = getActiveN8nBatchChannelJob(nextCampaign, primaryChannel);
+    const remainingLimit = computeRemainingDailyLimit(nextCampaign, auth, now);
+    const pendingSet = new Set<string>(nextCampaign.sheetMonitor?.pendingDispatchContactIds ?? []);
+    pendingSet.add(updatedContact.contactId);
+
+    if (primaryChannel === 'phone_call' && !phoneInWindow) {
+      skippedReason = 'OFF_HOURS_DEFERRED';
+      nextCampaign = {
+        ...nextCampaign,
+        sheetMonitor: { ...nextCampaign.sheetMonitor!, pendingDispatchContactIds: [...pendingSet] }
+      };
+    } else if (activeJob) {
+      skippedReason = 'ACTIVE_BATCH_JOB_DEFERRED';
+      nextCampaign = {
+        ...nextCampaign,
+        sheetMonitor: {
+          ...nextCampaign.sheetMonitor!,
+          status: 'processing_leads',
+          pendingDispatchContactIds: [...pendingSet]
+        }
+      };
+    } else if (remainingLimit <= 0) {
+      skippedReason = 'DAILY_LIMIT_REACHED';
+      nextCampaign = {
+        ...nextCampaign,
+        sheetMonitor: { ...nextCampaign.sheetMonitor!, pendingDispatchContactIds: [...pendingSet] }
+      };
+    } else if (input.liveMultiContactEnabled) {
+      pendingSet.delete(updatedContact.contactId);
+      const dispatchCampaign: BulkCampaignState = {
+        ...nextCampaign,
+        standingAuthorization: { ...auth, approvedMaterialHash: nextCampaign.materialHash },
+        approval: nextCampaign.approval
+          ? { ...nextCampaign.approval, approvedMaterialHash: nextCampaign.materialHash }
+          : undefined,
+        sheetMonitor: {
+          ...nextCampaign.sheetMonitor!,
+          status: 'processing_leads',
+          leadsQueuedCount: nextCampaign.sheetMonitor!.leadsQueuedCount + 1,
+          pendingDispatchContactIds: [...pendingSet]
+        }
+      };
+      const submitted = await submitBulkCampaignMultiContactN8nJob(dispatchCampaign, {
+        scope: input.scope,
+        channel: primaryChannel,
+        liveMultiContactEnabled: input.liveMultiContactEnabled,
+        phoneDirectory: input.phoneDirectory,
+        n8nTrigger: input.n8nTrigger,
+        onlyContactIds: [updatedContact.contactId],
+        batchConfig: {
+          batchSize: 1,
+          maxConcurrency: auth.maxConcurrency,
+          rateLimitPerMinute: auth.rateLimitPerMinute,
+          maxRetries: auth.retryOnNoAnswer ? Math.max(0, auth.maxAttemptsPerLead - 1) : 0
+        }
+      });
+      nextCampaign = submitted.campaign;
+      batchSubmitted = true;
+      jobId = submitted.job.jobId;
+    }
+  }
+
+  return {
+    campaign: nextCampaign,
+    contactId: updatedContact.contactId,
+    eligible: true,
+    batchSubmitted,
+    ...(jobId ? { jobId } : {}),
+    ...(skippedReason ? { skippedReason } : {})
+  };
 }
