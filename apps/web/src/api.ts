@@ -299,7 +299,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     if (csrfToken) {
       headers.set('x-csrf-token', csrfToken);
     }
-    if (!headers.has('Content-Type')) {
+    if (options.body !== undefined && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
   }

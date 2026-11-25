@@ -93,6 +93,7 @@ import {
   ingestCampaignKnowledgeFiles,
   isInternalKnowledgeGovernanceText,
   retrieveCampaignKnowledgeChunks,
+  SARVAM_MAX_CALL_PURPOSE_CHARS,
   SARVAM_OUTBOUND_AGENT_LABEL
 } from './bulk-campaign-knowledge.js';
 import { maskPhoneCallNumber } from './phone.js';
@@ -105,6 +106,7 @@ export {
   ingestCampaignKnowledgeFiles,
   isInternalKnowledgeGovernanceText,
   retrieveCampaignKnowledgeChunks,
+  SARVAM_MAX_CALL_PURPOSE_CHARS,
   SARVAM_OUTBOUND_AGENT_LABEL
 };
 import type { PhoneCallingService, PhoneContactDirectory } from './phone-calling.js';
@@ -593,7 +595,7 @@ export function buildBoundedPhonePurpose(input: {
   const normalized = `${input.eventDetails}. ${input.eventPitch} Questions: ${qPart}`
     .replace(/\s+/g, ' ')
     .trim();
-  return normalized.slice(0, 1000) || 'Campaign outreach call';
+  return normalized.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS) || 'Campaign outreach call';
 }
 
 export function renderPersonalizedWhatsAppPreview(templatePreview: string, contactName: string): string {
@@ -1986,12 +1988,20 @@ export function analyzeCampaignInstruction(
   kbFacts?: BulkCampaignExtractedFacts
 ): UniversalCampaignAnalysis {
   const lower = instruction.toLowerCase();
+  const namesQuantumWeave = /\b(?:quantum\s*weave|brandmint)\b/i.test(instruction);
+  const namesThirdPartyBrand =
+    !namesQuantumWeave &&
+    (/\b(?:custom\s+teamwear|kashyap\s+inc|smilecare)\b/i.test(instruction) ||
+      /\b(?:act\s+as\s+(?:the\s+)?(?:owner|senior\s+sales|sales\s+advisor|founder|representative|manager)[\s\w/-]{0,30}\bof\s+[A-Z]|calling\s+(?:from|on\s+behalf\s+of)\s+(?!quantum\s*weave\b)[A-Z])/i.test(
+        instruction
+      ));
   const isWebinar =
-    kbFacts?.campaignType === 'webinar' ||
-    /\b(webinar|seminar|workshop|masterclass|live\s+session|upcoming\s+session|conference|summit|event\s+invitation)\b/i.test(
-      instruction
-    );
-  const isServices = !isWebinar && kbFacts?.campaignType === 'services';
+    !namesThirdPartyBrand &&
+    (kbFacts?.campaignType === 'webinar' ||
+      /\b(webinar|seminar|workshop|masterclass|live\s+session|upcoming\s+session|conference|summit|event\s+invitation)\b/i.test(
+        instruction
+      ));
+  const isServices = !isWebinar && !namesThirdPartyBrand && kbFacts?.campaignType === 'services';
 
   if (isWebinar) {
     const rawWebinarDetails = extractWebinarCampaignDetails(instruction);
@@ -2115,27 +2125,29 @@ export function analyzeCampaignInstruction(
 
   // UNIVERSAL TOPIC-INDEPENDENT CAMPAIGN UNDERSTANDING
   const brandForMatch = instruction.match(
-    /(?:(?:agent|assistant|representative|team)\s+for|calling\s+(?:on\s+behalf\s+of|for)|from)\s+([A-Z][A-Za-z0-9\s&.-]{2,48}?)(?:[.,!?\n]|$)/
+    /(?:(?:owner\/?senior\s+sales\s+(?:advisor|executive)|senior\s+sales\s+(?:advisor|executive)|sales\s+(?:advisor|executive)|owner|founder|agent|assistant|representative|team)\s+(?:for|of)|calling\s+(?:on\s+behalf\s+of|for)|from)\s+([A-Z][A-Za-z0-9\s&().,-]{2,56}?)(?:[.,!?\n]|$)/
   );
   const enquiryMatch = instruction.match(
     /(?:enquir(?:y|ing|ed)\s+(?:for|about|regarding)|about|for|regarding)\s+(?:our\s+|my\s+|the\s+|an?\s+)?(?!these\b|the\s+contacts\b|a\s+potential\b)([A-Za-z0-9][A-Za-z0-9\s,&-]{2,48}?)(?:[.,!?\n]|$)/i
   );
   let topic =
     kbFacts?.title?.trim() ||
-    (/\bcustom\s+teamwear\b/i.test(lower)
-      ? 'Custom Teamwear'
-      : brandForMatch?.[1]?.trim() ||
-        (/\breal\s+estate\b|\bproperty\b|\bapartment\b|\bvilla\b/i.test(lower)
-          ? 'Real Estate'
-          : /\bdigital\s+marketing\b/i.test(lower)
-            ? 'Digital Marketing'
-            : /\bfeedback\b/i.test(lower)
-              ? 'Customer Feedback'
-              : /\brecruit|\bhiring\b|\bcandidate\b/i.test(lower)
-                ? 'Recruitment Screening'
-                : /\bappointment\b|\bbooking\b/i.test(lower)
-                  ? 'Appointment Confirmation'
-                  : enquiryMatch?.[1]?.trim() || ''));
+    (/\bcustom\s+team\s+wear\b/i.test(lower)
+      ? 'Custom Team Wear'
+      : /\bcustom\s+teamwear\b/i.test(lower)
+        ? 'Custom Teamwear'
+        : brandForMatch?.[1]?.trim() ||
+          (/\breal\s+estate\b|\bproperty\b|\bapartment\b|\bvilla\b/i.test(lower)
+            ? 'Real Estate'
+            : /\bdigital\s+marketing\b/i.test(lower)
+              ? 'Digital Marketing'
+              : /\bfeedback\b/i.test(lower)
+                ? 'Customer Feedback'
+                : /\brecruit|\bhiring\b|\bcandidate\b/i.test(lower)
+                  ? 'Recruitment Screening'
+                  : /\bappointment\b|\bbooking\b/i.test(lower)
+                    ? 'Appointment Confirmation'
+                    : enquiryMatch?.[1]?.trim() || ''));
   if (!topic) {
     const firstLine = instruction
       .trim()
@@ -2145,15 +2157,17 @@ export function analyzeCampaignInstruction(
       .trim();
     topic = firstLine ? firstLine.slice(0, 42) : 'Business Outreach';
   }
-  const isEnquiry = /\benquir|\bqualif|\brequirement|\bquote|\bquotation\b/i.test(lower);
+  const isEnquiry = /\benquir|\bqualif|\brequirement|\bquote|\bquotation\b|\bmeta\s+lead|\bcatalogue\b|\bsample\s+visit\b/i.test(
+    lower
+  );
   const isFeedback = /\bfeedback\b|\bsurvey\b|\bexperience\b/i.test(lower);
   const isRecruitment = /\brecruit|\bhiring\b|\binterview\b|\bcandidate\b/i.test(lower);
   const isAppointment = /\bappointment\b|\bbooking\b|\bschedule\b/i.test(lower);
 
   const title = isEnquiry && !/qualif/i.test(topic)
     ? `${topic} — Enquiry Qualification`
-    : /\bcustom\s+teamwear\b/i.test(topic)
-      ? 'Custom Teamwear — Enquiry Qualification'
+    : /\bcustom\s+team\s*wear\b/i.test(topic)
+      ? `${topic} — Enquiry Qualification`
       : topic;
 
   const extractedQs = extractInstructionQuestions(instruction);
@@ -2312,7 +2326,8 @@ export function createBulkCampaignPlan(input: {
         instruction,
         eventDetails,
         facts: knowledgeContext.extractedFacts,
-        questions: plan.questions
+        questions: plan.questions,
+        chunks: knowledgeContext.chunks
       })
     : buildBoundedPhonePurpose({
         eventDetails,
@@ -2857,7 +2872,7 @@ export const CODEX_PHONE_BATCH_INTEGRATION_CONTRACT: PhoneBatchIntegrationContra
   callHistoryEndpoint: 'GET /api/v1/connectors/phone/ai/calls',
   providerResultEndpoint: 'POST /api/v1/connectors/phone/ai/calls/:callId/result',
   supportedLanguages: ['en-IN', 'kn-IN', 'kn-en'],
-  maxPurposeLength: 1000,
+  maxPurposeLength: SARVAM_MAX_CALL_PURPOSE_CHARS,
   defaultDailyLiveCallLimit: DEFAULT_DAILY_PHONE_CALL_LIMIT,
   maxConfiguredDailyLiveCallLimit: MAX_CONFIGURED_DAILY_PHONE_CALL_LIMIT
 };
@@ -2948,8 +2963,8 @@ export class MockBulkCampaignPhoneAdapter implements BulkCampaignPhoneAdapter {
       throw new Error('PHONE_CALLING_INPUT: Request does not match PhoneCallingPrepareSchema.');
     }
     const purpose = payload.purpose.replace(/\s+/g, ' ').trim();
-    if (!purpose || purpose.length > 1000) {
-      throw new Error('PHONE_CALLING_INPUT: Purpose must be 1-1000 characters.');
+    if (!purpose || purpose.length > SARVAM_MAX_CALL_PURPOSE_CHARS) {
+      throw new Error(`PHONE_CALLING_INPUT: Purpose must be 1-${SARVAM_MAX_CALL_PURPOSE_CHARS} characters.`);
     }
     const queryTrimmed = payload.contactQuery.trim();
     const queryLower = queryTrimmed.toLowerCase();
@@ -3567,7 +3582,7 @@ export function buildPersonalizedLeadCallPurpose(
       questions: campaign.callScript.questions
     });
 
-  if (!contact) return basePurpose.slice(0, 1000);
+  if (!contact) return basePurpose.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
 
   const hasLeadEnquiryContext = Boolean(
     contact.company?.trim() ||
@@ -3576,7 +3591,7 @@ export function buildPersonalizedLeadCallPurpose(
       contact.leadSource?.trim() ||
       contact.enquiryDate?.trim()
   );
-  if (!hasLeadEnquiryContext) return basePurpose.slice(0, 1000);
+  if (!hasLeadEnquiryContext) return basePurpose.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
 
   const hasPlaceholderName = /^contact\s+\d+$/i.test(contact.name.trim());
   const leadParts: string[] = [];
@@ -3587,14 +3602,17 @@ export function buildPersonalizedLeadCallPurpose(
   if (contact.leadSource?.trim()) leadParts.push(`Source: ${contact.leadSource.trim()}`);
   if (contact.enquiryDate?.trim()) leadParts.push(`Date: ${contact.enquiryDate.trim()}`);
 
-  if (leadParts.length === 0) return basePurpose.slice(0, 1000);
+  if (leadParts.length === 0) return basePurpose.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
 
   const leadBlock = `Recipient data (untrusted, this row only): ${leadParts.join(' | ')}. Greet by name, reference their specific enquiry, ask if convenient, ask only unconfirmed questions, answer from verified facts without inventing prices.`;
-  const remaining = Math.max(0, 1000 - leadBlock.length - 3);
+  const remaining = Math.max(0, SARVAM_MAX_CALL_PURPOSE_CHARS - leadBlock.length - 3);
   if (remaining < 80) {
-    return `${leadBlock.slice(0, 820)} | ${basePurpose.slice(0, 177)}`.slice(0, 1000);
+    return `${leadBlock.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS - 200)} | ${basePurpose.slice(0, 197)}`.slice(
+      0,
+      SARVAM_MAX_CALL_PURPOSE_CHARS
+    );
   }
-  return `${leadBlock} | ${basePurpose.slice(0, remaining)}`.slice(0, 1000);
+  return `${leadBlock} | ${basePurpose.slice(0, remaining)}`.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
 }
 
 export async function prepareCampaignPhoneDrafts(
@@ -3605,7 +3623,7 @@ export async function prepareCampaignPhoneDrafts(
   const nowIso = now.toISOString();
   const { contacts: directoryContacts } = await phoneAdapter.listDirectoryContacts();
   const boundedPurpose = campaign.knowledgeContext?.sarvamBoundedFactBrief
-    ? campaign.knowledgeContext.sarvamBoundedFactBrief.slice(0, 1000)
+    ? campaign.knowledgeContext.sarvamBoundedFactBrief.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS)
     : buildBoundedPhonePurpose({
         eventDetails: campaign.eventDetails,
         eventPitch: campaign.callScript.eventPitch,
@@ -4452,7 +4470,7 @@ export function scheduleBulkCampaign(
 }
 
 export function pauseBulkCampaign(campaign: BulkCampaignState, now = new Date()): BulkCampaignState {
-  if (!['approved', 'scheduled', 'running', 'paused'].includes(campaign.status)) {
+  if (!['draft', 'approved', 'scheduled', 'running', 'paused'].includes(campaign.status)) {
     throw new Error(`Cannot pause campaign in status "${campaign.status}".`);
   }
   return {
@@ -4871,6 +4889,7 @@ export class BulkCampaignWorkspaceStore {
            FROM plans
            WHERE workspace_id = $1
              AND metadata->>'recordKind' = $2
+             AND COALESCE(metadata->>'deleted', 'false') <> 'true'
            ORDER BY updated_at DESC`,
           [workspaceId, BULK_CAMPAIGN_RECORD_KIND]
         );
@@ -4993,6 +5012,7 @@ export class BulkCampaignWorkspaceStore {
            WHERE workspace_id = $1
              AND metadata->>'recordKind' = $2
              AND metadata->>'campaignId' = $3
+             AND COALESCE(metadata->>'deleted', 'false') <> 'true'
            ORDER BY updated_at DESC
            LIMIT 1`,
           [scope.workspaceId, BULK_CAMPAIGN_RECORD_KIND, campaignId]
@@ -5026,6 +5046,7 @@ export class BulkCampaignWorkspaceStore {
            FROM plans
            WHERE workspace_id = $1
              AND metadata->>'recordKind' = $2
+             AND COALESCE(metadata->>'deleted', 'false') <> 'true'
            ORDER BY created_at ASC, id ASC`,
           [scope.workspaceId, BULK_CAMPAIGN_RECORD_KIND]
         );
@@ -5055,6 +5076,51 @@ export class BulkCampaignWorkspaceStore {
     return list[list.length - 1] ?? null;
   }
 
+  async deleteScoped(
+    scope: AuthenticatedScope,
+    campaignId: string,
+    dbOverride?: TransactionalDbClient
+  ): Promise<boolean> {
+    const dbClient = dbOverride ?? this.db;
+    const wsMap = this.getWorkspaceMap(scope.workspaceId);
+    const existingMem = wsMap.get(campaignId);
+    if (existingMem?.governedApprovalId) {
+      this.approvalToCampaign.delete(existingMem.governedApprovalId);
+    }
+    const deletedMem = wsMap.delete(campaignId);
+    if (!dbClient) {
+      return deletedMem;
+    }
+    try {
+      const deletedDb = await dbClient.withScopedTransaction(scope, async tx => {
+        const res = await tx.query<{ id: string }>(
+          `UPDATE plans
+           SET version = version + 1,
+               metadata = jsonb_set(
+                 jsonb_set(metadata, '{deleted}', 'true'::jsonb, true),
+                 '{deletedAt}',
+                 to_jsonb(NOW()::text),
+                 true
+               ),
+               updated_at = NOW()
+           WHERE workspace_id = $1
+             AND metadata->>'recordKind' = $2
+             AND metadata->>'campaignId' = $3
+             AND COALESCE(metadata->>'deleted', 'false') <> 'true'
+           RETURNING id`,
+          [scope.workspaceId, BULK_CAMPAIGN_RECORD_KIND, campaignId]
+        );
+        return res.rows.length > 0;
+      });
+      return deletedDb || deletedMem;
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : 'Unknown database error';
+      throw new Error(
+        `BULK_CAMPAIGN_PERSISTENCE_FAILED: Durable PostgreSQL campaign delete failed (${detail}).`
+      );
+    }
+  }
+
   async findByGovernedApprovalScoped(
     scope: AuthenticatedScope,
     approvalId: string,
@@ -5073,6 +5139,7 @@ export class BulkCampaignWorkspaceStore {
            WHERE workspace_id = $1
              AND metadata->>'recordKind' = $2
              AND metadata->>'governedApprovalId' = $3
+             AND COALESCE(metadata->>'deleted', 'false') <> 'true'
            ORDER BY updated_at DESC
            LIMIT 1`,
           [scope.workspaceId, BULK_CAMPAIGN_RECORD_KIND, approvalId]
@@ -8189,8 +8256,8 @@ export function claimNextBulkCampaignN8nJob(
 
   const callPurpose =
     campaign.pilotCall?.callPurpose ||
-    campaign.knowledgeContext?.sarvamBoundedFactBrief?.slice(0, 1000) ||
-    campaign.callScript.boundedPurposePreview?.slice(0, 1000) ||
+    campaign.knowledgeContext?.sarvamBoundedFactBrief?.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS) ||
+    campaign.callScript.boundedPurposePreview?.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS) ||
     buildBoundedPhonePurpose({
       eventDetails: campaign.eventDetails,
       eventPitch: campaign.callScript.eventPitch,

@@ -10,7 +10,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
-import { inflateRawSync, unzipSync } from 'node:zlib';
+import { inflateRawSync, inflateSync, unzipSync } from 'node:zlib';
 import type { AuthenticatedScope } from '@thaara/db';
 import { AppError, ForbiddenError } from '@thaara/observability';
 
@@ -142,60 +142,541 @@ export function verifyFileSignature(bytes: Buffer, declaredMime: string): Suppor
 
 export const validateMagicBytes = verifyFileSignature;
 
-/**
- * Extracts plain text from a simple or compressed PDF buffer.
- */
-export function extractTextFromPdf(bytes: Buffer): string {
-  const content = bytes.toString('binary');
-  const textChunks: string[] = [];
-
-  // Match /Filter /FlateDecode ... stream\r?\n(data)endstream
-  const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = streamRegex.exec(content)) !== null) {
-    const rawStream = Buffer.from(match[1]!, 'binary');
-    let decompressed: string | null = null;
-
-    try {
-      decompressed = inflateRawSync(rawStream).toString('utf-8');
-    } catch {
-      try {
-        decompressed = unzipSync(rawStream).toString('utf-8');
-      } catch {
-        // Stream may be uncompressed plain text
-        decompressed = match[1]!;
-      }
+function decodePdfUtf16Hex(hex: string): string {
+  const clean = hex.replace(/\s+/g, '');
+  if (!clean || clean.length % 2 !== 0) return '';
+  if (clean.length >= 4 && clean.length % 4 === 0) {
+    let out = '';
+    for (let i = 0; i < clean.length; i += 4) {
+      const cp = parseInt(clean.slice(i, i + 4), 16);
+      if (!Number.isNaN(cp) && cp > 0) out += String.fromCharCode(cp);
     }
+    return out;
+  }
+  const bytes: number[] = [];
+  for (let i = 0; i < clean.length; i += 2) {
+    const b = parseInt(clean.slice(i, i + 2), 16);
+    if (!Number.isNaN(b)) bytes.push(b);
+  }
+  return Buffer.from(bytes).toString('latin1');
+}
 
-    if (decompressed) {
-      // Extract text in BT...ET blocks using Tj and TJ operators
-      const tjMatches = decompressed.match(/\((.*?)\)\s*Tj/g);
-      if (tjMatches) {
-        for (const tj of tjMatches) {
-          const inner = tj.replace(/^\(|\)\s*Tj$/g, '');
-          if (inner.trim()) textChunks.push(inner);
-        }
-      }
+function parsePdfToUnicodeCmap(streamText: string, cmap: Map<string, string>): void {
+  if (!streamText.includes('beginbfchar') && !streamText.includes('beginbfrange')) return;
 
-      const arrayMatches = decompressed.match(/\[(.*?)\]\s*TJ/g);
-      if (arrayMatches) {
-        for (const arr of arrayMatches) {
-          const innerParts = arr.match(/\((.*?)\)/g);
-          if (innerParts) {
-            textChunks.push(innerParts.map((p) => p.slice(1, -1)).join(' '));
-          }
-        }
-      }
+  const bfcharBlocks = streamText.matchAll(/beginbfchar([\s\S]*?)endbfchar/g);
+  for (const blk of bfcharBlocks) {
+    const pairs = (blk[1] ?? '').matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g);
+    for (const pair of pairs) {
+      const src = pair[1]!.toUpperCase();
+      const dst = decodePdfUtf16Hex(pair[2]!);
+      if (dst) cmap.set(src, dst);
     }
   }
 
-  if (textChunks.length === 0) {
+  const bfrangeBlocks = streamText.matchAll(/beginbfrange([\s\S]*?)endbfrange/g);
+  for (const blk of bfrangeBlocks) {
+    const body = blk[1] ?? '';
+    // Array form: <start> <end> [<u1> <u2> ...]
+    const arrRanges = body.matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*\[([\s\S]*?)\]/g);
+    for (const r of arrRanges) {
+      const start = parseInt(r[1]!, 16);
+      const end = parseInt(r[2]!, 16);
+      const width = r[1]!.length;
+      const items = [...(r[3] ?? '').matchAll(/<([0-9A-Fa-f]+)>/g)].map(m => m[1]!);
+      const limit = Math.min(end - start + 1, items.length, 4096);
+      for (let i = 0; i < limit; i++) {
+        const key = (start + i).toString(16).toUpperCase().padStart(width, '0');
+        const dst = decodePdfUtf16Hex(items[i]!);
+        if (dst) cmap.set(key, dst);
+      }
+    }
+    // Scalar form: <start> <end> <destStart>
+    const scalarRanges = body.matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g);
+    for (const r of scalarRanges) {
+      const start = parseInt(r[1]!, 16);
+      const end = parseInt(r[2]!, 16);
+      const destStart = parseInt(r[3]!, 16);
+      const srcWidth = r[1]!.length;
+      const dstWidth = Math.max(4, r[3]!.length);
+      const count = Math.min(end - start + 1, 4096);
+      for (let i = 0; i < count; i++) {
+        const key = (start + i).toString(16).toUpperCase().padStart(srcWidth, '0');
+        const dstHex = (destStart + i).toString(16).toUpperCase().padStart(dstWidth, '0');
+        const dst = decodePdfUtf16Hex(dstHex);
+        if (dst) cmap.set(key, dst);
+      }
+    }
+  }
+}
+
+const WINANSI_C1_MAP: Record<number, string> = {
+  0x7f: ' • ',
+  0x80: '€',
+  0x82: '‚',
+  0x83: 'ƒ',
+  0x84: '„',
+  0x85: '…',
+  0x86: '†',
+  0x87: '‡',
+  0x88: 'ˆ',
+  0x89: '‰',
+  0x8a: 'Š',
+  0x8b: '‹',
+  0x8c: 'Œ',
+  0x8e: 'Ž',
+  0x91: '‘',
+  0x92: '’',
+  0x93: '“',
+  0x94: '”',
+  0x95: '•',
+  0x96: '–',
+  0x97: '—',
+  0x98: '˜',
+  0x99: '™',
+  0x9a: 'š',
+  0x9b: '›',
+  0x9c: 'œ',
+  0x9e: 'ž',
+  0x9f: 'Ÿ'
+};
+
+function decodePdfWinAnsiCode(code: number): string {
+  if (WINANSI_C1_MAP[code] !== undefined) return WINANSI_C1_MAP[code]!;
+  return String.fromCharCode(code);
+}
+
+function decodePdfAscii85(bytes: Buffer): Buffer | null {
+  let s = bytes.toString('latin1');
+  const eod = s.indexOf('~>');
+  if (eod >= 0) s = s.slice(0, eod);
+  const out: number[] = [];
+  const tuple: number[] = [];
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charCodeAt(i);
+    if (ch <= 32) continue;
+    if (ch === 122 && tuple.length === 0) {
+      // 'z' shorthand for four zero bytes
+      out.push(0, 0, 0, 0);
+      continue;
+    }
+    if (ch < 33 || ch > 117) {
+      return null;
+    }
+    tuple.push(ch - 33);
+    if (tuple.length === 5) {
+      let val = 0;
+      for (const d of tuple) val = val * 85 + d;
+      out.push((val >>> 24) & 0xff, (val >>> 16) & 0xff, (val >>> 8) & 0xff, val & 0xff);
+      tuple.length = 0;
+    }
+  }
+  if (tuple.length === 1) return null;
+  if (tuple.length > 1) {
+    const pad = 5 - tuple.length;
+    for (let i = 0; i < pad; i++) tuple.push(84);
+    let val = 0;
+    for (const d of tuple) val = val * 85 + d;
+    const tail = [(val >>> 24) & 0xff, (val >>> 16) & 0xff, (val >>> 8) & 0xff, val & 0xff];
+    for (let i = 0; i < 4 - pad; i++) out.push(tail[i]!);
+  }
+  return out.length > 0 ? Buffer.from(out) : null;
+}
+
+function decodePdfAsciiHex(bytes: Buffer): Buffer | null {
+  let s = bytes.toString('latin1');
+  const eod = s.indexOf('>');
+  if (eod >= 0) s = s.slice(0, eod);
+  const hex = s.replace(/\s+/g, '');
+  if (!hex || !/^[0-9A-Fa-f]+$/.test(hex)) return null;
+  const padded = hex.length % 2 === 1 ? `${hex}0` : hex;
+  return Buffer.from(padded, 'hex');
+}
+
+function decodePdfLiteralString(raw: string): string {
+  let out = '';
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i]!;
+    if (ch !== '\\') {
+      const code = ch.charCodeAt(0);
+      out += code >= 0x7f && code <= 0x9f ? decodePdfWinAnsiCode(code) : ch;
+      continue;
+    }
+    const next = raw[i + 1];
+    if (next === undefined) break;
+    i++;
+    if (next === 'n') out += '\n';
+    else if (next === 'r') out += '\r';
+    else if (next === 't') out += '\t';
+    else if (next === 'b') out += '\b';
+    else if (next === 'f') out += '\f';
+    else if (next === '(' || next === ')' || next === '\\') out += next;
+    else if (next === '\r' || next === '\n') {
+      if (next === '\r' && raw[i + 1] === '\n') i++;
+    } else if (/[0-7]/.test(next)) {
+      let oct = next;
+      if (i + 1 < raw.length && /[0-7]/.test(raw[i + 1]!)) {
+        oct += raw[++i]!;
+        if (i + 1 < raw.length && /[0-7]/.test(raw[i + 1]!)) oct += raw[++i]!;
+      }
+      const code = parseInt(oct, 8);
+      if (!Number.isNaN(code) && code >= 9) out += decodePdfWinAnsiCode(code);
+    } else {
+      out += next;
+    }
+  }
+  return out;
+}
+
+function decodePdfHexString(hexRaw: string, cmap: Map<string, string>): string {
+  const hex = hexRaw.replace(/\s+/g, '').toUpperCase();
+  if (!hex || hex.length % 2 !== 0) return '';
+
+  // UTF-16BE BOM
+  if (hex.startsWith('FEFF') && hex.length >= 8 && hex.length % 4 === 0) {
+    return decodePdfUtf16Hex(hex.slice(4));
+  }
+
+  // Try 4-hex-digit (2-byte CID) CMap lookup first if CMap has 4-digit keys
+  if (cmap.size > 0 && hex.length % 4 === 0) {
+    let mapped4 = '';
+    let hits4 = 0;
+    const total4 = hex.length / 4;
+    for (let i = 0; i < hex.length; i += 4) {
+      const code = hex.slice(i, i + 4);
+      const ch = cmap.get(code);
+      if (ch !== undefined) {
+        mapped4 += ch;
+        hits4++;
+      }
+    }
+    if (hits4 > 0 && hits4 >= total4 * 0.5) {
+      return mapped4;
+    }
+  }
+
+  // Try 2-hex-digit (1-byte) CMap lookup
+  if (cmap.size > 0) {
+    let mapped2 = '';
+    let hits2 = 0;
+    const total2 = hex.length / 2;
+    for (let i = 0; i < hex.length; i += 2) {
+      const code = hex.slice(i, i + 2);
+      const ch = cmap.get(code);
+      if (ch !== undefined) {
+        mapped2 += ch;
+        hits2++;
+      } else {
+        const b = parseInt(code, 16);
+        if (b >= 32 && b <= 126) mapped2 += String.fromCharCode(b);
+      }
+    }
+    if (hits2 > 0 && hits2 >= total2 * 0.3) {
+      return mapped2;
+    }
+  }
+
+  // Fallback: direct UTF-16BE (00XX pairs) or printable ASCII/Latin-1 bytes
+  if (hex.length >= 4 && hex.length % 4 === 0) {
+    let zeroHigh = 0;
+    for (let i = 0; i < hex.length; i += 4) {
+      if (hex.slice(i, i + 2) === '00') zeroHigh++;
+    }
+    if (zeroHigh >= (hex.length / 4) * 0.6) {
+      return decodePdfUtf16Hex(hex);
+    }
+  }
+
+  let out = '';
+  for (let i = 0; i < hex.length; i += 2) {
+    const b = parseInt(hex.slice(i, i + 2), 16);
+    if ((b >= 32 && b <= 126) || b === 9 || b === 10 || b === 13) {
+      out += String.fromCharCode(b);
+    }
+  }
+  return out;
+}
+
+function mergeWrappedPdfBlockLines(blockLines: string[]): string[] {
+  if (blockLines.length <= 1) return blockLines;
+  const merged: string[] = [];
+  for (const rawLine of blockLines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const prev = merged[merged.length - 1];
+    const startsNewLogicalLine =
+      /^(?:[-*•–—]|\d{1,2}[.)]\s|[A-Za-z][A-Za-z0-9 /&()-]{1,36}:\s|Q(?:\d+)?\s*[:.-]|A(?:\d+)?\s*[:.-]|Question\s*[:.-]|Answer\s*[:.-])/i.test(
+        line
+      );
+    const prevEndedCleanly = prev ? /[.!?:]$/.test(prev) : true;
+    if (prev && !prevEndedCleanly && !startsNewLogicalLine && prev.length < 480) {
+      merged[merged.length - 1] = `${prev} ${line}`.replace(/\s+/g, ' ').trim();
+    } else {
+      merged.push(line);
+    }
+  }
+  return merged;
+}
+
+function extractLinesFromPdfContentStream(decompressed: string, cmap: Map<string, string>): string[] {
+  const lines: string[] = [];
+  const blocks = [...decompressed.matchAll(/BT\b([\s\S]*?)\bET/g)];
+  const sources = blocks.length > 0 ? blocks.map(b => b[1] ?? '') : [decompressed];
+
+  for (const src of sources) {
+    const blockLines: string[] = [];
+    let cur = '';
+    // Scan literal strings (...), hex strings <...>, TJ arrays [...], and text operators
+    let i = 0;
+    while (i < src.length) {
+      const ch = src[i]!;
+      if (ch === '(') {
+        // Read balanced/escaped literal string
+        let depth = 1;
+        let j = i + 1;
+        let raw = '';
+        while (j < src.length && depth > 0) {
+          const c = src[j]!;
+          if (c === '\\' && j + 1 < src.length) {
+            raw += c + src[j + 1]!;
+            j += 2;
+            continue;
+          }
+          if (c === '(') depth++;
+          else if (c === ')') {
+            depth--;
+            if (depth === 0) {
+              j++;
+              break;
+            }
+          }
+          raw += c;
+          j++;
+        }
+        const after = src.slice(j, j + 16);
+        if (/^\s*(?:Tj|'|"|\r?\n)/.test(after)) {
+          cur += decodePdfLiteralString(raw);
+        }
+        i = j;
+        continue;
+      }
+      if (ch === '<' && src[i + 1] !== '<') {
+        const end = src.indexOf('>', i + 1);
+        if (end > i) {
+          const hex = src.slice(i + 1, end);
+          const after = src.slice(end + 1, end + 16);
+          if (/^[0-9A-Fa-f\s]+$/.test(hex) && /^\s*(?:Tj|'|")/.test(after)) {
+            cur += decodePdfHexString(hex, cmap);
+          }
+          i = end + 1;
+          continue;
+        }
+      }
+      if (ch === '[') {
+        // Parse TJ array: [...] TJ
+        let j = i + 1;
+        let arrOut = '';
+        let inParen = false;
+        let depth = 0;
+        while (j < src.length) {
+          const c = src[j]!;
+          if (inParen) {
+            if (c === '\\' && j + 1 < src.length) {
+              j += 2;
+              continue;
+            }
+            if (c === '(') depth++;
+            else if (c === ')') {
+              depth--;
+              if (depth === 0) inParen = false;
+            }
+            j++;
+            continue;
+          }
+          if (c === ']') {
+            j++;
+            break;
+          }
+          if (c === '(') {
+            let d = 1;
+            let k = j + 1;
+            let raw = '';
+            while (k < src.length && d > 0) {
+              const cc = src[k]!;
+              if (cc === '\\' && k + 1 < src.length) {
+                raw += cc + src[k + 1]!;
+                k += 2;
+                continue;
+              }
+              if (cc === '(') d++;
+              else if (cc === ')') {
+                d--;
+                if (d === 0) {
+                  k++;
+                  break;
+                }
+              }
+              raw += cc;
+              k++;
+            }
+            arrOut += decodePdfLiteralString(raw);
+            j = k;
+            continue;
+          }
+          if (c === '<' && src[j + 1] !== '<') {
+            const end = src.indexOf('>', j + 1);
+            if (end > j) {
+              const hex = src.slice(j + 1, end);
+              if (/^[0-9A-Fa-f\s]+$/.test(hex)) {
+                arrOut += decodePdfHexString(hex, cmap);
+              }
+              j = end + 1;
+              continue;
+            }
+          }
+          // Kerning number: negative shift < -120 typically indicates a word space
+          const numMatch = src.slice(j).match(/^(-?\d+(?:\.\d+)?)/);
+          if (numMatch) {
+            const val = Number(numMatch[1]);
+            if (val < -120 && arrOut && !arrOut.endsWith(' ')) {
+              arrOut += ' ';
+            }
+            j += numMatch[1]!.length;
+            continue;
+          }
+          j++;
+        }
+        const after = src.slice(j, j + 10);
+        if (/^\s*TJ\b/.test(after) && arrOut) {
+          cur += arrOut;
+        }
+        i = j;
+        continue;
+      }
+      // Line break operators (Td, TD, T*, Tm)
+      if (
+        ch === 'T' &&
+        (src[i + 1] === 'd' || src[i + 1] === 'D' || src[i + 1] === '*' || src[i + 1] === 'm') &&
+        (i === 0 || /\s/.test(src[i - 1]!))
+      ) {
+        if (cur.trim()) {
+          blockLines.push(cur.replace(/\s+/g, ' ').trim());
+          cur = '';
+        }
+        i += 2;
+        continue;
+      }
+      i++;
+    }
+    if (cur.trim()) {
+      blockLines.push(cur.replace(/\s+/g, ' ').trim());
+    }
+    if (blockLines.length > 0) {
+      lines.push(...mergeWrappedPdfBlockLines(blockLines));
+    }
+  }
+  return lines;
+}
+
+function tryInflatePdfBuffer(buf: Buffer): Buffer | null {
+  try {
+    return inflateSync(buf);
+  } catch {
+    try {
+      return unzipSync(buf);
+    } catch {
+      try {
+        return inflateRawSync(buf);
+      } catch {
+        return null;
+      }
+    }
+  }
+}
+
+/**
+ * Extracts plain text from simple, Flate, ASCII85+Flate (e.g. ReportLab), ASCIIHex, or CIDFont/ToUnicode CMap PDF buffers.
+ */
+export function extractTextFromPdf(bytes: Buffer): string {
+  const content = bytes.toString('binary');
+  const decompressedStreams: string[] = [];
+
+  // Match stream ... endstream (supports LF, CRLF, or CR terminators)
+  const streamRegex = /stream(?:\r\n|\n|\r)([\s\S]*?)endstream/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = streamRegex.exec(content)) !== null) {
+    const dictWindowStart = Math.max(0, match.index - 400);
+    const precedingDict = content.slice(dictWindowStart, match.index);
+
+    // Skip embedded non-text binary payloads (e.g., C2PA manifests, raster images, font binaries)
+    if (
+      /\/Type\s*\/EmbeddedFile\b/.test(precedingDict) ||
+      /\/Subtype\s*\/(?:Image|Type1C|CIDFontType0C|OpenType)\b/.test(precedingDict)
+    ) {
+      continue;
+    }
+
+    let rawBin = match[1]!;
+    if (rawBin.endsWith('\r\n')) rawBin = rawBin.slice(0, -2);
+    else if (rawBin.endsWith('\n') || rawBin.endsWith('\r')) rawBin = rawBin.slice(0, -1);
+    let workingBuf: Buffer = Buffer.from(rawBin, 'binary');
+
+    const hasAscii85 = /\/ASCII85Decode\b/.test(precedingDict) || (rawBin.includes('~>') && !/[\x00-\x08\x0E-\x1F\x80-\xFF]/.test(rawBin.slice(0, 64)));
+    const hasAsciiHex = /\/ASCIIHexDecode\b/.test(precedingDict);
+
+    if (hasAscii85) {
+      const decoded85 = decodePdfAscii85(workingBuf);
+      if (decoded85 && decoded85.length > 0) {
+        workingBuf = decoded85;
+      }
+    } else if (hasAsciiHex) {
+      const decodedHex = decodePdfAsciiHex(workingBuf);
+      if (decodedHex && decodedHex.length > 0) {
+        workingBuf = decodedHex;
+      }
+    }
+
+    const inflated = tryInflatePdfBuffer(workingBuf);
+    const decompressed = inflated ? inflated.toString('latin1') : workingBuf.toString('latin1');
+
+    if (decompressed) {
+      decompressedStreams.push(decompressed);
+    }
+  }
+
+  // Pass 1: collect all ToUnicode CMap tables from decompressed streams (including CID fonts)
+  const cmap = new Map<string, string>();
+  for (const s of decompressedStreams) {
+    parsePdfToUnicodeCmap(s, cmap);
+  }
+  parsePdfToUnicodeCmap(content, cmap);
+
+  // Pass 2: extract readable text lines from every content stream
+  const textLines: string[] = [];
+  for (const s of decompressedStreams) {
+    if (s.includes('beginbfchar') || s.includes('beginbfrange')) continue;
+    const extracted = extractLinesFromPdfContentStream(s, cmap);
+    if (extracted.length > 0) {
+      textLines.push(...extracted);
+    }
+  }
+
+  // Also scan raw top-level content (excluding PDF % comment lines) if PDF stores text uncompressed outside streams
+  if (textLines.length === 0) {
+    const contentWithoutComments = content.replace(/^%[^\r\n]*/gm, '');
+    textLines.push(...extractLinesFromPdfContentStream(contentWithoutComments, cmap));
+  }
+
+  const cleanedLines = textLines
+    .map(l => l.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(l => l.length > 0 && /[A-Za-z0-9\u0900-\u0DFF]/.test(l));
+
+  if (cleanedLines.length === 0) {
     const isRasterImagePdf = content.includes('/Image') || content.includes('/XObject');
     if (isRasterImagePdf) {
       return '[Scanned or image-only PDF: No embedded digital text layer found. OCR processing required for visual extraction.]';
     }
-    // Attempt fallback to printable ASCII if any meaningful strings exist
     const ascii = bytes.toString('utf-8').replace(/[^\x20-\x7E\r\n\t]/g, ' ');
     const readable = ascii
       .split(/\s{2,}/)
@@ -206,7 +687,7 @@ export function extractTextFromPdf(bytes: Buffer): string {
     return '[Scanned or empty PDF: No readable text layers detected.]';
   }
 
-  return textChunks.join(' ').replace(/\s{2,}/g, ' ').slice(0, MAX_EXTRACTED_TEXT_LENGTH);
+  return cleanedLines.join('\n').slice(0, MAX_EXTRACTED_TEXT_LENGTH);
 }
 
 /**

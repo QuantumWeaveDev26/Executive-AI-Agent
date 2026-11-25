@@ -68,7 +68,7 @@ export function createSarvamCallProvider(o:SarvamCallProviderOptions):PhoneCallP
   try{secrets=await o.secrets.resolve();}catch{return {status:'not_configured'};}
   if(!secrets||typeof secrets.apiKey!=='string'||secrets.apiKey.length<8||typeof secrets.webhookSecret!=='string'||secrets.webhookSecret.length<32)return {status:'not_configured'};
   if(!/^[0-9a-f-]{36}$/i.test(request.callId)||!/^\+91[6-9][0-9]{9}$/.test(request.to)||request.to===o.agentPhoneNumber||request.maxDurationSeconds!==o.enforcedMaxDurationSeconds
-   ||!request.language||!request.aiDisclosure||!request.purpose||request.purpose.length>1000||request.aiDisclosure.length>300
+   ||!request.language||!request.aiDisclosure||!request.purpose||request.purpose.length>10000||request.aiDisclosure.length>300
    ||typeof request.recipientName!=='string'||!request.recipientName.trim()||request.recipientName.length>128)return {status:'failed',code:'PHONE_DISPATCH_INPUT'};
   const body={
    app_config:{app_id:o.appId,app_version:o.appVersion,connection_config:{connection_id:o.connectionId,agent_phone_number:o.agentPhoneNumber},

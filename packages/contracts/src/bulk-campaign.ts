@@ -171,7 +171,7 @@ export const BulkCampaignCallScriptSchema = Type.Object(
     openingLine: Type.String({ minLength: 5, maxLength: 500 }),
     eventPitch: Type.String({ minLength: 5, maxLength: 800 }),
     questions: Type.Array(Type.String({ minLength: 3, maxLength: 240 }), { minItems: 1, maxItems: 10 }),
-    boundedPurposePreview: Type.String({ minLength: 1, maxLength: 1000 }),
+    boundedPurposePreview: Type.String({ minLength: 1, maxLength: 10000 }),
     supportedLanguages: Type.Array(PhoneCallingLanguageSchema, { minItems: 1, maxItems: 3 })
   },
   { additionalProperties: false }
@@ -412,7 +412,7 @@ export const PhoneBatchIntegrationContractSchema = Type.Object(
     callHistoryEndpoint: Type.Literal('GET /api/v1/connectors/phone/ai/calls'),
     providerResultEndpoint: Type.Literal('POST /api/v1/connectors/phone/ai/calls/:callId/result'),
     supportedLanguages: Type.Array(PhoneCallingLanguageSchema),
-    maxPurposeLength: Type.Literal(1000),
+    maxPurposeLength: Type.Literal(10000),
     defaultDailyLiveCallLimit: Type.Literal(5),
     maxConfiguredDailyLiveCallLimit: Type.Integer({ minimum: 1 })
   },
@@ -567,7 +567,7 @@ export const BulkCampaignKnowledgeContextSchema = Type.Object(
     extractedFacts: BulkCampaignExtractedFactsSchema,
     conflicts: Type.Array(Type.String({ maxLength: 300 }), { maxItems: 10 }),
     missingDetails: Type.Array(Type.String({ maxLength: 160 }), { maxItems: 10 }),
-    sarvamBoundedFactBrief: Type.String({ maxLength: 1000 }),
+    sarvamBoundedFactBrief: Type.String({ maxLength: 10000 }),
     sampleGroundedQa: Type.Array(BulkCampaignGroundedQaItemSchema, { maxItems: 12 })
   },
   { additionalProperties: false }
@@ -594,7 +594,7 @@ export const BulkCampaignPilotCallStateSchema = Type.Object(
     displayName: Type.String({ minLength: 1, maxLength: 128 }),
     maskedPhone: Type.String({ minLength: 4, maxLength: 40 }),
     language: PhoneCallingLanguageSchema,
-    callPurpose: Type.String({ minLength: 1, maxLength: 1000 }),
+    callPurpose: Type.String({ minLength: 1, maxLength: 10000 }),
     approvalId: Type.String({ format: 'uuid' }),
     preparedAt: Type.String(),
     expiresAt: Type.String(),

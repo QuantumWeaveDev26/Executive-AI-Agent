@@ -285,6 +285,10 @@ export interface BulkCampaignViewProps {
   onResume?(): void;
   onStop?(): void;
   onCancel?(): void;
+  onPauseCampaignById?(campaignId: string): Promise<void> | void;
+  onResumeCampaignById?(campaignId: string): Promise<void> | void;
+  onStopCampaignById?(campaignId: string): Promise<void> | void;
+  onDeleteCampaignById?(campaignId: string): Promise<void> | void;
   onUnsubscribeContact?(contactId: string): void;
   onChatCommand?(command: string): void;
 }
@@ -2189,8 +2193,34 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
   const [batchConsentDate, setBatchConsentDate] = useState('');
   const [batchConsentPhone, setBatchConsentPhone] = useState(true);
   const [batchConsentWhatsapp, setBatchConsentWhatsapp] = useState(false);
+  const [campaignDropdownOpen, setCampaignDropdownOpen] = useState(false);
+  const [dropdownActionBusyId, setDropdownActionBusyId] = useState<string | null>(null);
+  const [confirmDeleteCampaignId, setConfirmDeleteCampaignId] = useState<string | null>(null);
 
   const reviewKnowledgeInputRef = useRef<HTMLInputElement | null>(null);
+  const campaignDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!campaignDropdownOpen) return;
+    const onDocClick = (ev: MouseEvent) => {
+      if (campaignDropdownRef.current && !campaignDropdownRef.current.contains(ev.target as Node)) {
+        setCampaignDropdownOpen(false);
+        setConfirmDeleteCampaignId(null);
+      }
+    };
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        setCampaignDropdownOpen(false);
+        setConfirmDeleteCampaignId(null);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [campaignDropdownOpen]);
 
   useEffect(() => {
     setViewStageOverride(null);
@@ -2399,6 +2429,7 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
   ].filter((v, idx, arr) => arr.indexOf(v) === idx);
 
   const processedKnowledgeFiles = (p.knowledgeContext?.files ?? []).filter(f => f.status === 'processed');
+  const rejectedKnowledgeFiles = (p.knowledgeContext?.files ?? []).filter(f => f.status === 'rejected');
   const allQaItems = p.knowledgeContext?.sampleGroundedQa ?? [];
   const visibleQaItems = showMoreQuestions ? allQaItems : allQaItems.slice(0, 4);
 
@@ -2552,25 +2583,318 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {p.campaignsHistory && p.campaignsHistory.length > 1 && (
-            <select
-              aria-label="Campaign history switcher"
-              data-testid="campaign-history-select"
-              value={
-                filteredHistory.some(h => h.campaignId === p.campaignId)
-                  ? p.campaignId
-                  : (filteredHistory[0]?.campaignId ?? p.campaignId)
-              }
-              onChange={e => p.onSelectCampaign?.(e.target.value)}
-              style={{ fontSize: '0.8rem', padding: '0.3rem 0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-            >
-              {(filteredHistory.length > 0 ? filteredHistory : p.campaignsHistory).map(h => (
-                <option key={h.campaignId} value={h.campaignId}>
-                  {h.title} ({h.status.toUpperCase()})
-                </option>
-              ))}
-            </select>
-          )}
+          {p.campaignsHistory && p.campaignsHistory.length >= 1 && (() => {
+            const dropdownItems = filteredHistory.length > 0 ? filteredHistory : p.campaignsHistory;
+            const currentItem = dropdownItems.find(h => h.campaignId === p.campaignId) ?? dropdownItems[0];
+            return (
+              <div ref={campaignDropdownRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  aria-label="Campaign history switcher"
+                  aria-expanded={campaignDropdownOpen}
+                  aria-haspopup="listbox"
+                  data-testid="campaign-history-select"
+                  onClick={() => {
+                    setCampaignDropdownOpen(v => !v);
+                    setConfirmDeleteCampaignId(null);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    minWidth: '240px',
+                    maxWidth: '420px',
+                    fontSize: '0.8rem',
+                    padding: '0.34rem 0.65rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {currentItem ? `${currentItem.title} (${currentItem.status.toUpperCase()})` : `${p.title} (${p.status.toUpperCase()})`}
+                  </span>
+                  <span aria-hidden="true" style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    {campaignDropdownOpen ? '▴' : '▾'}
+                  </span>
+                </button>
+                {campaignDropdownOpen && (
+                  <div
+                    role="listbox"
+                    data-testid="campaign-history-dropdown-menu"
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 'calc(100% + 6px)',
+                      minWidth: '340px',
+                      maxWidth: '480px',
+                      maxHeight: '340px',
+                      overflowY: 'auto',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '10px',
+                      boxShadow: '0 10px 25px rgba(15, 23, 42, 0.14)',
+                      zIndex: 50,
+                      padding: '0.35rem'
+                    }}
+                  >
+                    {dropdownItems.map(h => {
+                      const isCurrent = h.campaignId === p.campaignId;
+                      const isRowBusy = dropdownActionBusyId === h.campaignId;
+                      const isPaused = h.status === 'paused';
+                      const isTerminal = h.status === 'stopped' || h.status === 'cancelled' || h.status === 'completed';
+                      const isConfirmingDelete = confirmDeleteCampaignId === h.campaignId;
+                      return (
+                        <div
+                          key={h.campaignId}
+                          data-testid={`campaign-dropdown-row-${h.campaignId}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            padding: '0.42rem 0.55rem',
+                            borderRadius: '7px',
+                            background: isCurrent ? '#eff6ff' : 'transparent',
+                            borderBottom: '1px solid #f1f5f9'
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCampaignDropdownOpen(false);
+                              setConfirmDeleteCampaignId(null);
+                              if (!isCurrent) p.onSelectCampaign?.(h.campaignId);
+                            }}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              border: 'none',
+                              background: 'transparent',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              padding: 0,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.1rem'
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: '0.8rem',
+                                fontWeight: isCurrent ? 700 : 500,
+                                color: isCurrent ? '#1d4ed8' : '#0f172a',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {h.title}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                              {h.status.toUpperCase()} · {h.campaignId}
+                            </span>
+                          </button>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0 }}>
+                            {!isTerminal && (p.onPauseCampaignById || p.onResumeCampaignById) && (
+                              <button
+                                type="button"
+                                data-testid={`dropdown-pause-${h.campaignId}`}
+                                disabled={isRowBusy}
+                                title={isPaused ? 'Resume campaign' : 'Pause campaign'}
+                                aria-label={isPaused ? `Resume ${h.title}` : `Pause ${h.title}`}
+                                onClick={async e => {
+                                  e.stopPropagation();
+                                  setDropdownActionBusyId(h.campaignId);
+                                  try {
+                                    if (isPaused) {
+                                      await p.onResumeCampaignById?.(h.campaignId);
+                                    } else {
+                                      await p.onPauseCampaignById?.(h.campaignId);
+                                    }
+                                  } finally {
+                                    setDropdownActionBusyId(null);
+                                  }
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '28px',
+                                  height: '28px',
+                                  padding: 0,
+                                  borderRadius: '7px',
+                                  border: isPaused ? '1px solid #a7f3d0' : '1px solid #fde68a',
+                                  background: isPaused ? '#ecfdf5' : '#fffbeb',
+                                  color: isPaused ? '#047857' : '#b45309',
+                                  cursor: isRowBusy ? 'not-allowed' : 'pointer',
+                                  opacity: isRowBusy ? 0.5 : 1
+                                }}
+                              >
+                                {isPaused ? (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <polygon points="6,4 20,12 6,20" />
+                                  </svg>
+                                ) : (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                                  </svg>
+                                )}
+                              </button>
+                            )}
+                            {!isTerminal && p.onStopCampaignById && (
+                              <button
+                                type="button"
+                                data-testid={`dropdown-stop-${h.campaignId}`}
+                                disabled={isRowBusy}
+                                title="Stop campaign"
+                                aria-label={`Stop ${h.title}`}
+                                onClick={async e => {
+                                  e.stopPropagation();
+                                  setDropdownActionBusyId(h.campaignId);
+                                  try {
+                                    await p.onStopCampaignById?.(h.campaignId);
+                                  } finally {
+                                    setDropdownActionBusyId(null);
+                                  }
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '28px',
+                                  height: '28px',
+                                  padding: 0,
+                                  borderRadius: '7px',
+                                  border: '1px solid #fecaca',
+                                  background: '#fef2f2',
+                                  color: '#b91c1c',
+                                  cursor: isRowBusy ? 'not-allowed' : 'pointer',
+                                  opacity: isRowBusy ? 0.5 : 1
+                                }}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                  <rect x="5" y="5" width="14" height="14" rx="2" />
+                                </svg>
+                              </button>
+                            )}
+                            {p.onDeleteCampaignById && (
+                              isConfirmingDelete ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                                  <button
+                                    type="button"
+                                    data-testid={`dropdown-confirm-delete-${h.campaignId}`}
+                                    disabled={isRowBusy}
+                                    title="Confirm delete"
+                                    aria-label={`Confirm delete ${h.title}`}
+                                    onClick={async e => {
+                                      e.stopPropagation();
+                                      setDropdownActionBusyId(h.campaignId);
+                                      try {
+                                        await p.onDeleteCampaignById?.(h.campaignId);
+                                        setConfirmDeleteCampaignId(null);
+                                        if (isCurrent) setCampaignDropdownOpen(false);
+                                      } finally {
+                                        setDropdownActionBusyId(null);
+                                      }
+                                    }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: '28px',
+                                      height: '28px',
+                                      padding: 0,
+                                      borderRadius: '7px',
+                                      border: '1px solid #dc2626',
+                                      background: '#dc2626',
+                                      color: '#ffffff',
+                                      cursor: isRowBusy ? 'not-allowed' : 'pointer'
+                                    }}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isRowBusy}
+                                    title="Cancel delete"
+                                    aria-label="Cancel delete"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      setConfirmDeleteCampaignId(null);
+                                    }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: '26px',
+                                      height: '28px',
+                                      padding: 0,
+                                      borderRadius: '7px',
+                                      border: '1px solid #cbd5e1',
+                                      background: '#f8fafc',
+                                      color: '#475569',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                      <line x1="18" y1="6" x2="6" y2="18" />
+                                      <line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg>
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  data-testid={`dropdown-delete-${h.campaignId}`}
+                                  disabled={isRowBusy}
+                                  title="Delete campaign"
+                                  aria-label={`Delete ${h.title}`}
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    setConfirmDeleteCampaignId(h.campaignId);
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '28px',
+                                    height: '28px',
+                                    padding: 0,
+                                    borderRadius: '7px',
+                                    border: '1px solid #e2e8f0',
+                                    background: '#ffffff',
+                                    color: '#dc2626',
+                                    cursor: isRowBusy ? 'not-allowed' : 'pointer',
+                                    opacity: isRowBusy ? 0.5 : 1
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                    <path d="M10 11v6" />
+                                    <path d="M14 11v6" />
+                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                  </svg>
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {p.onNewCampaign && (
             <button
               type="button"
@@ -2736,12 +3060,14 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
               </div>
               <div>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Uploaded knowledge</div>
-                <div style={{ fontWeight: 500, color: '#0f172a', marginTop: '0.15rem' }}>
+                <div style={{ fontWeight: 500, color: processedKnowledgeFiles.length === 0 && rejectedKnowledgeFiles.length > 0 ? '#b91c1c' : '#0f172a', marginTop: '0.15rem' }}>
                   {processedKnowledgeFiles.length > 0
                     ? processedKnowledgeFiles.map(f => f.fileName).join(', ')
-                    : p.knowledgeContext?.extractedFacts?.campaignType === 'services' || /quantum\s*weave/i.test(p.instruction)
-                      ? 'Quantum Weave Company Knowledge'
-                      : 'Owner instructions only'}
+                    : rejectedKnowledgeFiles.length > 0
+                      ? rejectedKnowledgeFiles.map(f => `${f.fileName} (${f.statusMessage || 'Unreadable'})`).join(', ')
+                      : p.knowledgeContext?.extractedFacts?.campaignType === 'services' || /quantum\s*weave/i.test(p.instruction)
+                        ? 'Quantum Weave Company Knowledge'
+                        : 'Owner instructions only'}
                 </div>
               </div>
               <div>
@@ -4595,12 +4921,12 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
             </div>
             {p.boundedPurposePreview && (
               <div style={{ marginTop: '0.35rem' }}>
-                <strong>Sarvam Outbound v6 Condensed Fact Brief ({p.boundedPurposePreview.length}/1000 chars):</strong>{' '}
+                <strong>Sarvam Outbound v6 Campaign Memory Brief ({p.boundedPurposePreview.length}/10,000 chars):</strong>{' '}
                 <span>{p.boundedPurposePreview}</span>
                 <div style={{ color: '#64748b', marginTop: '0.18rem' }}>
                   Architecture Note: Offline simulation retrieves across all processed sections of your uploaded
-                  knowledge document, whereas live <code>Thaara AI — Sarvam outbound v6</code> receives only this
-                  condensed ≤1,000-character <code>agent_variables.call_purpose</code> brief (not the full DOCX mid-call).
+                  knowledge document, and live <code>Thaara AI — Sarvam outbound v6</code> receives this
+                  ≤10,000-character <code>agent_variables.call_purpose</code> brief.
                 </div>
               </div>
             )}
@@ -6042,6 +6368,78 @@ export function BulkCampaignPanel(props: {
               setErrorMsg((err as Error).message);
             } finally {
               setBusy(false);
+            }
+          }}
+          onPauseCampaignById={async targetId => {
+            setErrorMsg(null);
+            try {
+              const updated = await request<ApiCampaignEnvelope>(
+                `/api/v1/campaigns/bulk/${encodeURIComponent(targetId)}/pause`,
+                { method: 'POST', body: JSON.stringify({}) }
+              );
+              if (targetId === envelope.campaign.campaignId) {
+                setEnvelope(updated);
+              }
+              await refreshHistoryAndCsv(envelope.campaign.campaignId);
+            } catch (err) {
+              setErrorMsg((err as Error).message);
+            }
+          }}
+          onResumeCampaignById={async targetId => {
+            setErrorMsg(null);
+            try {
+              const targetItem = campaignsList.find(c => c.campaign.campaignId === targetId);
+              const isModeB = Boolean(targetItem?.campaign.sheetMonitor);
+              const endpoint = isModeB
+                ? `/api/v1/campaigns/bulk/${encodeURIComponent(targetId)}/auto-followup/resume`
+                : `/api/v1/campaigns/bulk/${encodeURIComponent(targetId)}/resume`;
+              const updated = await request<ApiCampaignEnvelope>(endpoint, {
+                method: 'POST',
+                body: JSON.stringify({})
+              });
+              if (targetId === envelope.campaign.campaignId) {
+                setEnvelope(updated);
+              }
+              await refreshHistoryAndCsv(envelope.campaign.campaignId);
+            } catch (err) {
+              setErrorMsg((err as Error).message);
+            }
+          }}
+          onStopCampaignById={async targetId => {
+            setErrorMsg(null);
+            try {
+              const updated = await request<ApiCampaignEnvelope>(
+                `/api/v1/campaigns/bulk/${encodeURIComponent(targetId)}/stop`,
+                { method: 'POST', body: JSON.stringify({}) }
+              );
+              if (targetId === envelope.campaign.campaignId) {
+                setEnvelope(updated);
+              }
+              await refreshHistoryAndCsv(envelope.campaign.campaignId);
+            } catch (err) {
+              setErrorMsg((err as Error).message);
+            }
+          }}
+          onDeleteCampaignById={async targetId => {
+            setErrorMsg(null);
+            try {
+              await request<{ deleted: boolean; campaignId: string }>(
+                `/api/v1/campaigns/bulk/${encodeURIComponent(targetId)}`,
+                { method: 'DELETE', body: JSON.stringify({}) }
+              );
+              const remaining = campaignsList.filter(c => c.campaign.campaignId !== targetId);
+              setCampaignsList(remaining);
+              if (targetId === envelope.campaign.campaignId) {
+                const nextCamp = remaining[remaining.length - 1] ?? null;
+                setEnvelope(nextCamp);
+                if (nextCamp) {
+                  await refreshCsv(nextCamp.campaign.campaignId);
+                } else {
+                  setViewMode('create');
+                }
+              }
+            } catch (err) {
+              setErrorMsg((err as Error).message);
             }
           }}
           onLoadSampleSimulation={() => void createSampleSimulationCampaign()}

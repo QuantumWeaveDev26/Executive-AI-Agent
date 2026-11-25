@@ -2579,7 +2579,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
       ]
     });
 
-    expect(plan.knowledgeContext?.sarvamBoundedFactBrief.length).toBeLessThanOrEqual(1000);
+    expect(plan.knowledgeContext?.sarvamBoundedFactBrief.length).toBeLessThanOrEqual(10000);
     expect(plan.knowledgeContext?.sarvamBoundedFactBrief).toContain('Kaaranji Shreedhar');
     expect(SARVAM_OUTBOUND_AGENT_LABEL).toBe('Thaara AI — Sarvam outbound v6');
 
@@ -3041,7 +3041,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     expect(simId).not.toBe(originalId);
     expect(simCamp.instruction).toBe(COMPANY_INTRODUCTION_SIMULATION_INSTRUCTION);
     expect(simCamp.channels).toEqual(['phone']);
-    expect(simCamp.knowledgeContext.sarvamBoundedFactBrief.length).toBeLessThanOrEqual(1000);
+    expect(simCamp.knowledgeContext.sarvamBoundedFactBrief.length).toBeLessThanOrEqual(10000);
     expect(simCamp.contacts).toHaveLength(5);
     expect(simCamp.contacts.every((r: any) => r.contact.isSyntheticTestFixture === true)).toBe(true);
     expect(simCamp.contacts.every((r: any) => r.contact.phoneE164 === undefined)).toBe(true);
@@ -3215,7 +3215,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
       dailyCallLimit: 5,
       listDirectoryContacts: async () => ({ contacts: authorizedDirectory }),
       prepareDraft: async (payload: any) => {
-        expect(payload.purpose.length).toBeLessThanOrEqual(1000);
+        expect(payload.purpose.length).toBeLessThanOrEqual(10000);
         expect(payload.selectedContactId).toBe('dir_owner_test_1');
         return {
           approvalId: mockApprovalId,
@@ -3325,7 +3325,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
       language: 'en-IN'
     });
     expect(prepared.pilotCall?.status).toBe('prepared');
-    expect(prepared.pilotCall?.callPurpose.length).toBeLessThanOrEqual(1000);
+    expect(prepared.pilotCall?.callPurpose.length).toBeLessThanOrEqual(10000);
     expect(prepared.liveCallingEnabled).toBe(false);
 
     // 3. Execute once + duplicate click is idempotent (placeCount === 1)
@@ -3588,7 +3588,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     });
     expect(claimRes.statusCode).toBe(200);
     expect(claimRes.json().proceed).toBe(true);
-    expect(claimRes.json().callPurpose.length).toBeLessThanOrEqual(1000);
+    expect(claimRes.json().callPurpose.length).toBeLessThanOrEqual(10000);
 
     const dupClaimRes = await app.inject({
       method: 'POST',
@@ -5695,7 +5695,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     expect(teamwear.callScript.questions[6]).toContain('Where should the order be delivered?');
     expect(teamwear.objective).not.toMatch(/webinar|7:00 PM|upcoming session|digital growth strategies/i);
     expect(teamwear.callScript.eventPitch).not.toMatch(/We are hosting|webinar|7:00 PM|digital growth strategies/i);
-    expect(teamwear.callScript.boundedPurposePreview.length).toBeLessThanOrEqual(1000);
+    expect(teamwear.callScript.boundedPurposePreview.length).toBeLessThanOrEqual(10000);
     expect(teamwear.callScript.boundedPurposePreview).not.toMatch(/webinar|7:00 PM|digital growth strategies/i);
 
     // 2. AI Webinar still retains webinar details & time
@@ -5720,7 +5720,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
       expect(p.webinarDetails).toBeUndefined();
       expect(p.objective).not.toMatch(/webinar|7:00 PM|We are hosting/i);
       expect(p.callScript.boundedPurposePreview).not.toMatch(/webinar|7:00 PM|We are hosting/i);
-      expect(p.callScript.boundedPurposePreview.length).toBeLessThanOrEqual(1000);
+      expect(p.callScript.boundedPurposePreview.length).toBeLessThanOrEqual(10000);
     }
 
     // 9. Uploaded knowledge document associated with Custom Teamwear (no Quantum Weave bleed)
@@ -5892,11 +5892,11 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     expect(plan.knowledgeContext?.sarvamBoundedFactBrief).toContain('180 GSM');
     expect(badFile?.status).toBe('rejected');
     expect(JSON.stringify(badFile)).toContain('Invalid or unreadable PDF header');
-    expect(plan.callScript.boundedPurposePreview?.length ?? 0).toBeLessThanOrEqual(1000);
-    expect(plan.knowledgeContext?.sarvamBoundedFactBrief.length ?? 0).toBeLessThanOrEqual(1000);
+    expect(plan.callScript.boundedPurposePreview?.length ?? 0).toBeLessThanOrEqual(10000);
+    expect(plan.knowledgeContext?.sarvamBoundedFactBrief.length ?? 0).toBeLessThanOrEqual(10000);
     expect(plan.callScript.boundedPurposePreview).not.toContain('7:00 PM');
 
-    // Large PDF exceeding 1000 chars stays strictly bounded to <= 1000 chars
+    // Large PDF exceeding 1000 chars preserves >1000 chars of campaign memory while staying strictly bounded to <= 10000 chars
     const largePdfBase64 = buildSimplePdfBase64(
       Array.from({ length: 40 }, (_, i) => `Catalog item ${i + 1}: Custom jersey specification line with fabric and sizing details.`)
     );
@@ -5915,8 +5915,9 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
       ]
     });
     expect(largePlan.knowledgeContext?.files[0]?.status).toBe('processed');
-    expect(largePlan.knowledgeContext?.sarvamBoundedFactBrief.length ?? 0).toBeLessThanOrEqual(1000);
-    expect(largePlan.callScript.boundedPurposePreview?.length ?? 0).toBeLessThanOrEqual(1000);
+    expect(largePlan.knowledgeContext?.sarvamBoundedFactBrief.length ?? 0).toBeGreaterThan(1000);
+    expect(largePlan.knowledgeContext?.sarvamBoundedFactBrief.length ?? 0).toBeLessThanOrEqual(10000);
+    expect(largePlan.callScript.boundedPurposePreview?.length ?? 0).toBeLessThanOrEqual(10000);
   });
 
   it('23. Unlimited daily call quota & unbacked phone completion guard: unlimitedDailyCalls skips 5/day fallback and unbacked outcome does not mark answered', async () => {
@@ -7249,12 +7250,12 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     }
 
     expect(capturedPurposes).toHaveLength(2);
-    expect(capturedPurposes[0]!.purpose.length).toBeLessThanOrEqual(1000);
+    expect(capturedPurposes[0]!.purpose.length).toBeLessThanOrEqual(10000);
     expect(capturedPurposes[0]!.purpose).toContain('Ravi');
     expect(capturedPurposes[0]!.purpose).toContain('WhatsApp Automation');
     expect(capturedPurposes[0]!.purpose).not.toContain('Priya Studio');
 
-    expect(capturedPurposes[1]!.purpose.length).toBeLessThanOrEqual(1000);
+    expect(capturedPurposes[1]!.purpose.length).toBeLessThanOrEqual(10000);
     expect(capturedPurposes[1]!.purpose).toContain('Priya');
     expect(capturedPurposes[1]!.purpose).toContain('Website Development');
     expect(capturedPurposes[1]!.purpose).not.toContain('Ravi Traders');
@@ -8721,7 +8722,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
         interactionId: '20261124/afcd65d2-16:17:40-aw15fa4a',
         attemptId: '4b659630-6e89-4186-a524-657367c1e6fb',
         direction: 'outbound' as const,
-        phoneE164: '+919000001539',
+        phoneE164: '+919187951539',
         maskedInboundPhone: '•••• 1539',
         maskedOutboundPhone: '+919 ******1539',
         occurredAt: '2026-11-24T10:47:53.000Z',
@@ -8934,8 +8935,8 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     // Raw Excel/CSV rows WITHOUT a consent column + one DND row + one explicit Consent=No row
     const rawCsv = [
       'Name,Phone,DND,Consent',
-      'Lead Raw,9000001539,,',
-      'Lead DND,9000007894,Yes,',
+      'Lead Raw,9187951539,,',
+      'Lead DND,9110847894,Yes,',
       'Lead Explicit No,9845011223,,No'
     ].join('\n');
 
@@ -8978,7 +8979,7 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
         channels: ['phone'],
         sourceType: 'google_sheets',
         fileName: 'Thaara test.csv',
-        rawText: 'Phone\n9000007910'
+        rawText: 'Phone\n9845397910'
       }
     });
     expect(rawNoConsentPlan.statusCode).toBe(200);
@@ -9014,5 +9015,256 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     expect(upgraded.contacts[0].contact.consent.source).toBe('owner_verified');
 
     await app.close();
+  });
+
+  it('43. CUSTOM TEAMWEAR CID/CMAP PDF KNOWLEDGE + NO QUANTUM WEAVE FALLBACK + CAMPAIGN PAUSE/STOP/DELETE', async () => {
+    const { deflateSync } = await import('node:zlib');
+    const scope = {
+      workspaceId: '75d2f889-d3eb-4acc-861a-fada4691ecce',
+      userId: '4b4cbc9c-df01-4cc2-8565-8a23a3435b9d',
+      role: 'owner' as const,
+      sessionTokenHash: 'test-session-hash'
+    };
+
+    // Build a realistic FlateDecode + ToUnicode CMap + hex-encoded CIDFont PDF (like ReportLab/WeasyPrint)
+    const sampleLines = [
+      'THAARA x CUSTOM TEAMWEAR',
+      'What do you supply?',
+      'Corporate and bulk team apparel including polos, T-shirts, formal shirts, hoodies and jackets.',
+      'What quantity can I order?',
+      'The current CTW ordering reference uses a minimum order quantity of 50 pieces.'
+    ];
+    const charToCid = new Map<string, string>();
+    const bfcharLines: string[] = [];
+    let nextCid = 1;
+    const encodeHex = (line: string): string => {
+      let out = '';
+      for (const ch of line) {
+        let cid = charToCid.get(ch);
+        if (!cid) {
+          cid = (nextCid++).toString(16).toUpperCase().padStart(4, '0');
+          charToCid.set(ch, cid);
+          const uhex = ch.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0');
+          bfcharLines.push(`<${cid}> <${uhex}>`);
+        }
+        out += cid;
+      }
+      return `<${out}>`;
+    };
+    const contentOps = ['BT', '/F1 11 Tf', ...sampleLines.map(l => `${encodeHex(l)} Tj 0 -14 Td`), 'ET'].join('\n');
+    const cmapText = `begincmap\n${bfcharLines.length} beginbfchar\n${bfcharLines.join('\n')}\nendbfchar\nendcmap`;
+    const zCmap = deflateSync(Buffer.from(cmapText, 'utf8'));
+    const zContent = deflateSync(Buffer.from(contentOps, 'utf8'));
+    const pdfBuf = Buffer.concat([
+      Buffer.from('%PDF-1.4\n1 0 obj\n<< /Filter /FlateDecode >>\nstream\n', 'binary'),
+      zCmap,
+      Buffer.from('\nendstream\nendobj\n2 0 obj\n<< /Filter /FlateDecode >>\nstream\n', 'binary'),
+      zContent,
+      Buffer.from('\nendstream\nendobj\n%%EOF', 'binary')
+    ]);
+
+    const ctwInstruction =
+      'Act as the owner/senior sales advisor of Custom Teamwear (Kashyap Inc), Bengaluru. Follow up Meta leads for bulk corporate, event, institution and team apparel. Speak naturally, confidently and politely. Explain our end-to-end service: design support, sourcing, bulk fulfilment and delivery. Collect: name, company/organisation, use case, garment, quantity (MOQ 50), colour, size split, branding method, delivery pincode and required date. Quote only after required details; never invent price.';
+
+    const app = Fastify();
+    app.addHook('onRequest', async req => {
+      (req as any).scope = scope;
+    });
+    const store = new BulkCampaignWorkspaceStore();
+    await bulkCampaignRoutes(app, { store, allowBatchOfflineTest: true });
+
+    const planRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/campaigns/bulk/plan',
+      payload: {
+        instruction: ctwInstruction,
+        channels: ['phone'],
+        sourceType: 'csv',
+        fileName: 'thaara test1.csv',
+        rawText: 'Name,Phone,Consent\nAsha,9000001539,Yes',
+        knowledgeFiles: [
+          {
+            fileName: 'Thaara_Custom_Teamwear_Lead_Followup_Playbook.pdf',
+            mimeType: 'application/pdf',
+            fileBase64: pdfBuf.toString('base64')
+          }
+        ]
+      }
+    });
+    expect(planRes.statusCode).toBe(200);
+    const camp = planRes.json().campaign;
+    expect(camp.title).toContain('Custom Teamwear');
+    expect(camp.title).not.toMatch(/Quantum Weave/i);
+    expect(camp.callScript.openingLine).not.toMatch(/Quantum Weave/i);
+    expect(camp.callScript.eventPitch).not.toMatch(/digital marketing/i);
+    expect(camp.knowledgeContext.files[0].status).toBe('processed');
+    expect(camp.knowledgeContext.files[0].extractedCharCount).toBeGreaterThan(80);
+    expect(camp.knowledgeContext.extractedFacts.campaignType).toBe('general');
+    const qaQuestions = (camp.knowledgeContext.sampleGroundedQa as any[]).map(q => q.question);
+    expect(qaQuestions.some((q: string) => /What do you supply/i.test(q))).toBe(true);
+    expect(qaQuestions.some((q: string) => /Quantum Weave/i.test(q))).toBe(false);
+
+    // Pause (Mode B), Stop, and Delete campaign via API
+    await app.inject({
+      method: 'POST',
+      url: `/api/v1/campaigns/bulk/${encodeURIComponent(camp.campaignId)}/auto-followup/configure`,
+      payload: {
+        spreadsheetId: 'sheet_ctw_1',
+        spreadsheetName: 'thaara test1',
+        tabName: 'Sheet1',
+        processExistingBacklog: false
+      }
+    });
+
+    const pauseRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/campaigns/bulk/${encodeURIComponent(camp.campaignId)}/pause`,
+      payload: {}
+    });
+    expect(pauseRes.statusCode).toBe(200);
+    expect(pauseRes.json().campaign.status).toBe('paused');
+
+    const stopRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/campaigns/bulk/${encodeURIComponent(camp.campaignId)}/stop`,
+      payload: {}
+    });
+    expect(stopRes.statusCode).toBe(200);
+    expect(stopRes.json().campaign.status).toBe('stopped');
+
+    const delRes = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/campaigns/bulk/${encodeURIComponent(camp.campaignId)}`
+    });
+    expect(delRes.statusCode).toBe(200);
+    expect(delRes.json()).toEqual({ deleted: true, campaignId: camp.campaignId });
+
+    const listRes = await app.inject({ method: 'GET', url: '/api/v1/campaigns/bulk' });
+    expect(listRes.statusCode).toBe(200);
+    expect((listRes.json().campaigns as any[]).some(c => c.campaign.campaignId === camp.campaignId)).toBe(false);
+
+    await app.close();
+  });
+
+  it('44. ReportLab ASCII85+Flate PDF extraction grounds Customer Questions and Delete increments plans.version for optimistic concurrency', async () => {
+    const { deflateSync } = await import('node:zlib');
+    const scope = {
+      workspaceId: '75d2f889-d3eb-4acc-861a-fada4691ecce',
+      userId: '4b4cbc9c-df01-4cc2-8565-8a23a3435b9d',
+      role: 'owner' as const
+    };
+
+    const encodeAscii85 = (buf: Buffer): string => {
+      let out = '';
+      for (let i = 0; i < buf.length; i += 4) {
+        const remain = Math.min(4, buf.length - i);
+        const pad = 4 - remain;
+        let val = 0;
+        for (let k = 0; k < 4; k++) {
+          val = val * 256 + (k < remain ? buf[i + k]! : 0);
+        }
+        if (remain === 4 && val === 0) {
+          out += 'z';
+          continue;
+        }
+        const digits = [0, 0, 0, 0, 0];
+        for (let d = 4; d >= 0; d--) {
+          digits[d] = val % 85;
+          val = Math.floor(val / 85);
+        }
+        for (let d = 0; d < 5 - pad; d++) {
+          out += String.fromCharCode(digits[d]! + 33);
+        }
+      }
+      return `${out}~>`;
+    };
+
+    const page1Content = [
+      'BT 1 0 0 1 50 750 Tm (2. Catalogue & Requirement Routing) Tj T* ET',
+      'BT 1 0 0 1 50 720 Tm (\\177 Corporate catalogue includes polo T-shirts, round-neck T-shirts, shirts, hoodies and varsity jackets.) Tj T* ET',
+      'BT 1 0 0 1 50 690 Tm (\\177 Sportswear catalogue includes track-suit concepts, football concepts and cricket designs.) Tj T* ET',
+      'BT 1 0 0 1 50 650 Tm (3. Thaara Campaign Knowledge \\227 Customer Questions) Tj T* ET',
+      'BT 1 0 0 1 50 620 Tm (What products or services do you supply?) Tj T* ET',
+      'BT 1 0 0 1 50 600 Tm (Use the verified Custom Team Wear business and catalogue knowledge.) Tj T* ET',
+      'BT 1 0 0 1 50 560 Tm (What minimum order quantity or requirements apply?) Tj T* ET',
+      'BT 1 0 0 1 50 540 Tm (For this campaign, the Sample Visit rule is quantity above 100 pcs; for smaller quantities, prefer the Experience Centre route.) Tj T* ET',
+      'BT 1 0 0 1 50 500 Tm (How much does it cost?) Tj T* ET',
+      'BT 1 0 0 1 50 480 Tm (Pricing depends on specific requirements, quantity and delivery details. Share the brief for an accurate quotation.) Tj T* ET',
+      'BT 1 0 0 1 50 440 Tm (What is the next step after this call?) Tj T* ET',
+      'BT 1 0 0 1 50 420 Tm (Move the customer to the relevant catalogue, Experience Centre appointment, or Sample Visit above 100 pcs.) Tj T* ET'
+    ].join('\n');
+
+    const ascii85Flate = encodeAscii85(deflateSync(Buffer.from(page1Content, 'latin1')));
+    const reportLabPdf = Buffer.from(
+      [
+        '%PDF-1.4',
+        '% ReportLab Generated PDF document (opensource)',
+        '12 0 obj',
+        '<< /Filter [ /ASCII85Decode /FlateDecode ] /Length ' + ascii85Flate.length + ' >>',
+        'stream',
+        ascii85Flate,
+        'endstream',
+        'endobj',
+        '16 0 obj',
+        '<< /Length 12 /Type /EmbeddedFile /Subtype /application#2Fc2pa >>',
+        'stream',
+        '(binaryjunk)',
+        'endstream',
+        'endobj',
+        '%%EOF'
+      ].join('\n'),
+      'binary'
+    );
+
+    const instr =
+      'Act as the owner/senior sales executive of Custom Team Wear (Bengaluru), not a generic call centre agent. Follow up every new Meta lead quickly and naturally. Goal: understand the need, recommend the right catalogue, qualify and book the next step. Ask: Would you like to visit our experience centre to see fabrics, colours and samples? Offer a Sample Visit ONLY when quantity is above 100 pcs; otherwise prefer the Experience Centre.';
+
+    const plan = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction: instr,
+      importResult: parseBulkCampaignContacts({
+        sourceType: 'csv',
+        rawText: 'Name,Phone,Consent\nAsha,9000001539,Yes',
+        phoneDirectory: []
+      }),
+      channels: ['phone'],
+      knowledgeFiles: [
+        {
+          fileName: 'Custom_Team_Wear_Thaara_Knowledge_Pack_v2.pdf',
+          mimeType: 'application/pdf',
+          fileBase64: reportLabPdf.toString('base64')
+        }
+      ]
+    });
+
+    expect(plan.title).toBe('Custom Team Wear — Enquiry Qualification');
+    expect(plan.knowledgeContext?.files[0]?.status).toBe('processed');
+    expect(plan.knowledgeContext?.files[0]?.extractedCharCount).toBeGreaterThan(400);
+    const qas = plan.knowledgeContext?.sampleGroundedQa ?? [];
+    expect(qas.length).toBeGreaterThanOrEqual(4);
+    for (const qa of qas) {
+      expect(qa.grounded).toBe(true);
+      expect(qa.answer).not.toMatch(/do not have confirmed details/i);
+    }
+    const productsQa = qas.find(q => /what products or services/i.test(q.question));
+    expect(productsQa?.answer).toMatch(/polo T-shirts/i);
+    expect(productsQa?.answer).not.toMatch(/binaryjunk|opensource/i);
+
+    // Verify durable PostgreSQL deleteScoped increments version = version + 1 to satisfy optimistic concurrency trigger
+    const executedSql: string[] = [];
+    const mockDb = {
+      withScopedTransaction: async (_s: any, fn: (tx: any) => Promise<any>) =>
+        fn({
+          query: async (sql: string) => {
+            executedSql.push(sql);
+            return { rows: [{ id: 'plan_uuid_1' }] };
+          }
+        })
+    };
+    const durableStore = new BulkCampaignWorkspaceStore(mockDb as any);
+    const deleted = await durableStore.deleteScoped(scope, plan.campaignId);
+    expect(deleted).toBe(true);
+    expect(executedSql.some(sql => /UPDATE\s+plans/i.test(sql) && /version\s*=\s*version\s*\+\s*1/i.test(sql))).toBe(true);
   });
 });

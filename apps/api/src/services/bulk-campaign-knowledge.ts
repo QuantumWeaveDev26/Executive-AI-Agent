@@ -17,7 +17,7 @@ export const CAMPAIGN_KNOWLEDGE_MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB per fi
 export const CAMPAIGN_KNOWLEDGE_MAX_FILES = 10;
 export const CAMPAIGN_KNOWLEDGE_MAX_CHARS_PER_FILE = 40000;
 export const SARVAM_OUTBOUND_AGENT_LABEL = 'Thaara AI — Sarvam outbound v6' as const;
-export const SARVAM_MAX_CALL_PURPOSE_CHARS = 1000;
+export const SARVAM_MAX_CALL_PURPOSE_CHARS = 10000;
 
 const STOP_WORDS = new Set([
   'the', 'and', 'for', 'with', 'that', 'this', 'from', 'your', 'you', 'are', 'will', 'can', 'how',
@@ -360,15 +360,30 @@ function extractFactsAndConflicts(
       instruction
     ) && !/\b(?:webinar|masterclass|seminar|live\s+session)\b/i.test(instruction);
 
+  // Detect when the owner explicitly scopes the campaign to another business/brand (e.g. Custom Teamwear / Custom Team Wear, Kashyap Inc, SmileCare)
+  const namesQuantumWeave = /\b(?:quantum\s*weave|brandmint)\b/i.test(combinedWithInstruction);
+  const namesThirdPartyBrand =
+    !namesQuantumWeave &&
+    (/\b(?:custom\s+team\s*wear|kashyap\s+inc|smilecare|apparel\s+aggregator|bulk\s+corporate.*apparel)\b/i.test(
+      combinedWithInstruction
+    ) ||
+      /\b(?:act\s+as\s+(?:the\s+)?(?:owner|senior\s+sales|sales\s+(?:advisor|executive)|founder|representative|manager)[\s\w/-]{0,30}\bof\s+[A-Z]|calling\s+(?:from|on\s+behalf\s+of)\s+(?!quantum\s*weave\b)[A-Z])/i.test(
+        instruction
+      ));
+
   const isWebinar =
     !instrExplicitCompanyOrServices &&
+    !namesThirdPartyBrand &&
     (/\b(?:webinar|workshop|masterclass|seminar|live\s+session)\b/i.test(instruction) ||
       /(?:^|\n)\s*(?:webinar\s+title|event\s+title|agenda|who\s+should\s+attend)\s*:/i.test(fullText));
   const isServices =
     !isWebinar &&
-    /\b(?:company|quantum\s+weave|services?|solutions?|voice\s+agent|automation|digital\s+marketing|implementation|company\s+profile|packages?|pricing)\b/i.test(
-      combinedWithInstruction
-    );
+    !namesThirdPartyBrand &&
+    (namesQuantumWeave ||
+      instrExplicitCompanyOrServices ||
+      /\b(?:voice\s+agent|ai\s+automation|digital\s+marketing|whatsapp\s+automation|company\s+profile)\b/i.test(
+        combinedWithInstruction
+      ));
   const campaignType: BulkCampaignExtractedFacts['campaignType'] = isWebinar
     ? 'webinar'
     : isServices
@@ -484,17 +499,26 @@ function extractFactsAndConflicts(
         registrationInfo = line.slice(0, 300);
       }
 
-      // Services offered
-      const svcMatch = /^(?:services?|solutions?|offerings?|products?)\s*:\s*(.+)$/i.exec(line);
+      // Services / products / catalogue offerings
+      const svcMatch =
+        /^(?:core\s+offer|products?\s*(?:&|and)\s*services?|services?|solutions?|offerings?|products?)\s*:\s*(.+)$/i.exec(
+          line
+        ) ||
+        /^(?:core\s+offer)\s+(.{15,220})$/i.exec(line) ||
+        /^[-*•]?\s*((?:corporate|premium|sportswear|event|institution|custom)\s+catalogues?\s+includes?\s+.+)$/i.exec(
+          line
+        );
       if (svcMatch?.[1]) {
-        servicesOffered.push(svcMatch[1].trim().slice(0, 200));
+        servicesOffered.push(svcMatch[1].trim().slice(0, 240));
       } else if (
         (headingLower.includes('service') ||
           headingLower.includes('solution') ||
-          headingLower.includes('catalog')) &&
+          headingLower.includes('catalog') ||
+          headingLower.includes('product') ||
+          headingLower.includes('offer')) &&
         /^[-*•\d.)]+\s+/.test(line)
       ) {
-        servicesOffered.push(line.replace(/^[-*•\d.)]+\s*/, '').slice(0, 200));
+        servicesOffered.push(line.replace(/^[-*•\d.)]+\s*/, '').slice(0, 240));
       }
 
       // Pricing (explicitly uploaded & confirmed in campaign document — ignore unconfirmed historical ladders)
@@ -539,11 +563,34 @@ function extractFactsAndConflicts(
         implementationTimeline = line.slice(0, 240);
       }
 
-      // FAQ pairs (Q: ... / A: ... or single-row spreadsheet Q: ... | A: ...)
+      // FAQ pairs (Q: ... / A: ..., single-row spreadsheet Q: ... | A: ..., or standalone question heading + answer)
       const inlineFaqMatch = /^(?:Q(?:\d+)?|Question)\s*[:.-]\s*(.+?\?)\s*\|\s*(?:A(?:\d+)?|Answer)?\s*[:.-]?\s*(.+)$/i.exec(
         line
       );
       const qMatch = !inlineFaqMatch ? /^(?:Q(?:\d+)?|Question)\s*[:.-]\s*(.+\?)$/i.exec(line) : null;
+      const collectAnswerLines = (startIdx: number): string => {
+        const collected: string[] = [];
+        let len = 0;
+        for (let k = startIdx; k < lines.length && k < startIdx + 4; k++) {
+          const candidate = lines[k]!;
+          if (k > startIdx) {
+            if (
+              candidate.endsWith('?') ||
+              /^(?:Q(?:\d+)?|Question)\s*[:.-]/i.test(candidate) ||
+              /^\d+\.\s+[A-Z]/.test(candidate) ||
+              /^(?:Main\s+Campaign\s+Objective|Rule\s*:|Purpose\s*:)/i.test(candidate)
+            ) {
+              break;
+            }
+          }
+          const cleaned = k === startIdx ? candidate.replace(/^(?:A(?:\d+)?|Answer)\s*[:.-]\s*/i, '').trim() : candidate;
+          if (!cleaned) break;
+          collected.push(cleaned);
+          len += cleaned.length + 1;
+          if (len >= 520 || (/[.!]$/.test(cleaned) && collected.join(' ').length >= 80)) break;
+        }
+        return collected.join(' ').replace(/\s+/g, ' ').trim().slice(0, 600);
+      };
       if (inlineFaqMatch?.[1] && inlineFaqMatch?.[2]) {
         faqs.push({
           question: inlineFaqMatch[1].trim().slice(0, 240),
@@ -551,23 +598,98 @@ function extractFactsAndConflicts(
           sourceFile: chunk.fileName
         });
       } else if (qMatch?.[1] && lines[i + 1]) {
-        const nextLine = lines[i + 1]!;
-        const aMatch = /^(?:A(?:\d+)?|Answer)\s*[:.-]\s*(.+)$/i.exec(nextLine);
-        const ans = (aMatch?.[1] ?? nextLine).trim();
+        const ans = collectAnswerLines(i + 1);
         if (ans) {
           faqs.push({
             question: qMatch[1].trim().slice(0, 240),
-            answer: ans.slice(0, 600),
+            answer: ans,
             sourceFile: chunk.fileName
           });
         }
       } else if (line.endsWith('?') && line.length <= 180 && lines[i + 1] && !lines[i + 1]!.endsWith('?')) {
-        faqs.push({
-          question: line.replace(/^[-*•\d.)]+\s*/, '').slice(0, 240),
-          answer: lines[i + 1]!.replace(/^(?:A|Answer)\s*:\s*/i, '').slice(0, 600),
-          sourceFile: chunk.fileName
-        });
+        const ans = collectAnswerLines(i + 1);
+        if (ans) {
+          faqs.push({
+            question: line.replace(/^[-*•\d.)]+\s*/, '').slice(0, 240),
+            answer: ans,
+            sourceFile: chunk.fileName
+          });
+        }
       }
+    }
+  }
+
+  // Extract FAQ pairs across chunk boundaries so a 650-char chunk split never separates a question from its answer
+  const flatDocLines: Array<{ line: string; fileName: string }> = [];
+  for (const chunk of chunks) {
+    for (const rawLine of chunk.text.split('\n')) {
+      const trimmed = rawLine.trim();
+      if (!trimmed) continue;
+      // Skip running PDF page footers/headers (e.g. "Custom Team Wear • Thaara Knowledge Pack", "Page 3")
+      if (/^Page\s+\d+(?:\s+of\s+\d+)?$/i.test(trimmed)) continue;
+      if (/\bPage\s+\d+\s*$/i.test(trimmed) && trimmed.length <= 95 && !/[.?!]/.test(trimmed)) continue;
+      flatDocLines.push({ line: trimmed, fileName: chunk.fileName });
+    }
+  }
+  const seenFaqKeys = new Set<string>(faqs.map(f => f.question.toLowerCase()));
+  const collectCrossChunkAnswer = (startIdx: number, sourceFile: string): string => {
+    const collected: string[] = [];
+    let len = 0;
+    for (let k = startIdx; k < flatDocLines.length && k < startIdx + 4; k++) {
+      const entry = flatDocLines[k]!;
+      if (entry.fileName !== sourceFile) break;
+      const candidate = entry.line;
+      if (k > startIdx) {
+        if (
+          candidate.endsWith('?') ||
+          /^(?:Q(?:\d+)?|Question)\s*[:.-]/i.test(candidate) ||
+          /^\d+\.\s+[A-Z]/.test(candidate) ||
+          /^(?:Main\s+Campaign\s+Objective|Rule\s*:|Purpose\s*:)/i.test(candidate)
+        ) {
+          break;
+        }
+      }
+      const cleaned =
+        k === startIdx ? candidate.replace(/^(?:A(?:\d+)?|Answer)\s*[:.-]\s*/i, '').trim() : candidate;
+      if (!cleaned) break;
+      collected.push(cleaned);
+      len += cleaned.length + 1;
+      if (len >= 520 || (/[.!]$/.test(cleaned) && collected.join(' ').length >= 80)) break;
+    }
+    return collected
+      .join(' ')
+      .replace(/\s+[A-Z][^.!?\n]{5,70}\bPage\s+\d+\s*$/i, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 600);
+  };
+  for (let i = 0; i < flatDocLines.length; i++) {
+    const { line, fileName } = flatDocLines[i]!;
+    const inlineFaqMatch = /^(?:Q(?:\d+)?|Question)\s*[:.-]\s*(.+?\?)\s*\|\s*(?:A(?:\d+)?|Answer)?\s*[:.-]?\s*(.+)$/i.exec(
+      line
+    );
+    const qMatch = !inlineFaqMatch ? /^(?:Q(?:\d+)?|Question)\s*[:.-]\s*(.+\?)$/i.exec(line) : null;
+    let questionText: string | null = null;
+    let answerText: string | null = null;
+    if (inlineFaqMatch?.[1] && inlineFaqMatch?.[2]) {
+      questionText = inlineFaqMatch[1].trim().slice(0, 240);
+      answerText = inlineFaqMatch[2].trim().slice(0, 600);
+    } else if (qMatch?.[1] && flatDocLines[i + 1]) {
+      questionText = qMatch[1].trim().slice(0, 240);
+      answerText = collectCrossChunkAnswer(i + 1, fileName);
+    } else if (
+      line.endsWith('?') &&
+      line.length >= 10 &&
+      line.length <= 180 &&
+      flatDocLines[i + 1] &&
+      !flatDocLines[i + 1]!.line.endsWith('?')
+    ) {
+      questionText = line.replace(/^[-*•\d.)]+\s*/, '').slice(0, 240);
+      answerText = collectCrossChunkAnswer(i + 1, fileName);
+    }
+    if (questionText && answerText && !seenFaqKeys.has(questionText.toLowerCase())) {
+      seenFaqKeys.add(questionText.toLowerCase());
+      faqs.push({ question: questionText, answer: answerText, sourceFile: fileName });
     }
   }
 
@@ -647,37 +769,62 @@ export function buildSarvamBoundedFactBrief(input: {
   eventDetails?: string;
   facts: BulkCampaignExtractedFacts;
   questions?: string[];
+  chunks?: BulkCampaignKnowledgeChunk[];
 }): string {
   const parts: string[] = [];
   const cleanGoal = (input.instruction || input.eventDetails || 'Customer outreach').replace(/\s+/g, ' ').trim();
-  parts.push(`Goal: ${cleanGoal.slice(0, 180)}`);
+  parts.push(`Goal: ${cleanGoal.slice(0, 2000)}`);
 
   const { facts } = input;
-  if (facts.dateAndTime) parts.push(`When: ${facts.dateAndTime.slice(0, 90)}`);
-  if (facts.speakers.length > 0) parts.push(`Speaker/Host: ${facts.speakers.slice(0, 2).join('; ').slice(0, 110)}`);
+  if (facts.dateAndTime) parts.push(`When: ${facts.dateAndTime.slice(0, 160)}`);
+  if (facts.speakers.length > 0) parts.push(`Speaker/Host: ${facts.speakers.slice(0, 4).join('; ').slice(0, 240)}`);
   if (facts.agendaTopics.length > 0) {
-    parts.push(`Topics: ${facts.agendaTopics.slice(0, 4).join('; ').slice(0, 180)}`);
+    parts.push(`Topics: ${facts.agendaTopics.slice(0, 12).join('; ').slice(0, 1200)}`);
   } else if (facts.servicesOffered.length > 0) {
-    parts.push(`Services: ${facts.servicesOffered.slice(0, 4).join('; ').slice(0, 180)}`);
+    parts.push(`Services: ${facts.servicesOffered.slice(0, 12).join('; ').slice(0, 1200)}`);
   } else if (facts.campaignType === 'services') {
     parts.push(
       'Services: AI Voice Agents (en-IN/kn-IN/kn-en), 24/7 WhatsApp & Workflow Automation, Digital Marketing & Meta Growth, Cash Flow Copy & AI Video Systems'
     );
   }
-  if (facts.targetAudience) parts.push(`Audience: ${facts.targetAudience.slice(0, 110)}`);
+  if (facts.targetAudience) parts.push(`Audience: ${facts.targetAudience.slice(0, 240)}`);
   if (facts.registrationInfo) {
-    parts.push(`Register/Next: ${facts.registrationInfo.slice(0, 120)}`);
+    parts.push(`Register/Next: ${facts.registrationInfo.slice(0, 240)}`);
   } else if (facts.campaignType === 'services') {
     parts.push(`Consultation: Team callback or ${QUANTUM_WEAVE_COMPANY_INFO.supportContact}`);
   }
-  if (facts.implementationTimeline) parts.push(`Timeline: ${facts.implementationTimeline.slice(0, 100)}`);
+  if (facts.implementationTimeline) parts.push(`Timeline: ${facts.implementationTimeline.slice(0, 200)}`);
   if (facts.pricingExplicitlyProvided && facts.pricingSummary) {
-    parts.push(`Verified Pricing: ${facts.pricingSummary.slice(0, 120)}`);
+    parts.push(`Verified Pricing: ${facts.pricingSummary.slice(0, 360)}`);
   } else {
     parts.push('Pricing: Custom-scoped per requirement; never quote or invent numbers—offer team consultation.');
   }
   if (input.questions && input.questions.length > 0) {
-    parts.push(`Qualify: ${input.questions.slice(0, 10).join(' | ').slice(0, 380)}`);
+    parts.push(`Qualify: ${input.questions.slice(0, 16).join(' | ').slice(0, 1200)}`);
+  }
+  if (facts.faqs.length > 0) {
+    const faqText = facts.faqs
+      .slice(0, 12)
+      .map(f => `Q: ${f.question} A: ${f.answer}`)
+      .join(' | ')
+      .slice(0, 2400);
+    if (faqText) {
+      parts.push(`FAQs: ${faqText}`);
+    }
+  }
+  if (input.chunks && input.chunks.length > 0) {
+    const knowledgeBudget = Math.max(0, SARVAM_MAX_CALL_PURPOSE_CHARS - parts.join(' | ').length - 220);
+    if (knowledgeBudget > 80) {
+      const fullKb = input.chunks
+        .filter(c => !isInternalKnowledgeGovernanceText(c.text))
+        .map(c => (c.heading ? `${c.heading}: ${c.text}` : c.text).replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join(' | ')
+        .slice(0, knowledgeBudget);
+      if (fullKb) {
+        parts.push(`Knowledge: ${fullKb}`);
+      }
+    }
   }
   const isQuantumWeave =
     facts.campaignType === 'services' || /quantum\s*weave/i.test(input.instruction);
@@ -737,6 +884,30 @@ export function retrieveCampaignKnowledgeChunks(
     if (/\b(?:demo|demonstrat|show\s+me|trial|consultation)\b/i.test(qLower) && /\b(?:demo|demonstrat|consultation|walkthrough|calendly)\b/i.test(hay)) {
       score += 6;
     }
+    if (
+      /\b(?:products?|services?|supply|sell|offer|catalogue|catalog|apparel|garment|merchandise)\b/i.test(qLower) &&
+      /\b(?:products?|services?|catalogue|catalog|apparel|garment|merchandise|polo|t-?shirt|hoodie|jacket|core\s+offer|bulk\s+orders)\b/i.test(
+        hay
+      )
+    ) {
+      score += 6;
+    }
+    if (
+      /\b(?:minimum\s+order|moq|quantity|requirements?|sample\s+visit|experience\s+cent(?:re|er))\b/i.test(qLower) &&
+      /\b(?:minimum\s+order|moq|sample\s+visit|experience\s+cent(?:re|er)|above\s+\d+\s*pcs|\d+\s*pcs|bulk\s+orders)\b/i.test(
+        hay
+      )
+    ) {
+      score += 6;
+    }
+    if (
+      /\b(?:next\s+step|after\s+this\s+call|follow[\s-]?up|appointment|visit|callback|mockup|quotation)\b/i.test(qLower) &&
+      /\b(?:next\s+step|follow[\s-]?up|appointment|experience\s+cent(?:re|er)|sample\s+visit|catalogue|quotation|mockup|callback)\b/i.test(
+        hay
+      )
+    ) {
+      score += 6;
+    }
     return { chunk, score };
   });
 
@@ -765,6 +936,9 @@ export function answerCampaignCustomerQuestion(input: {
   const facts = ctx?.extractedFacts;
   const allProcessedFiles = (ctx?.files ?? []).filter(f => f.status === 'processed').map(f => f.fileName);
   const primaryFileRef = allProcessedFiles[0] ? [allProcessedFiles[0]] : ['Campaign Brief'];
+  const isQuantumWeaveContext =
+    facts?.campaignType === 'services' ||
+    allProcessedFiles.some(f => /(?:document[_\s-]*a|quantum[_\s-]*weave)/i.test(f));
 
   // 0. Guard against unverified guarantees / ROI / refund / unsupported claims unless explicitly present in uploaded chunks
   if (/\b(?:guarantee|100%\s+roi|promised?\s+revenue|money\s*back|refund\s+policy|guaranteed\s+leads)\b/i.test(qLower)) {
@@ -781,9 +955,10 @@ export function answerCampaignCustomerQuestion(input: {
     }
     return {
       question: q,
-      answer:
-        'We do not promise fixed revenue or universal ROI guarantees—results depend on your business workflow, offer, and execution. Our team can review your goals on a consultation call or on WhatsApp (+91 99729 65677).',
-      sourceRefs: [...primaryFileRef, 'Document A §13'],
+      answer: isQuantumWeaveContext
+        ? 'We do not promise fixed revenue or universal ROI guarantees—results depend on your business workflow, offer, and execution. Our team can review your goals on a consultation call or on WhatsApp (+91 99729 65677).'
+        : 'We do not make unverified guarantees or promises—our team will confirm the exact details after reviewing your requirements.',
+      sourceRefs: isQuantumWeaveContext ? [...primaryFileRef, 'Document A §13'] : primaryFileRef,
       grounded: false,
       requiresHumanFollowUp: true
     };
@@ -791,19 +966,48 @@ export function answerCampaignCustomerQuestion(input: {
 
   // 1. Direct FAQ match from uploaded campaign documents
   if (facts && facts.faqs.length > 0) {
+    const qNorm = qLower.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
     const qWords = tokenizeKeywords(q);
     let bestFaq: { faq: BulkCampaignExtractedFacts['faqs'][number]; overlap: number } | null = null;
     for (const faq of facts.faqs) {
+      const fNorm = faq.question.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+      if (fNorm === qNorm) {
+        bestFaq = { faq, overlap: 100 };
+        break;
+      }
       const fWords = tokenizeKeywords(faq.question);
       const overlap = qWords.filter(w => fWords.includes(w)).length;
-      if (overlap >= 2 && (!bestFaq || overlap > bestFaq.overlap)) {
+      const minRequired = qWords.length <= 1 ? 1 : 2;
+      if (overlap >= minRequired && (!bestFaq || overlap > bestFaq.overlap)) {
         bestFaq = { faq, overlap };
       }
     }
     if (bestFaq) {
+      const isProductsQuery = /\b(?:products?\s+or\s+services?|what\s+products|what\s+do\s+you\s+(?:supply|offer|sell))\b/i.test(
+        qLower
+      );
+      const isMetaDirectiveAnswer = /^(?:use\s+the\s+verified|refer\s+to\s+the\s+verified|explain\s+the\s+relevant)\b/i.test(
+        bestFaq.faq.answer.trim()
+      );
+      if (isProductsQuery && isMetaDirectiveAnswer && facts.servicesOffered.length > 0) {
+        const formatted = facts.servicesOffered
+          .slice(0, 4)
+          .map(s => s.trim().replace(/\.+$/, ''))
+          .filter(Boolean)
+          .join('. ');
+        const answer = /^(?:corporate|premium|sportswear|we\b|our\b)/i.test(formatted)
+          ? `${formatted}.`
+          : `We supply ${formatted}.`;
+        return {
+          question: q,
+          answer: answer.slice(0, 650),
+          sourceRefs: [bestFaq.faq.sourceFile],
+          grounded: true
+        };
+      }
       return {
         question: q,
-        answer: bestFaq.faq.answer,
+        answer: bestFaq.faq.answer.replace(/\s+[A-Z][^.!?\n]{5,70}\bPage\s+\d+\s*$/i, '').trim(),
         sourceRefs: [bestFaq.faq.sourceFile],
         grounded: true
       };
@@ -820,6 +1024,28 @@ export function answerCampaignCustomerQuestion(input: {
         answer: `Based on our campaign details: ${facts.pricingSummary}`,
         sourceRefs: refs,
         grounded: true
+      };
+    }
+    if (!isQuantumWeaveContext) {
+      const priceChunks = retrieveCampaignKnowledgeChunks(ctx, `${q} price quote quotation cost`, 2);
+      if (priceChunks.length > 0) {
+        const snippet = sanitizeCustomerFacingSnippet(priceChunks[0]!.text).slice(0, 600);
+        if (snippet.length >= 20) {
+          return {
+            question: q,
+            answer: snippet,
+            sourceRefs: [priceChunks[0]!.fileName],
+            grounded: true
+          };
+        }
+      }
+      return {
+        question: q,
+        answer:
+          'Pricing depends on your specific requirements, quantities, and delivery details. Share your brief and our team will prepare and confirm an accurate quotation rather than guessing.',
+        sourceRefs: primaryFileRef,
+        grounded: false,
+        requiresHumanFollowUp: true
       };
     }
     return {
@@ -947,7 +1173,7 @@ export function answerCampaignCustomerQuestion(input: {
   // 9. Supported Languages & Integrations
   const asksLanguage = /\b(?:kannada|multilingual|languages?|hindi|kanglish)\b/i.test(qLower);
   const asksIntegrations = /\b(?:integrat(?:e|ions?)|connect\s+with|crm|calendar|workspace|tools)\b/i.test(qLower);
-  if (asksLanguage || asksIntegrations) {
+  if (isQuantumWeaveContext && (asksLanguage || asksIntegrations)) {
     if (asksLanguage && !asksIntegrations) {
       const langChunks = retrieveCampaignKnowledgeChunks(ctx, 'kannada language multilingual', 2).filter(c =>
         /\b(?:kannada|kn-in|kanglish|hindi)\b/i.test(c.text)
@@ -993,6 +1219,7 @@ export function answerCampaignCustomerQuestion(input: {
 
   // 10. Demo / Consultation / Human Follow-Up request
   if (
+    isQuantumWeaveContext &&
     /\b(?:demonstrat|demo|show\s+me|live\s+walkthrough|book\s+a\s+(?:call|consultation)|request\s+a\s+consultation|consultation|speak\s+with\s+(?:someone|a\s+human)|reach\s+your\s+team)\b/i.test(
       qLower
     )
@@ -1017,6 +1244,7 @@ export function answerCampaignCustomerQuestion(input: {
 
   // 11. What Quantum Weave AI does & Which Services Are Offered (conversational, zero internal KB meta-wording!)
   if (
+    isQuantumWeaveContext &&
     /\b(?:what\s+does\s+quantum\s+weave(?:\s+ai)?\s+do|about\s+quantum\s+weave|who\s+are\s+you|introduce\s+(?:your\s+)?company|what\s+is\s+quantum\s+weave)\b/i.test(
       qLower
     )
@@ -1039,6 +1267,7 @@ export function answerCampaignCustomerQuestion(input: {
 
   // 12. AI Voice Agent solutions & Customer Enquiry Handling
   if (
+    isQuantumWeaveContext &&
     /\b(?:ai\s+voice\s+agent|how\s+does\s+(?:it|the\s+voice\s+agent|your\s+voice\s+agent)\s+work|voice\s+automation|handle\s+customer\s+enquir(?:y|ies)|inbound\s+and\s+outbound)\b/i.test(
       qLower
     )
@@ -1066,6 +1295,7 @@ export function answerCampaignCustomerQuestion(input: {
 
   // 14. Business Automation & Services Catalogue
   if (
+    isQuantumWeaveContext &&
     /\b(?:which\s+services|what\s+services|services\s+(?:are\s+)?offered|what\s+solutions|business\s+automation|whatsapp\s+automation|workflow\s+automation|how\s+does\s+automation\s+help)\b/i.test(
       qLower
     )
@@ -1075,6 +1305,31 @@ export function answerCampaignCustomerQuestion(input: {
       answer:
         'Quantum Weave AI offers multilingual AI Voice Agents, 24/7 WhatsApp automation and lead conversion, Digital Marketing and Meta growth campaigns, AI video and creative content, Cash Flow Copy systems, and custom business process automation. Automation helps your business respond to enquiries instantly, capture leads around the clock, and reduce manual follow-up workload.',
       sourceRefs: [...primaryFileRef, 'Document A §§5–6'],
+      grounded: true
+    };
+  }
+
+  // 14b. General business products / services supplied (from uploaded campaign PDF/DOCX/TXT)
+  if (
+    !isQuantumWeaveContext &&
+    facts &&
+    facts.servicesOffered.length > 0 &&
+    /\b(?:products?\s+or\s+services?|what\s+products|what\s+do\s+you\s+(?:supply|offer|sell)|which\s+services|what\s+services)\b/i.test(
+      qLower
+    )
+  ) {
+    const formatted = facts.servicesOffered
+      .slice(0, 4)
+      .map(s => s.trim().replace(/\.+$/, ''))
+      .filter(Boolean)
+      .join('. ');
+    const answer = /^(?:corporate|premium|sportswear|we\b|our\b)/i.test(formatted)
+      ? `${formatted}.`
+      : `We supply ${formatted}.`;
+    return {
+      question: q,
+      answer: answer.slice(0, 650),
+      sourceRefs: primaryFileRef,
       grounded: true
     };
   }
@@ -1111,6 +1366,7 @@ export function generateSampleGroundedQa(
   knowledgeContext: Omit<BulkCampaignKnowledgeContext, 'sampleGroundedQa'>,
   eventDetails?: string
 ): BulkCampaignGroundedQaItem[] {
+  const extractedFaqs = knowledgeContext.extractedFacts.faqs ?? [];
   const sampleQuestions =
     knowledgeContext.extractedFacts.campaignType === 'webinar'
       ? [
@@ -1120,15 +1376,24 @@ export function generateSampleGroundedQa(
           'How do I register?',
           'How much does it cost?'
         ]
-      : [
-          'What does Quantum Weave do?',
-          'How does an AI Voice Agent work?',
-          'Which services are offered and how does automation help?',
-          'How much does it cost?',
-          'Can it handle Kannada and integrate with our tools?',
-          'How can your digital marketing services help a business?',
-          'How can I request a consultation?'
-        ];
+      : knowledgeContext.extractedFacts.campaignType === 'services'
+        ? [
+            'What does Quantum Weave do?',
+            'How does an AI Voice Agent work?',
+            'Which services are offered and how does automation help?',
+            'How much does it cost?',
+            'Can it handle Kannada and integrate with our tools?',
+            'How can your digital marketing services help a business?',
+            'How can I request a consultation?'
+          ]
+        : extractedFaqs.length > 0
+          ? extractedFaqs.slice(0, 6).map(f => f.question)
+          : [
+              'What products or services do you supply?',
+              'What minimum order quantity or requirements apply?',
+              'How much does it cost?',
+              'What is the next step after this call?'
+            ];
 
   const tempCtx: BulkCampaignKnowledgeContext = { ...knowledgeContext, sampleGroundedQa: [] };
   return sampleQuestions.map(question =>
@@ -1160,11 +1425,17 @@ export function enrichOrUpgradeCampaignKnowledgeContext(input: {
 
   const nonMetaChunks = (existing?.chunks ?? []).filter(c => !isInternalKnowledgeGovernanceText(c.text));
   const needsDocAHydration = Boolean(docAFile && nonMetaChunks.length < 3);
+  const instructionIsQuantumWeave =
+    /\b(?:quantum\s*weave|brandmint)\b/i.test(input.instruction) ||
+    (!/\b(?:custom\s+team\s*wear|kashyap\s+inc|smilecare|act\s+as\s+(?:the\s+)?(?:owner|senior\s+sales|sales\s+(?:advisor|executive)|founder|representative|manager)[\s\w/-]{0,30}\bof\s+[A-Z])/i.test(
+      input.instruction
+    ) &&
+      /\b(?:voice\s+agent|ai\s+automation|digital\s+marketing)\b/i.test(input.instruction));
 
   let nextFiles: BulkCampaignKnowledgeFileRecord[] = existing ? structuredClone(existing.files) : [];
   let nextChunks: BulkCampaignKnowledgeChunk[] = existing ? structuredClone(existing.chunks) : [];
 
-  if (needsDocAHydration || !existing) {
+  if (needsDocAHydration || (!existing && instructionIsQuantumWeave)) {
     const targetFileId = docAFile?.fileId ?? 'kb_doc_a_verified';
     const targetFileName =
       docAFile?.fileName ?? 'Document_A_Quantum_Weave_Complete_Knowledge_Base.docx';
@@ -1218,7 +1489,8 @@ export function enrichOrUpgradeCampaignKnowledgeContext(input: {
     instruction: input.instruction,
     eventDetails: input.eventDetails,
     facts,
-    questions: input.questions
+    questions: input.questions,
+    chunks: nextChunks
   });
 
   const baseCtx: Omit<BulkCampaignKnowledgeContext, 'sampleGroundedQa'> = {
@@ -1418,7 +1690,8 @@ export function ingestCampaignKnowledgeFiles(input: {
     instruction: input.instruction,
     eventDetails: input.eventDetails,
     facts,
-    questions: input.questions
+    questions: input.questions,
+    chunks: trimmedChunks
   });
 
   const baseCtx: Omit<BulkCampaignKnowledgeContext, 'sampleGroundedQa'> = {

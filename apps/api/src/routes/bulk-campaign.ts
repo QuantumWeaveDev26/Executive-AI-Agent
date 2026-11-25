@@ -1281,7 +1281,9 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
     if (!existing) throw new ValidationError('Campaign not found in workspace.');
     const rt = await resolveWorkspaceRuntime(scope, isSyntheticDemoCampaign(existing));
     try {
-      const paused = pauseBulkCampaign(existing);
+      const paused = existing.sheetMonitor
+        ? pauseAutomaticLeadFollowup({ ...existing, status: 'paused', updatedAt: new Date().toISOString() })
+        : pauseBulkCampaign(existing);
       const saved = await workspaceStore.saveScoped(scope, paused, options.db);
       return formatCampaignEnvelope(saved, {
         liveCallingEnabled: rt.liveCallingEnabled,
@@ -1363,12 +1365,31 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
     const existing = await workspaceStore.getScoped(scope, campaignId, options.db);
     if (!existing) throw new ValidationError('Campaign not found in workspace.');
     const rt = await resolveWorkspaceRuntime(scope, isSyntheticDemoCampaign(existing));
-    const stopped = stopBulkCampaign(existing);
+    const baseStopped = stopBulkCampaign(existing);
+    const stopped = existing.sheetMonitor ? stopAutomaticLeadFollowup(baseStopped) : baseStopped;
     const saved = await workspaceStore.saveScoped(scope, stopped, options.db);
     return formatCampaignEnvelope(saved, {
       liveCallingEnabled: rt.liveCallingEnabled,
       liveSendingEnabled: rt.liveSendingEnabled
     });
+  });
+
+  app.delete(`${base}/:campaignId`, authGuard, async request => {
+    const scope = requireScope(request);
+    if (scope.role === 'viewer') throw new ForbiddenError('Viewers cannot delete bulk campaigns.');
+    const { campaignId } = request.params as { campaignId: string };
+    const existing = await workspaceStore.getScoped(scope, campaignId, options.db);
+    if (!existing) throw new ValidationError('Campaign not found in workspace.');
+    // Ensure active sheet monitoring or queued/running jobs are stopped before deletion
+    if (existing.sheetMonitor && existing.sheetMonitor.status !== 'stopped') {
+      const stopped = stopAutomaticLeadFollowup(stopBulkCampaign(existing));
+      await workspaceStore.saveScoped(scope, stopped, options.db);
+    }
+    const deleted = await workspaceStore.deleteScoped(scope, campaignId, options.db);
+    if (!deleted) {
+      throw new ValidationError('Campaign could not be deleted.');
+    }
+    return { deleted: true, campaignId };
   });
 
   app.post(`${base}/:campaignId/cancel`, authGuard, async request => {

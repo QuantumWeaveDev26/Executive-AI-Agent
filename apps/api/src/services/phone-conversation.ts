@@ -30,7 +30,7 @@ export class PhoneConversation{
  private turns=new Map<string,string>();
  outputGeneration=0;
  constructor(readonly language:PhoneCallingLanguage,readonly purpose:string,readonly maxDurationSeconds:number,readonly onBehalfOf?:string){
-  if(!Object.hasOwn(AI_DISCLOSURES,language)||!purpose.trim()||purpose.length>1000||!Number.isSafeInteger(maxDurationSeconds)||maxDurationSeconds<30||maxDurationSeconds>300
+  if(!Object.hasOwn(AI_DISCLOSURES,language)||!purpose.trim()||purpose.length>10000||!Number.isSafeInteger(maxDurationSeconds)||maxDurationSeconds<30||maxDurationSeconds>300
    ||(onBehalfOf!==undefined&&safeOnBehalfOf(onBehalfOf)!==onBehalfOf))throw Error('Invalid conversation');
  }
  opening(){return buildAiDisclosure(this.language,this.onBehalfOf);}

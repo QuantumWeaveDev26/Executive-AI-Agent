@@ -55,9 +55,12 @@ describe('Sarvam Voice Agents call provider (fake network)',()=>{
    const f=vi.fn(async()=>res);expect((await createSarvamCallProvider(base({fetch:f as unknown as typeof fetch})).dispatch(request)).status).toBe(status);expect(f).toHaveBeenCalledTimes(1);
   }
   expect((await createSarvamCallProvider(base({fetch:vi.fn(async()=>{throw new Error(API_KEY);}) as unknown as typeof fetch})).dispatch(request))).toEqual({status:'unknown',code:'PHONE_DISPATCH_NETWORK'});
-  for(const bad of [{...request,to:'+14155550100'},{...request,to:'+918000000001'},{...request,aiDisclosure:undefined},{...request,recipientName:undefined}]){
+  for(const bad of [{...request,to:'+14155550100'},{...request,to:'+918000000001'},{...request,aiDisclosure:undefined},{...request,recipientName:undefined},{...request,purpose:'x'.repeat(10001)}]){
    const f=vi.fn();expect(await createSarvamCallProvider(base({fetch:f as unknown as typeof fetch})).dispatch(bad)).toEqual({status:'failed',code:'PHONE_DISPATCH_INPUT'});expect(f).not.toHaveBeenCalled();
   }
+  const longFetch=vi.fn(async()=>new Response(JSON.stringify({attempt_id:'att_long'}),{status:200}));
+  expect(await createSarvamCallProvider(base({fetch:longFetch as unknown as typeof fetch})).dispatch({...request,purpose:'x'.repeat(9904)})).toEqual({status:'unverified',providerRequestId:'att_long'});
+  expect(longFetch).toHaveBeenCalledTimes(1);
   expect(await createSarvamCallProvider(base({secrets:{resolve:async()=>({apiKey:API_KEY,webhookSecret:'short'})}})).dispatch(request)).toEqual({status:'not_configured'});
   for(const over of [{agentPhoneNumber:'8000000001'},{callbackOrigin:'http://thaara.example.com'},{orgId:'a/b'}])expect(()=>createSarvamCallProvider(base(over))).toThrow(/configuration denied/);
  });
