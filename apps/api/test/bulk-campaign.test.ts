@@ -77,6 +77,7 @@ import {
   updateBulkCampaignPlan
 } from '../src/services/bulk-campaign.js';
 import { PhoneCallingService } from '../src/services/phone-calling.js';
+import { PhoneN8nSyncService, createInMemoryPhoneN8nSyncStore } from '../src/services/phone-n8n-sync.js';
 import { createSarvamCallProvider } from '../src/services/phone-sarvam-calls.js';
 import { WhatsAppAIService, buildWhatsAppSystemPrompt } from '../src/services/whatsapp-ai-service.js';
 import { defaultPolicyGateway } from '@thaara/policy';
@@ -8700,5 +8701,318 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
       callOutcome: 'interested'
     });
     expect(done.contacts[0]!.phoneStatus).toBe('answered');
+  });
+
+  it('41. PHONE N8N SYNC -> RECONCILE BULK CAMPAIGN RESULTS: matches by interactionId/attemptId, verifies recipient suffix, populates duration/summary/recording link without fabricating, and avoids duplicates', async () => {
+    const scope = {
+      workspaceId: '75d2f889-d3eb-4acc-861a-fada4691ecce',
+      userId: '4b4cbc9c-df01-4cc2-8565-8a23a3435b9d',
+      role: 'owner' as const,
+      sessionTokenHash: 'test-session-hash'
+    };
+    const nowIso = '2026-11-24T11:32:20.000Z';
+
+    const syncStore = createInMemoryPhoneN8nSyncStore();
+    for (const rec of [
+      {
+        workspaceId: scope.workspaceId,
+        ownerUserId: scope.userId,
+        callId: '4703f25ebc981f89b3c0b33fb9c4e638351d8e28b4d5acf07f83f5d09482aa74',
+        interactionId: '20261124/afcd65d2-16:17:40-aw15fa4a',
+        attemptId: '4b659630-6e89-4186-a524-657367c1e6fb',
+        direction: 'outbound' as const,
+        phoneE164: '+919000001539',
+        maskedInboundPhone: '•••• 1539',
+        maskedOutboundPhone: '+919 ******1539',
+        occurredAt: '2026-11-24T10:47:53.000Z',
+        timestampSource: 'provider_started' as const,
+        connectivityStatus: 'connected' as const,
+        callStatus: 'ended' as const,
+        endedBy: 'AGENT_ENDS',
+        failureReason: 'NO_FAILURE_REASON',
+        durationSeconds: 13,
+        customerName: 'Contact 1',
+        business: null,
+        requirements: null,
+        summary: 'The AI assistant, Thaara, attempted to initiate a conversation with the customer, but the customer remained silent, leading the agent to check if they were still on the line.',
+        transcript: [
+          { speaker: 'thaara' as const, text: "Hello! I'm Thaara, an AI voice assistant from Quantum Weave. Is this a good time to speak with you?" },
+          { speaker: 'thaara' as const, text: 'Hey, are you still on the call?' }
+        ],
+        recordingAvailable: true,
+        callbackEligibility: 'not_requested' as const,
+        preferredCallbackTime: null,
+        callbackRequestId: null,
+        updatedAt: nowIso
+      },
+      {
+        workspaceId: scope.workspaceId,
+        ownerUserId: scope.userId,
+        // Mismatched recipient suffix for another callId — must NOT attach to Contact 2 (ending 7894)
+        callId: '9999999999999999999999999999999999999999999999999999999999999999',
+        interactionId: '20261124/wrong-recipient-call',
+        attemptId: '0533ed1f-c7c2-45f5-9040-000000000002',
+        direction: 'outbound' as const,
+        phoneE164: '+919999991111',
+        maskedInboundPhone: '•••• 1111',
+        maskedOutboundPhone: '+919 ******1111',
+        occurredAt: '2026-11-24T10:49:00.000Z',
+        timestampSource: 'provider_started' as const,
+        connectivityStatus: 'connected' as const,
+        callStatus: 'ended' as const,
+        endedBy: 'AGENT_ENDS',
+        failureReason: 'NO_FAILURE_REASON',
+        durationSeconds: 99,
+        customerName: 'Wrong Person',
+        business: null,
+        requirements: null,
+        summary: 'Should never attach to 7894',
+        transcript: [{ speaker: 'customer' as const, text: 'Wrong person utterance' }],
+        recordingAvailable: true,
+        callbackEligibility: 'not_requested' as const,
+        preferredCallbackTime: null,
+        callbackRequestId: null,
+        updatedAt: nowIso
+      }
+    ]) {
+      await syncStore.upsertCall(rec);
+    }
+    const phoneN8nSync = new PhoneN8nSyncService({ store: syncStore });
+
+    const callId1 = '0533ed1f-c7c2-45f5-9040-d964f8a0b2db';
+    const callId2 = '0533ed1f-c7c2-45f5-9040-000000000002';
+    const baseCalling = {
+      history: async () => ({
+        durable: true,
+        liveCallingEnabled: true,
+        calls: [
+          {
+            id: callId1,
+            workspaceId: scope.workspaceId,
+            userId: scope.userId,
+            approvalId: 'f1cd4a25-a6aa-45f9-bf62-b62e5294fa01',
+            contactId: 'onecall_1aeb90d4-38f6-4faf-b366-d8043d3d7aa5',
+            contactRevision: 1,
+            simulated: false,
+            state: 'completed' as const,
+            providerCallId: '20261124/afcd65d2-16:17:40-aw15fa4a',
+            dispatchStatus: 'unverified' as const,
+            verified: false,
+            createdAt: '2026-11-24T10:47:28.470Z',
+            updatedAt: '2026-11-24T10:47:54.743Z',
+            draft: {
+              draftId: '8bd1ae03-6d08-4a85-b67a-2e5ca215103c',
+              contactId: 'onecall_1aeb90d4-38f6-4faf-b366-d8043d3d7aa5',
+              contactRevision: 1,
+              recipient: { displayName: 'Contact 1', maskedPhone: '+91 ******1539' },
+              purpose: 'Quantum Weave AI Solutions',
+              language: 'en-IN' as const,
+              mode: 'live' as const,
+              consentReference: 'onecall_14a671ab-034c-4b34-8b76-0b027bf40303',
+              contactBindingHash: 'a'.repeat(64),
+              providerBindingHash: 'b'.repeat(64),
+              onBehalfOf: 'Pilot Synthetic Owner',
+              aiDisclosure: 'Hello, I am Thaara.',
+              maxDurationSeconds: 300,
+              idempotencyKey: '74fe4cc1-50ce-491d-a27c-027aa122b944'
+            },
+            report: {
+              text: 'Live call. Call state: completed. No conversation outcome is recorded here.',
+              spokenText: 'Live call. Call state: completed. No conversation outcome is recorded here.',
+              quotedResponses: [],
+              evidenceIds: [],
+              verified: false,
+              simulated: false
+            }
+          },
+          {
+            id: callId2,
+            workspaceId: scope.workspaceId,
+            userId: scope.userId,
+            approvalId: 'f1cd4a25-a6aa-45f9-bf62-b62e5294fa02',
+            contactId: 'onecall_wrong',
+            contactRevision: 1,
+            simulated: false,
+            state: 'completed' as const,
+            providerCallId: '20261124/wrong-recipient-call',
+            dispatchStatus: 'unverified' as const,
+            verified: false,
+            createdAt: '2026-11-24T10:49:00.000Z',
+            updatedAt: '2026-11-24T10:49:10.000Z',
+            draft: {
+              draftId: '8bd1ae03-6d08-4a85-b67a-2e5ca215103d',
+              contactId: 'onecall_wrong',
+              contactRevision: 1,
+              recipient: { displayName: 'Contact 2', maskedPhone: '+91 ******7894' },
+              purpose: 'Quantum Weave AI Solutions',
+              language: 'en-IN' as const,
+              mode: 'live' as const,
+              consentReference: 'onecall_14a671ab-034c-4b34-8b76-0b027bf40304',
+              contactBindingHash: 'c'.repeat(64),
+              providerBindingHash: 'd'.repeat(64),
+              onBehalfOf: 'Pilot Synthetic Owner',
+              aiDisclosure: 'Hello, I am Thaara.',
+              maxDurationSeconds: 300,
+              idempotencyKey: '74fe4cc1-50ce-491d-a27c-027aa122b945'
+            },
+            report: {
+              text: 'Live call. Call state: completed. No conversation outcome is recorded here.',
+              spokenText: 'Live call. Call state: completed. No conversation outcome is recorded here.',
+              quotedResponses: [],
+              evidenceIds: [],
+              verified: false,
+              simulated: false
+            }
+          }
+        ]
+      })
+    } as unknown as PhoneCallingService;
+
+    const imported = buildSavedContactsImportResult({
+      phoneDirectory: [
+        {
+          contactId: 'c_1_951539',
+          revision: 1,
+          displayName: 'Contact 1',
+          maskedPhone: '+91 ******1539',
+          consent: { callingAllowed: true, reference: 'owner_test_consent', expiresAt: '2027-01-01T00:00:00Z' }
+        },
+        {
+          contactId: 'c_2_847894',
+          revision: 1,
+          displayName: 'Contact 2',
+          maskedPhone: '+91 ******7894',
+          consent: { callingAllowed: true, reference: 'owner_test_consent', expiresAt: '2027-01-01T00:00:00Z' }
+        }
+      ] as any
+    });
+    let camp = createBulkCampaignPlan({
+      scope,
+      title: 'Sync Reconciliation Test',
+      mode: 'live',
+      channels: ['phone_call'],
+      instruction: 'Follow up with leads',
+      importResult: imported
+    });
+    camp = {
+      ...camp,
+      contacts: [
+        { ...camp.contacts[0]!, phoneCallId: callId1, phoneProviderCallId: '20261124/afcd65d2-16:17:40-aw15fa4a', phoneStatus: 'answered' },
+        { ...camp.contacts[1]!, phoneCallId: callId2, phoneProviderCallId: '20261124/wrong-recipient-call', phoneStatus: 'answered' }
+      ]
+    };
+
+    const rec1 = await reconcileBulkCampaignOutcomes(camp, { scope, phoneCalling: baseCalling, phoneN8nSync });
+    const rec2 = await reconcileBulkCampaignOutcomes(rec1, { scope, phoneCalling: baseCalling, phoneN8nSync });
+
+    expect(rec2.contacts).toHaveLength(2);
+    const c1 = rec2.contacts[0]!;
+    expect(c1.phoneDurationSeconds).toBe(13);
+    expect(c1.phoneTranscriptSummary).toContain('customer remained silent');
+    expect(c1.phoneRecordingUrl).toBe(`/api/v1/connectors/phone/recordings/outbound/${encodeURIComponent(callId1)}`);
+    expect(c1.phoneRawResponses).toEqual([]); // Never fabricated when customer stayed silent
+
+    const c2 = rec2.contacts[1]!;
+    expect(c2.phoneDurationSeconds).toBeUndefined(); // Mismatched phoneE164 rejected!
+    expect(c2.phoneTranscriptSummary).toBe('Live call. Call state: completed. No conversation outcome is recorded here.');
+  });
+
+  it('42. AUTOMATIC SHEET / FILE CONSENT ATTESTATION: auto-sets verified calling consent during CSV/Sheet conversion while strictly preserving DND, opt-out, and explicit Consent=No blocks', async () => {
+    const scope = {
+      workspaceId: '75d2f889-d3eb-4acc-861a-fada4691ecce',
+      userId: '4b4cbc9c-df01-4cc2-8565-8a23a3435b9d',
+      role: 'owner' as const,
+      sessionTokenHash: 'test-session-hash'
+    };
+    const app = Fastify();
+    app.addHook('onRequest', async req => {
+      (req as any).scope = scope;
+    });
+    const store = new BulkCampaignWorkspaceStore();
+    await bulkCampaignRoutes(app, { store, allowBatchOfflineTest: true });
+
+    // Raw Excel/CSV rows WITHOUT a consent column + one DND row + one explicit Consent=No row
+    const rawCsv = [
+      'Name,Phone,DND,Consent',
+      'Lead Raw,9000001539,,',
+      'Lead DND,9000007894,Yes,',
+      'Lead Explicit No,9845011223,,No'
+    ].join('\n');
+
+    const planRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/campaigns/bulk/plan',
+      payload: {
+        instruction: 'Invite leads to event',
+        channels: ['phone'],
+        sourceType: 'csv',
+        fileName: 'Thaara test.csv',
+        rawText: rawCsv,
+        sourceConsentAttestation: {
+          confirmed: true,
+          consentSource: 'lead_form_disclosure',
+          evidenceReference: 'Thaara test.csv'
+        }
+      }
+    });
+    expect(planRes.statusCode).toBe(200);
+    const planEnv = planRes.json();
+    const contacts = planEnv.campaign.contacts as any[];
+    expect(contacts).toHaveLength(3);
+    const rawLead = contacts.find(c => c.contact.name === 'Lead Raw')!;
+    const dndLead = contacts.find(c => c.contact.name === 'Lead DND')!;
+    const noLead = contacts.find(c => c.contact.name === 'Lead Explicit No')!;
+
+    expect(rawLead.category).toBe('eligible');
+    expect(rawLead.contact.consent.phone).toBe(true);
+    expect(rawLead.contact.consent.source).toBe('owner_verified');
+    expect(dndLead.category).not.toBe('eligible'); // DND stays strictly blocked!
+    expect(noLead.category).not.toBe('eligible'); // Explicit Consent=No stays strictly blocked!
+
+    // Also verify POST /auto-followup/sheet-consent upgrades an existing Google Sheet campaign with unverified row
+    const rawNoConsentPlan = await app.inject({
+      method: 'POST',
+      url: '/api/v1/campaigns/bulk/plan',
+      payload: {
+        instruction: 'Invite leads from sheet',
+        channels: ['phone'],
+        sourceType: 'google_sheets',
+        fileName: 'Thaara test.csv',
+        rawText: 'Phone\n9000007910'
+      }
+    });
+    expect(rawNoConsentPlan.statusCode).toBe(200);
+    const cid = rawNoConsentPlan.json().campaign.campaignId as string;
+    expect(rawNoConsentPlan.json().campaign.contacts[0].category).toBe('unauthorized');
+
+    const cfgRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/campaigns/bulk/${encodeURIComponent(cid)}/auto-followup/configure`,
+      payload: {
+        spreadsheetId: 'sheet_123',
+        spreadsheetName: 'Thaara test.csv',
+        tabName: 'Sheet1',
+        processExistingBacklog: false
+      }
+    });
+    expect(cfgRes.statusCode).toBe(200);
+
+    const enableRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/campaigns/bulk/${encodeURIComponent(cid)}/auto-followup/sheet-consent`,
+      payload: {
+        confirmed: true,
+        consentSource: 'lead_form_disclosure',
+        evidenceReference: 'Thaara test.csv'
+      }
+    });
+    expect(enableRes.statusCode).toBe(200);
+    const upgraded = enableRes.json().campaign;
+    expect(upgraded.sheetMonitor.sheetConsentAttestation.confirmed).toBe(true);
+    expect(upgraded.contacts[0].category).toBe('eligible');
+    expect(upgraded.contacts[0].contact.consent.phone).toBe(true);
+    expect(upgraded.contacts[0].contact.consent.source).toBe('owner_verified');
+
+    await app.close();
   });
 });

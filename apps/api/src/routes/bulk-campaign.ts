@@ -3,6 +3,7 @@ import type { AuthenticatedScope, TransactionalDbClient } from '@thaara/db';
 import { ForbiddenError, ValidationError } from '@thaara/observability';
 import {
   answerCampaignCustomerQuestion,
+  applyOwnerSourceConsentAttestation,
   approveAllCampaignPhoneDrafts,
   approveBulkCampaign,
   approveSingleCampaignPhoneDraft,
@@ -95,9 +96,11 @@ import {
   resumeAutomaticLeadFollowup,
   stopAutomaticLeadFollowup,
   syncGoogleSheetLeadsForCampaign,
+  updateSheetConsentAttestationForCampaign,
   verifyUnsavedLeadConsentAndReprocessForCampaign
 } from '../services/bulk-campaign-auto-followup.js';
 import type { PhoneCallingService, PhoneContactDirectory } from '../services/phone-calling.js';
+import type { PhoneN8nSyncService } from '../services/phone-n8n-sync.js';
 import { GoogleSheetsAccessError, GoogleSheetsConnectionsService } from '../services/google-sheets-connections.js';
 import type { PhoneContactManagementService } from '../services/phone-contacts.js';
 import type { DurableWhatsAppService } from '../services/whatsapp-durable.js';
@@ -110,6 +113,7 @@ export interface BulkCampaignRouteOptions {
   emailAdapter?: BulkCampaignEmailAdapter;
   store?: BulkCampaignWorkspaceStore;
   phoneCalling?: PhoneCallingService;
+  phoneN8nSync?: PhoneN8nSyncService;
   phoneContacts?: PhoneContactManagementService;
   phoneFallbackDirectory?: PhoneContactDirectory;
   dailyPhoneCallLimit?: number;
@@ -341,11 +345,18 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
     if (hasRealConnectors) {
       for (let i = 0; i < sliced.length; i++) {
         const c = sliced[i]!;
-        if (c.contacts.some(r => r.phoneStatus === 'attempted' && Boolean(r.phoneCallId && !r.phoneCallId.startsWith('sim_')))) {
+        if (
+          c.contacts.some(
+            r =>
+              Boolean(r.phoneCallId && !r.phoneCallId.startsWith('sim_')) &&
+              (r.phoneStatus === 'attempted' || typeof r.phoneDurationSeconds !== 'number')
+          )
+        ) {
           try {
             const rec = await reconcileBulkCampaignOutcomes(c, {
               scope,
               phoneCalling: options.phoneCalling,
+              phoneN8nSync: options.phoneN8nSync,
               phoneAdapter: rt.phoneAdapter,
               whatsappDurable: options.whatsappDurable
             });
@@ -394,6 +405,7 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
         existing = await reconcileBulkCampaignOutcomes(existing, {
           scope,
           phoneCalling: options.phoneCalling,
+          phoneN8nSync: options.phoneN8nSync,
           phoneAdapter: rt.phoneAdapter,
           whatsappDurable: options.whatsappDurable,
           refreshProviderResults: existing.contacts.some(
@@ -626,11 +638,16 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       useSyntheticDemo?: boolean;
       channels?: BulkCampaignChannel[];
       knowledgeFiles?: BulkCampaignKnowledgeUploadInput[];
+      sourceConsentAttestation?: {
+        confirmed?: boolean;
+        consentSource?: 'lead_form_disclosure' | 'inbound_enquiry' | 'written_consent' | 'verbal_recorded';
+        evidenceReference?: string;
+      };
     };
     const rt = await resolveWorkspaceRuntime(scope, Boolean(body.useSyntheticDemo));
     const approvedTemplate = rt.wsInfo?.context.availableTemplates.find(t => t.usableForCampaign);
     try {
-      const importResult = parseBulkCampaignContacts({
+      const parsedImport = parseBulkCampaignContacts({
         sourceType: body.sourceType ?? 'csv',
         ...(body.fileName ? { fileName: body.fileName } : {}),
         rawText: body.useSyntheticDemo ? SYNTHETIC_DEMO_CONTACTS_CSV : (body.rawText ?? ''),
@@ -638,6 +655,27 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
         phoneDirectory: rt.phoneDirectory,
         ...(rt.wsInfo?.whatsappDirectory ? { whatsappDirectory: rt.wsInfo.whatsappDirectory } : {})
       });
+      const validAttestation =
+        !body.useSyntheticDemo && body.sourceConsentAttestation?.confirmed
+          ? {
+              confirmed: true,
+              consentSource: body.sourceConsentAttestation.consentSource ?? ('lead_form_disclosure' as const),
+              evidenceReference:
+                (body.sourceConsentAttestation.evidenceReference?.trim() ||
+                  body.fileName?.trim() ||
+                  'Owner-confirmed lead source').slice(0, 160),
+              attestedByUserId: scope.userId,
+              attestedAt: new Date().toISOString()
+            }
+          : null;
+      const importResult = validAttestation
+        ? {
+            ...parsedImport,
+            validContacts: parsedImport.validContacts.map(c =>
+              applyOwnerSourceConsentAttestation(c, validAttestation)
+            )
+          }
+        : parsedImport;
       const plan = createBulkCampaignPlan({
         workspaceId: scope.workspaceId,
         userId: scope.userId,
@@ -1303,6 +1341,7 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       const reconciled = await reconcileBulkCampaignOutcomes(existing, {
         scope,
         phoneCalling: options.phoneCalling,
+        phoneN8nSync: options.phoneN8nSync,
         phoneAdapter: rt.phoneAdapter,
         whatsappDurable: options.whatsappDurable,
         refreshProviderResults: Boolean(body.refreshProviderResults)
@@ -2410,6 +2449,11 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       retryDelayMinutes?: number;
       maxLeadsPerDay?: number;
       allowedLeadSources?: string[];
+      sheetConsentAttestation?: {
+        confirmed?: boolean;
+        consentSource?: 'lead_form_disclosure' | 'inbound_enquiry' | 'written_consent' | 'verbal_recorded';
+        evidenceReference?: string;
+      };
     };
     let resolvedAccountEmail = body.googleAccountEmail?.trim() || undefined;
     if (body.googleConnectionId && !resolvedAccountEmail) {
@@ -2419,6 +2463,20 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       }
       resolvedAccountEmail = connView.accountEmail;
     }
+    const normalizedSheetAttestation = body.sheetConsentAttestation?.confirmed
+      ? {
+          confirmed: true,
+          consentSource: body.sheetConsentAttestation.consentSource ?? ('lead_form_disclosure' as const),
+          evidenceReference: (
+            body.sheetConsentAttestation.evidenceReference?.trim() ||
+            body.metaFormId?.trim() ||
+            body.spreadsheetName?.trim() ||
+            'Connected Google Sheet'
+          ).slice(0, 160),
+          attestedByUserId: scope.userId,
+          attestedAt: new Date().toISOString()
+        }
+      : undefined;
     const updated = configureAutomaticLeadFollowup(existing, {
       spreadsheetId: body.spreadsheetId ?? '',
       spreadsheetName: body.spreadsheetName ?? 'Connected Google Sheet',
@@ -2436,7 +2494,8 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       retryOnNoAnswer: body.retryOnNoAnswer,
       retryDelayMinutes: body.retryDelayMinutes,
       maxLeadsPerDay: body.maxLeadsPerDay,
-      allowedLeadSources: body.allowedLeadSources
+      allowedLeadSources: body.allowedLeadSources,
+      ...(normalizedSheetAttestation ? { sheetConsentAttestation: normalizedSheetAttestation } : {})
     });
     const saved = await workspaceStore.saveScoped(scope, updated, options.db);
     const rt = await resolveWorkspaceRuntime(scope, false);
@@ -2714,6 +2773,45 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
         phoneDirectory: rt.phoneDirectory
       })
     };
+  });
+
+  app.post(`${base}/:campaignId/auto-followup/sheet-consent`, authGuard, async request => {
+    const scope = requireScope(request);
+    if (scope.role === 'viewer') throw new ForbiddenError('Viewers cannot confirm campaign calling consent.');
+    const { campaignId } = request.params as { campaignId: string };
+    const existing = await workspaceStore.getScoped(scope, campaignId, options.db);
+    if (!existing) throw new ValidationError('Campaign not found in workspace.');
+    const body = (request.body ?? {}) as {
+      confirmed?: boolean;
+      consentSource?: 'lead_form_disclosure' | 'inbound_enquiry' | 'written_consent' | 'verbal_recorded';
+      evidenceReference?: string;
+    };
+    if (!body.confirmed) {
+      throw new ValidationError('Explicit confirmation is required to enable automatic sheet consent.');
+    }
+    const evidenceRef = (
+      body.evidenceReference?.trim() ||
+      existing.sheetMonitor?.metaFormId?.trim() ||
+      existing.sheetMonitor?.spreadsheetName?.trim() ||
+      'Connected Google Sheet'
+    ).slice(0, 160);
+    if (evidenceRef.length < 3) {
+      throw new ValidationError('Provide a valid consent source reference (at least 3 characters).');
+    }
+    const updated = updateSheetConsentAttestationForCampaign(existing, {
+      confirmed: true,
+      consentSource: body.consentSource ?? 'lead_form_disclosure',
+      evidenceReference: evidenceRef,
+      attestedByUserId: scope.userId,
+      attestedAt: new Date().toISOString()
+    });
+    const saved = await workspaceStore.saveScoped(scope, updated, options.db);
+    const rt = await resolveWorkspaceRuntime(scope, false);
+    return formatCampaignEnvelope(saved, {
+      liveCallingEnabled: rt.liveCallingEnabled,
+      liveSendingEnabled: rt.liveSendingEnabled,
+      phoneDirectory: rt.phoneDirectory
+    });
   });
 
   // Machine endpoint for n8n scheduled Google Sheets monitoring (polls all active Mode B campaigns)

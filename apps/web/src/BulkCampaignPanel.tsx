@@ -73,6 +73,11 @@ export interface BulkCampaignCreateViewProps {
     contactFileBase64?: string;
     useSyntheticDemo?: boolean;
     campaignMode?: BulkCampaignMode;
+    sourceConsentAttestation?: {
+      confirmed: boolean;
+      consentSource: 'lead_form_disclosure' | 'inbound_enquiry' | 'written_consent' | 'verbal_recorded';
+      evidenceReference?: string;
+    };
     autoFollowupConfig?: {
       spreadsheetId: string;
       spreadsheetName: string;
@@ -89,6 +94,11 @@ export interface BulkCampaignCreateViewProps {
       retryOnNoAnswer?: boolean;
       retryDelayMinutes?: number;
       maxLeadsPerDay?: number;
+      sheetConsentAttestation?: {
+        confirmed: boolean;
+        consentSource: 'lead_form_disclosure' | 'inbound_enquiry' | 'written_consent' | 'verbal_recorded';
+        evidenceReference?: string;
+      };
     };
   }): void;
   onImportSavedContacts?(payload: {
@@ -262,6 +272,11 @@ export interface BulkCampaignViewProps {
     recordedAt?: string;
     explicitOwnerApproval: boolean;
   }): Promise<void> | void;
+  onEnableSheetConsent?(input: {
+    confirmed: boolean;
+    consentSource: 'lead_form_disclosure' | 'inbound_enquiry' | 'written_consent' | 'verbal_recorded';
+    evidenceReference?: string;
+  }): Promise<void> | void;
   onSchedule?(scheduleAt: string): void;
   onExecute?(mode?: 'simulation' | 'live', batchSize?: number): void;
   onRetryFailed?(): void;
@@ -381,6 +396,11 @@ export function BulkCampaignCreateView(props: BulkCampaignCreateViewProps) {
   const [retryDelayMinutes, setRetryDelayMinutes] = useState(60);
   const [maxLeadsPerDay, setMaxLeadsPerDay] = useState(250);
   const [skipHistoricalRows, setSkipHistoricalRows] = useState(true);
+  const [autoApplySourceConsent, setAutoApplySourceConsent] = useState(false);
+  const [sourceConsentType, setSourceConsentType] = useState<
+    'lead_form_disclosure' | 'inbound_enquiry' | 'written_consent' | 'verbal_recorded'
+  >('lead_form_disclosure');
+  const [sourceConsentRef, setSourceConsentRef] = useState('');
   const [autoModeError, setAutoModeError] = useState<string | null>(null);
 
   const extractApiErrorText = (payload: unknown, fallback: string): string => {
@@ -1302,6 +1322,55 @@ export function BulkCampaignCreateView(props: BulkCampaignCreateViewProps) {
               </label>
             </div>
 
+            <div
+              style={{
+                marginTop: '0.7rem',
+                padding: '0.65rem 0.75rem',
+                borderRadius: '8px',
+                border: '1px solid #bfdbfe',
+                background: '#f0f9ff',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.45rem'
+              }}
+            >
+              <label style={{ display: 'inline-flex', alignItems: 'flex-start', gap: '0.45rem', cursor: 'pointer', fontSize: '0.78rem', color: '#0f172a', fontWeight: 600 }}>
+                <input
+                  type="checkbox"
+                  data-testid="auto-followup-sheet-consent-checkbox"
+                  checked={autoApplySourceConsent}
+                  onChange={e => setAutoApplySourceConsent(e.target.checked)}
+                />
+                <span>
+                  Auto-set verified calling consent during Google Sheet → CSV conversion (no manual consent column needed; DND, opt-out &amp; explicit Consent=No rows remain blocked)
+                </span>
+              </label>
+              {autoApplySourceConsent && (
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', paddingLeft: '1.35rem' }}>
+                  <select
+                    aria-label="Google Sheet consent source"
+                    data-testid="auto-followup-sheet-consent-source"
+                    value={sourceConsentType}
+                    onChange={e => setSourceConsentType(e.target.value as typeof sourceConsentType)}
+                    style={{ fontSize: '0.78rem', padding: '0.3rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff' }}
+                  >
+                    <option value="lead_form_disclosure">Meta / Web Lead-Form Disclosure</option>
+                    <option value="inbound_enquiry">Inbound Enquiry</option>
+                    <option value="written_consent">Written Consent</option>
+                    <option value="verbal_recorded">Verbal Recorded Consent</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Lead Form / Sheet reference (optional)"
+                    data-testid="auto-followup-sheet-consent-ref"
+                    value={sourceConsentRef}
+                    onChange={e => setSourceConsentRef(e.target.value)}
+                    style={{ flex: 1, minWidth: '180px', fontSize: '0.78rem', padding: '0.3rem 0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff' }}
+                  />
+                </div>
+              )}
+            </div>
+
             {autoModeError && (
               <div role="alert" data-testid="auto-followup-config-error" style={{ marginTop: '0.6rem', color: '#b91c1c', fontSize: '0.8rem', fontWeight: 600 }}>
                 {autoModeError}
@@ -1415,6 +1484,57 @@ export function BulkCampaignCreateView(props: BulkCampaignCreateViewProps) {
               </div>
             )}
           </div>
+
+          {hasContactsAttached && (
+            <div
+              style={{
+                marginTop: '0.6rem',
+                padding: '0.6rem 0.75rem',
+                borderRadius: '8px',
+                border: '1px solid #bfdbfe',
+                background: '#f0f9ff',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.45rem'
+              }}
+            >
+              <label style={{ display: 'inline-flex', alignItems: 'flex-start', gap: '0.45rem', cursor: 'pointer', fontSize: '0.78rem', color: '#0f172a', fontWeight: 600 }}>
+                <input
+                  type="checkbox"
+                  data-testid="upload-source-consent-checkbox"
+                  checked={autoApplySourceConsent}
+                  onChange={e => setAutoApplySourceConsent(e.target.checked)}
+                />
+                <span>
+                  Auto-set verified calling consent during Excel/CSV conversion (no manual consent column needed; DND, opt-out &amp; explicit Consent=No rows remain blocked)
+                </span>
+              </label>
+              {autoApplySourceConsent && (
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', paddingLeft: '1.35rem' }}>
+                  <select
+                    aria-label="Uploaded file consent source"
+                    data-testid="upload-source-consent-source"
+                    value={sourceConsentType}
+                    onChange={e => setSourceConsentType(e.target.value as typeof sourceConsentType)}
+                    style={{ fontSize: '0.78rem', padding: '0.3rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff' }}
+                  >
+                    <option value="lead_form_disclosure">Meta / Web Lead-Form Disclosure</option>
+                    <option value="inbound_enquiry">Inbound Enquiry</option>
+                    <option value="written_consent">Written Consent</option>
+                    <option value="verbal_recorded">Verbal Recorded Consent</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Lead Form / File reference (optional)"
+                    data-testid="upload-source-consent-ref"
+                    value={sourceConsentRef}
+                    onChange={e => setSourceConsentRef(e.target.value)}
+                    style={{ flex: 1, minWidth: '180px', fontSize: '0.78rem', padding: '0.3rem 0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff' }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Clean secondary contact source options */}
           <div
@@ -1848,6 +1968,15 @@ export function BulkCampaignCreateView(props: BulkCampaignCreateViewProps) {
                   ...(contactRawText.trim() ? { contactRawText } : {}),
                   useSyntheticDemo: false,
                   campaignMode: 'automatic_lead_followup',
+                  ...(autoApplySourceConsent
+                    ? {
+                        sourceConsentAttestation: {
+                          confirmed: true,
+                          consentSource: sourceConsentType,
+                          ...(sourceConsentRef.trim() ? { evidenceReference: sourceConsentRef.trim() } : {})
+                        }
+                      }
+                    : {}),
                   autoFollowupConfig: {
                     spreadsheetId: sheetsPreview.spreadsheetId,
                     spreadsheetName: sheetsPreview.sheetName,
@@ -1865,7 +1994,16 @@ export function BulkCampaignCreateView(props: BulkCampaignCreateViewProps) {
                     maxAttemptsPerLead,
                     retryOnNoAnswer,
                     retryDelayMinutes,
-                    maxLeadsPerDay
+                    maxLeadsPerDay,
+                    ...(autoApplySourceConsent
+                      ? {
+                          sheetConsentAttestation: {
+                            confirmed: true,
+                            consentSource: sourceConsentType,
+                            ...(sourceConsentRef.trim() ? { evidenceReference: sourceConsentRef.trim() } : {})
+                          }
+                        }
+                      : {})
                   }
                 });
                 return;
@@ -1887,6 +2025,15 @@ export function BulkCampaignCreateView(props: BulkCampaignCreateViewProps) {
                 ...(contactFileName ? { contactFileName } : {}),
                 ...(contactRawText.trim() ? { contactRawText } : {}),
                 ...(contactFileBase64 ? { contactFileBase64 } : {}),
+                ...(autoApplySourceConsent && hasContactsAttached
+                  ? {
+                      sourceConsentAttestation: {
+                        confirmed: true,
+                        consentSource: sourceConsentType,
+                        ...(sourceConsentRef.trim() ? { evidenceReference: sourceConsentRef.trim() } : {})
+                      }
+                    }
+                  : {}),
                 useSyntheticDemo: !hasContactsAttached
               });
             }}
@@ -3904,6 +4051,63 @@ export function BulkCampaignDashboardView(p: BulkCampaignViewProps) {
                         </div>
                       ))}
                     </div>
+                    {p.existingBacklogPreview.consentBlockedCount > 0 && !mon?.sheetConsentAttestation?.confirmed && p.onEnableSheetConsent && (
+                      <div
+                        data-testid="enable-sheet-consent-banner"
+                        style={{
+                          marginBottom: '0.75rem',
+                          padding: '0.65rem 0.8rem',
+                          borderRadius: '8px',
+                          border: '1px solid #fdba74',
+                          background: '#fff7ed',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.45rem'
+                        }}
+                      >
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#9a3412' }}>
+                          Sheet rows have no consent column — enable automatic consent for this Google Sheet
+                        </div>
+                        <div style={{ fontSize: '0.76rem', color: '#7c2d12' }}>
+                          Confirm once that leads in <code>{mon?.spreadsheetName ?? 'this Google Sheet'}</code> already have genuine calling consent. Thaara will automatically set verified consent during conversion for existing and all future rows (DND, opt-out &amp; Consent=No rows stay blocked).
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <select
+                            aria-label="Sheet consent source"
+                            value={consentSourceInput}
+                            onChange={e => setConsentSourceInput(e.target.value as typeof consentSourceInput)}
+                            style={{ fontSize: '0.78rem', padding: '0.3rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff' }}
+                          >
+                            <option value="lead_form_disclosure">Meta / Web Lead-Form Disclosure</option>
+                            <option value="inbound_enquiry">Inbound Enquiry</option>
+                            <option value="written_consent">Written Consent</option>
+                            <option value="verbal_recorded">Verbal Recorded Consent</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            data-testid="enable-sheet-consent-button"
+                            disabled={consentVerifyBusy}
+                            style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                            onClick={async () => {
+                              setConsentVerifyBusy(true);
+                              try {
+                                await p.onEnableSheetConsent?.({
+                                  confirmed: true,
+                                  consentSource: consentSourceInput,
+                                  evidenceReference: mon?.spreadsheetName || 'Connected Google Sheet'
+                                });
+                                await p.onPreviewExistingBacklog?.();
+                              } finally {
+                                setConsentVerifyBusy(false);
+                              }
+                            }}
+                          >
+                            {consentVerifyBusy ? 'Enabling...' : 'Enable Auto-Consent for This Sheet'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.82rem', color: '#1e293b', marginBottom: '0.7rem', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
@@ -5303,7 +5507,14 @@ export function BulkCampaignPanel(props: {
     const hasInFlightCalls = (envelope?.campaign.contacts ?? []).some(
       c => c.phoneStatus === 'attempted' || c.whatsappStatus === 'queued' || c.whatsappStatus === 'sent'
     );
-    const isRunning = envelope?.campaign.status === 'running' || hasActiveBatch || hasInFlightCalls;
+    const hasPendingPostCallSync = (envelope?.campaign.contacts ?? []).some(
+      c =>
+        Boolean(c.phoneCallId) &&
+        !c.phoneCallId!.startsWith('sim_') &&
+        (c.phoneStatus === 'answered' || c.phoneRecordState === 'completed') &&
+        typeof c.phoneDurationSeconds !== 'number'
+    );
+    const isRunning = envelope?.campaign.status === 'running' || hasActiveBatch || hasInFlightCalls || hasPendingPostCallSync;
     if (!activeId || !isRunning || (viewMode !== 'dashboard' && viewMode !== 'details')) {
       return;
     }
@@ -5316,7 +5527,7 @@ export function BulkCampaignPanel(props: {
       }
       void (async () => {
         try {
-          const refreshed = hasInFlightCalls
+          const refreshed = hasInFlightCalls || hasPendingPostCallSync
             ? await request<ApiCampaignEnvelope>(
                 `/api/v1/campaigns/bulk/${encodeURIComponent(activeId)}/reconcile`,
                 { method: 'POST', body: JSON.stringify({ refreshProviderResults: true }) }
@@ -5550,6 +5761,7 @@ export function BulkCampaignPanel(props: {
                   ...(payload.contactFileName ? { fileName: payload.contactFileName } : {}),
                   ...(payload.contactRawText ? { rawText: payload.contactRawText } : {}),
                   ...(payload.contactFileBase64 ? { fileBase64: payload.contactFileBase64 } : {}),
+                  ...(payload.sourceConsentAttestation ? { sourceConsentAttestation: payload.sourceConsentAttestation } : {}),
                   useSyntheticDemo: Boolean(payload.useSyntheticDemo)
                 })
               });
@@ -5749,6 +5961,26 @@ export function BulkCampaignPanel(props: {
                     channel: 'phone',
                     explicitOwnerApproval: input.explicitOwnerApproval
                   })
+                }
+              );
+              setEnvelope(updated);
+              await refreshHistoryAndCsv(updated.campaign.campaignId);
+            } catch (err) {
+              setErrorMsg((err as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+          onEnableSheetConsent={async input => {
+            if (busy) return;
+            setErrorMsg(null);
+            setBusy(true);
+            try {
+              const updated = await request<ApiCampaignEnvelope>(
+                `/api/v1/campaigns/bulk/${encodeURIComponent(envelope.campaign.campaignId)}/auto-followup/sheet-consent`,
+                {
+                  method: 'POST',
+                  body: JSON.stringify(input)
                 }
               );
               setEnvelope(updated);

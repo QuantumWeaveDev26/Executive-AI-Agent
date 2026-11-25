@@ -327,6 +327,7 @@ export const BulkCampaignContactRecordSchema = Type.Object(
     phoneCallId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
     phoneProviderCallId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
     phoneDurationSeconds: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),
+    phoneRecordingUrl: Type.Optional(Type.Union([Type.String({ maxLength: 512 }), Type.Null()])),
     phoneRecordState: Type.Optional(PhoneCallingStateSchema),
     phoneLanguageUsed: Type.Optional(PhoneCallingLanguageSchema),
     phoneDisclosedAi: Type.Optional(Type.Boolean()),
@@ -890,6 +891,23 @@ export const BulkCampaignStandingAuthorizationSchema = Type.Object(
 );
 export type BulkCampaignStandingAuthorization = Static<typeof BulkCampaignStandingAuthorizationSchema>;
 
+export const BulkCampaignSheetConsentAttestationSchema = Type.Object(
+  {
+    confirmed: Type.Boolean(),
+    consentSource: Type.Union([
+      Type.Literal('lead_form_disclosure'),
+      Type.Literal('inbound_enquiry'),
+      Type.Literal('written_consent'),
+      Type.Literal('verbal_recorded')
+    ]),
+    evidenceReference: Type.String({ minLength: 3, maxLength: 160 }),
+    attestedByUserId: Type.String({ minLength: 1, maxLength: 128 }),
+    attestedAt: Type.String({ minLength: 8, maxLength: 80 })
+  },
+  { additionalProperties: false }
+);
+export type BulkCampaignSheetConsentAttestation = Static<typeof BulkCampaignSheetConsentAttestationSchema>;
+
 export const BulkCampaignSheetMonitorConfigSchema = Type.Object(
   {
     spreadsheetId: Type.String({ minLength: 1, maxLength: 256 }),
@@ -920,7 +938,8 @@ export const BulkCampaignSheetMonitorConfigSchema = Type.Object(
     leadsEligibleCount: Type.Integer({ minimum: 0 }),
     leadsConsentBlockedCount: Type.Integer({ minimum: 0 }),
     leadsQueuedCount: Type.Integer({ minimum: 0 }),
-    followUpsScheduledCount: Type.Integer({ minimum: 0 })
+    followUpsScheduledCount: Type.Integer({ minimum: 0 }),
+    sheetConsentAttestation: Type.Optional(BulkCampaignSheetConsentAttestationSchema)
   },
   { additionalProperties: false }
 );

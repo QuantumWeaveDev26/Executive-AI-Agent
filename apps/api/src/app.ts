@@ -411,6 +411,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       await bulkCampaignRoutes(v1, {
         db,
         phoneCalling,
+        phoneN8nSync: activePhoneN8nSync,
         phoneContacts: phoneContactManagementService,
         phoneFallbackDirectory: phoneCallingOptions.contacts,
         dailyPhoneCallLimit: liveCalling?.dailyCallLimit,

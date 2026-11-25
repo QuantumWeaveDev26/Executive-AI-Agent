@@ -1042,10 +1042,19 @@ export class PhoneN8nSyncService {
     const matchedSyncIds = new Set<string>();
     const enrichedExisting = baseHistory.calls.map(call => {
       if (call.simulated) return call;
-      const match =
+      const providerRequestId = (call as { providerRequestId?: string | null }).providerRequestId;
+      const candidate =
         (call.providerCallId ? byInteractionId.get(call.providerCallId) : undefined) ??
-        byAttemptId.get(call.id);
-      if (!match) return call;
+        byAttemptId.get(call.id) ??
+        (providerRequestId ? byAttemptId.get(providerRequestId) : undefined);
+      if (!candidate) return call;
+      // Verify recipient phone suffix matches when both sides carry digits so mismatched calls are never attached
+      const callLast4 = call.draft.recipient.maskedPhone.replace(/\D/g, '').slice(-4);
+      const syncLast4 = candidate.phoneE164 ? candidate.phoneE164.replace(/\D/g, '').slice(-4) : '';
+      if (callLast4.length === 4 && syncLast4.length === 4 && callLast4 !== syncLast4) {
+        return call;
+      }
+      const match = candidate;
       matchedSyncIds.add(match.callId);
 
       const syncedDetails = this.toOutboundSyncedDetails(match, call.draft.recipient.displayName);

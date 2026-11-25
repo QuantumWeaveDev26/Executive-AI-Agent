@@ -35,6 +35,7 @@ import {
   type BulkCampaignEmailDeliveryStatus,
   type BulkCampaignMode,
   type BulkCampaignSheetMonitorConfig,
+  type BulkCampaignSheetConsentAttestation,
   type BulkCampaignStandingAuthorization,
   type BulkCampaignImportedContact,
   type BulkCampaignImportIssue,
@@ -83,6 +84,7 @@ import {
 } from '@thaara/db';
 import type { ActionAdapter, ActionExecutionContext, ActionResult } from '@thaara/policy';
 import { GMAIL_SEND_NEW_ACTION, type GmailFoundation } from './gmail.js';
+import type { PhoneN8nSyncService } from './phone-n8n-sync.js';
 import {
   answerCampaignCustomerQuestion,
   buildSarvamBoundedFactBrief,
@@ -949,6 +951,37 @@ function matchWhatsAppOptedInContact(
  * Newly uploaded numbers are NEVER assumed authorized for calling or messaging.
  */
 export const MAX_IMPORT_RAW_TEXT_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Applies a campaign-level owner consent attestation to a normalized contact during CSV/Sheet conversion.
+ * Strictly preserves DND, opt-out, and explicit negative consent columns (Consent=No/False) — never overrides them.
+ */
+export function applyOwnerSourceConsentAttestation(
+  contact: BulkCampaignImportedContact,
+  attestation?: BulkCampaignSheetConsentAttestation | null
+): BulkCampaignImportedContact {
+  if (!attestation?.confirmed) return contact;
+  if (contact.dnd || contact.dndStatus === 'dnd') return contact;
+  if (contact.optedOut || contact.optedOutStatus === 'opted_out') return contact;
+  // Never override an explicit negative consent column in the sheet/file
+  if (contact.consent.source === 'explicit_column' && !contact.consent.phone) {
+    return contact;
+  }
+  if (contact.consent.phone) {
+    return contact;
+  }
+  const sourceDetail = `${attestation.consentSource}: ${attestation.evidenceReference}`.slice(0, 120);
+  return {
+    ...contact,
+    consentSourceDetail: contact.consentSourceDetail ?? sourceDetail,
+    consentRecordedAt: contact.consentRecordedAt ?? attestation.attestedAt,
+    consent: {
+      ...contact.consent,
+      phone: true,
+      source: 'owner_verified'
+    }
+  };
+}
 
 export function parseBulkCampaignContacts(input: {
   sourceType: BulkCampaignSourceType;
@@ -6945,6 +6978,7 @@ export async function reconcileBulkCampaignOutcomes(
   deps: {
     scope: AuthenticatedScope;
     phoneCalling?: PhoneCallingService;
+    phoneN8nSync?: PhoneN8nSyncService;
     phoneAdapter?: BulkCampaignPhoneAdapter;
     whatsappDurable?: DurableWhatsAppService;
     refreshProviderResults?: boolean;
@@ -6959,7 +6993,10 @@ export async function reconcileBulkCampaignOutcomes(
 
   if (deps.phoneCalling) {
     try {
-      const hist = await deps.phoneCalling.history(deps.scope);
+      const baseHist = await deps.phoneCalling.history(deps.scope);
+      const hist = deps.phoneN8nSync
+        ? await deps.phoneN8nSync.enrichOutboundHistory(deps.scope, baseHist)
+        : baseHist;
       liveCallingFlag = Boolean(hist.liveCallingEnabled);
       callsById = new Map(hist.calls.map(c => [c.id, c]));
       callsByProviderId = new Map(hist.calls.filter(c => c.providerCallId).map(c => [c.providerCallId!, c]));
@@ -7081,9 +7118,16 @@ export async function reconcileBulkCampaignOutcomes(
     let next: BulkCampaignContactRecord = { ...rec };
 
     // 1. Reconcile Phone Call Record
-    const matchedCallRecord =
+    const rawMatchedCallRecord =
       (next.phoneCallId ? callsById.get(next.phoneCallId) ?? callsByProviderId.get(next.phoneCallId) : undefined) ??
       (next.phoneProviderCallId ? callsByProviderId.get(next.phoneProviderCallId) : undefined);
+    const contactLast4 = next.contact?.maskedPhone?.replace(/\D/g, '').slice(-4) ?? '';
+    const recordLast4 = rawMatchedCallRecord?.draft?.recipient?.maskedPhone?.replace(/\D/g, '').slice(-4) ?? '';
+    const matchedCallRecord =
+      rawMatchedCallRecord &&
+      (contactLast4.length !== 4 || recordLast4.length !== 4 || contactLast4 === recordLast4)
+        ? rawMatchedCallRecord
+        : undefined;
     if (matchedCallRecord) {
       const callRecord = matchedCallRecord;
       let rawResponses = [...callRecord.report.quotedResponses];
@@ -7156,6 +7200,12 @@ export async function reconcileBulkCampaignOutcomes(
           : {}),
         ...(typeof callRecord.syncedDetails?.durationSeconds === 'number'
           ? { phoneDurationSeconds: Math.max(0, Math.round(callRecord.syncedDetails.durationSeconds)) }
+          : {}),
+        ...(!callRecord.simulated &&
+        (callRecord.syncedDetails?.recordingAvailable || Boolean(callRecord.providerCallId))
+          ? {
+              phoneRecordingUrl: `/api/v1/connectors/phone/recordings/outbound/${encodeURIComponent(callRecord.id)}`
+            }
           : {}),
         ...(derivedSummary ? { phoneTranscriptSummary: derivedSummary } : {}),
         ...(derivedStructured ? { structuredNotes: derivedStructured } : {}),

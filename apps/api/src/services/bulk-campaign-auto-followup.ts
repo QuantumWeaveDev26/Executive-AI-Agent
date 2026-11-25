@@ -4,12 +4,14 @@ import type {
   BulkCampaignContactRecord,
   BulkCampaignImportedContact,
   BulkCampaignN8nChannel,
+  BulkCampaignSheetConsentAttestation,
   BulkCampaignSheetMonitorConfig,
   BulkCampaignStandingAuthorization,
   PhoneContactView
 } from '@thaara/contracts';
 import type { AuthenticatedScope } from '@thaara/db';
 import {
+  applyOwnerSourceConsentAttestation,
   computeCampaignMaterialHash,
   evaluateContactEligibility,
   parseBulkCampaignContacts,
@@ -108,6 +110,7 @@ export interface ConfigureAutoFollowupInput {
   retryDelayMinutes?: number;
   maxLeadsPerDay?: number;
   allowedLeadSources?: string[];
+  sheetConsentAttestation?: BulkCampaignSheetConsentAttestation;
 }
 
 /**
@@ -166,7 +169,12 @@ export function configureAutomaticLeadFollowup(
     leadsEligibleCount: campaign.sheetMonitor?.leadsEligibleCount ?? 0,
     leadsConsentBlockedCount: campaign.sheetMonitor?.leadsConsentBlockedCount ?? 0,
     leadsQueuedCount: campaign.sheetMonitor?.leadsQueuedCount ?? 0,
-    followUpsScheduledCount: campaign.sheetMonitor?.followUpsScheduledCount ?? 0
+    followUpsScheduledCount: campaign.sheetMonitor?.followUpsScheduledCount ?? 0,
+    ...(input.sheetConsentAttestation?.confirmed
+      ? { sheetConsentAttestation: input.sheetConsentAttestation }
+      : sameSheetAndTab && campaign.sheetMonitor?.sheetConsentAttestation?.confirmed
+        ? { sheetConsentAttestation: campaign.sheetMonitor.sheetConsentAttestation }
+        : {})
   };
 
   const nextHash = computeCampaignMaterialHash({
@@ -527,13 +535,18 @@ export function previewExistingSheetBacklogForCampaign(
       existingRec?.contact.consent.source === 'owner_verified' && existingRec.contact.consent.phone
         ? { consent: existingRec.contact.consent }
         : {};
-    contactsToEvaluate.push({
-      ...c,
-      ...preservedOwnerConsent,
-      contactId: existingRec?.contact.contactId ?? c.contactId,
-      sourceRowKey: computeStableSheetRowKey(monitor.spreadsheetId, monitor.tabName, c),
-      sheetRowNumber: c.rowNumber
-    });
+    contactsToEvaluate.push(
+      applyOwnerSourceConsentAttestation(
+        {
+          ...c,
+          ...preservedOwnerConsent,
+          contactId: existingRec?.contact.contactId ?? c.contactId,
+          sourceRowKey: computeStableSheetRowKey(monitor.spreadsheetId, monitor.tabName, c),
+          sheetRowNumber: c.rowNumber
+        },
+        monitor.sheetConsentAttestation
+      )
+    );
   }
 
   const evaluated = evaluateContactEligibility(
@@ -656,13 +669,18 @@ export async function processExistingSheetBacklogForCampaign(
       existingRec?.contact.consent.source === 'owner_verified' && existingRec.contact.consent.phone
         ? { consent: existingRec.contact.consent }
         : {};
-    contactsToEvaluate.push({
-      ...c,
-      ...preservedOwnerConsent,
-      contactId: existingRec?.contact.contactId ?? c.contactId,
-      sourceRowKey: rowKey,
-      sheetRowNumber: c.rowNumber
-    });
+    contactsToEvaluate.push(
+      applyOwnerSourceConsentAttestation(
+        {
+          ...c,
+          ...preservedOwnerConsent,
+          contactId: existingRec?.contact.contactId ?? c.contactId,
+          sourceRowKey: rowKey,
+          sheetRowNumber: c.rowNumber
+        },
+        monitor.sheetConsentAttestation
+      )
+    );
   }
 
   const evaluated = evaluateContactEligibility(
@@ -900,11 +918,16 @@ export async function syncGoogleSheetLeadsForCampaign(
     }
     knownKeys.add(rowKey);
     if (c.phoneE164) existingPhones.add(c.phoneE164);
-    brandNewContacts.push({
-      ...c,
-      sourceRowKey: rowKey,
-      sheetRowNumber: c.rowNumber
-    });
+    brandNewContacts.push(
+      applyOwnerSourceConsentAttestation(
+        {
+          ...c,
+          sourceRowKey: rowKey,
+          sheetRowNumber: c.rowNumber
+        },
+        monitor.sheetConsentAttestation
+      )
+    );
   }
 
   const newRecords: BulkCampaignContactRecord[] = brandNewContacts.length > 0
@@ -1354,5 +1377,78 @@ export async function verifyUnsavedLeadConsentAndReprocessForCampaign(
     batchSubmitted,
     ...(jobId ? { jobId } : {}),
     ...(skippedReason ? { skippedReason } : {})
+  };
+}
+
+/**
+ * Enables or updates campaign-level owner consent attestation on an existing Google Sheet campaign.
+ * Automatically upgrades any currently awaiting-consent unsaved leads (whose DND/opt-out/explicit-No
+ * checks are clear) to eligible without modifying previously processed, DND, or opted-out contacts.
+ */
+export function updateSheetConsentAttestationForCampaign(
+  campaign: BulkCampaignState,
+  attestation: BulkCampaignSheetConsentAttestation,
+  now = new Date()
+): BulkCampaignState {
+  if (!campaign.sheetMonitor) {
+    throw new Error('AUTO_FOLLOWUP_NOT_CONFIGURED: Configure a Google Sheet before setting sheet-level consent.');
+  }
+  if (!attestation.confirmed) {
+    throw new Error('CONSENT_CONFIRMATION_REQUIRED: Explicit owner confirmation is required.');
+  }
+  const nowIso = now.toISOString();
+  const upgradedContacts = campaign.contacts.map(rec => {
+    if (rec.category === 'eligible') return rec;
+    const upgraded = applyOwnerSourceConsentAttestation(rec.contact, attestation);
+    if (!upgraded.consent.phone) return rec;
+    const [reEvaluated] = evaluateContactEligibility(
+      [upgraded],
+      new Set([upgraded.contactId]),
+      campaign.channels,
+      campaign.limits,
+      campaign.whatsappPlan.messagePreview,
+      campaign.emailConnected,
+      undefined,
+      nowIso,
+      campaign.emailPlan?.bodyPreview
+    );
+    if (!reEvaluated) return rec;
+    return {
+      ...rec,
+      contact: upgraded,
+      category: reEvaluated.category,
+      categoryReason: reEvaluated.categoryReason,
+      phoneEligibility: reEvaluated.phoneEligibility,
+      whatsappEligibility: reEvaluated.whatsappEligibility,
+      emailEligibility: reEvaluated.emailEligibility,
+      updatedAt: nowIso
+    };
+  });
+
+  const nextHash = computeCampaignMaterialHash({
+    objective: campaign.objective,
+    eventDetails: campaign.eventDetails,
+    channels: campaign.channels,
+    whatsappPlan: campaign.whatsappPlan,
+    callScript: campaign.callScript,
+    limits: campaign.limits,
+    contacts: upgradedContacts,
+    ...(campaign.knowledgeContext ? { knowledgeContext: campaign.knowledgeContext } : {})
+  });
+
+  return {
+    ...campaign,
+    contacts: upgradedContacts,
+    materialHash: nextHash,
+    ...(campaign.approval ? { approval: { ...campaign.approval, approvedMaterialHash: nextHash } } : {}),
+    ...(campaign.standingAuthorization
+      ? { standingAuthorization: { ...campaign.standingAuthorization, approvedMaterialHash: nextHash } }
+      : {}),
+    sheetMonitor: {
+      ...campaign.sheetMonitor,
+      sheetConsentAttestation: attestation,
+      leadsConsentBlockedCount: upgradedContacts.filter(r => r.category !== 'eligible').length
+    },
+    updatedAt: nowIso
   };
 }
