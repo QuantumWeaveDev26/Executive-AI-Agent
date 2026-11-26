@@ -9267,4 +9267,308 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     expect(deleted).toBe(true);
     expect(executedSql.some(sql => /UPDATE\s+plans/i.test(sql) && /version\s*=\s*version\s*\+\s*1/i.test(sql))).toBe(true);
   });
+
+  it('45. Outbound bulk campaign uses brand-based greeting (never Quantum Weave), passes ALL Google Sheet custom columns, and enforces short human replies', async () => {
+    const { buildCampaignOutboundGreeting, buildPersonalizedLeadCallPurpose } = await import(
+      '../src/services/bulk-campaign.js'
+    );
+    const scope = {
+      workspaceId: '75d2f889-d3eb-4acc-861a-fada4691ecce',
+      userId: '4b4cbc9c-df01-4cc2-8565-8a23a3435b9d',
+      role: 'owner' as const
+    };
+    const sheetCsv = [
+      'Name,Phone,Consent,Quantity,Budget,Delivery Timeline,Preferred Colour,City,Garment Type',
+      'Vishak,+919000007910,Yes,150 pcs,Rs 450 per piece,10 Dec 2026,Navy Blue,Bengaluru,Polo T-Shirts',
+      'Meera,+919000005677,Yes,60 pcs,Rs 380 per piece,15 Dec 2026,Black,Mysuru,Hoodies'
+    ].join('\n');
+
+    const imported = parseBulkCampaignContacts({
+      sourceType: 'google_sheets',
+      fileName: 'CTW_Meta_Leads.csv',
+      rawText: sheetCsv,
+      phoneDirectory: []
+    });
+    expect(imported.validContacts).toHaveLength(2);
+    expect(imported.validContacts[0]?.customFields?.quantity).toBe('150 pcs');
+    expect(imported.validContacts[0]?.customFields?.budget).toBe('Rs 450 per piece');
+    expect(imported.validContacts[0]?.customFields?.delivery_timeline).toBe('10 Dec 2026');
+    expect(imported.validContacts[0]?.customFields?.preferred_colour).toBe('Navy Blue');
+    expect(imported.validContacts[0]?.customFields?.garment_type).toBe('Polo T-Shirts');
+
+    const plan = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction:
+        'Act as the owner/senior sales executive of Custom Team Wear (Bengaluru). Follow up every new Meta lead quickly and naturally using their sheet details.',
+      importResult: imported,
+      channels: ['phone']
+    });
+
+    const vishak = imported.validContacts[0]!;
+    const meera = imported.validContacts[1]!;
+
+    // 1. Outbound greeting uses Custom Team Wear (never Quantum Weave or Pilot Synthetic Owner)
+    const greeting = buildCampaignOutboundGreeting(plan, vishak);
+    expect(greeting).toContain('Vishak');
+    expect(greeting).toContain('Thaara from Custom Team Wear');
+    expect(greeting).not.toMatch(/Quantum\s*Weave|Pilot\s+Synthetic/i);
+
+    // 2. Personalized call_purpose includes ALL Google Sheet columns for Vishak without mixing Meera's row
+    const purposeVishak = buildPersonalizedLeadCallPurpose(plan, vishak);
+    expect(purposeVishak).toContain('Introduce yourself ONLY as Thaara from Custom Team Wear');
+    expect(purposeVishak).toMatch(/short and sweet|1-2 brief sentences/i);
+    expect(purposeVishak).toContain('Quantity: 150 pcs');
+    expect(purposeVishak).toContain('Budget: Rs 450 per piece');
+    expect(purposeVishak).toContain('Delivery Timeline: 10 Dec 2026');
+    expect(purposeVishak).toContain('Preferred Colour: Navy Blue');
+    expect(purposeVishak).toContain('City: Bengaluru');
+    expect(purposeVishak).toContain('Garment Type: Polo T-Shirts');
+    expect(purposeVishak).not.toContain('Mysuru');
+    expect(purposeVishak).not.toContain('Hoodies');
+
+    // 3. Draft prepared via PhoneAdapter carries brand-scoped openingGreeting as aiDisclosure
+    const mockAdapter = new MockBulkCampaignPhoneAdapter([]);
+    const drafted = await prepareCampaignPhoneDrafts(plan, mockAdapter);
+    const firstPrepared = drafted.contacts.find(c => c.contact.name === 'Vishak');
+    expect(firstPrepared?.phoneDraft?.aiDisclosure).toContain('Thaara from Custom Team Wear');
+    expect(firstPrepared?.phoneDraft?.aiDisclosure).not.toMatch(/Quantum\s*Weave|Pilot\s+Synthetic/i);
+    expect(firstPrepared?.phoneDraft?.purpose).toContain('Quantity: 150 pcs');
+  });
+
+  it('46. Parses 38-column signal/lead Google Sheet (Business phone, Business WhatsApp, Company, Quantity, Budget, Recommended offer, Discovery question) without dropping details or picking URLs as phones', async () => {
+    const { buildCampaignOutboundGreeting, buildPersonalizedLeadCallPurpose } = await import(
+      '../src/services/bulk-campaign.js'
+    );
+    const scope = {
+      workspaceId: '75d2f889-d3eb-4acc-861a-fada4691ecce',
+      userId: '4b4cbc9c-df01-4cc2-8565-8a23a3435b9d',
+      role: 'owner' as const
+    };
+    const headers = [
+      'Run date (IST)',
+      'Task ID',
+      'Run ID',
+      'Company',
+      'Business category',
+      'Buyer or channel',
+      'Verified location',
+      'Identity source URL',
+      'Signal type',
+      'Signal posting date',
+      'Event date or deadline',
+      'Evidence URL',
+      'Observed facts',
+      'T-shirt hypothesis',
+      'Published quantity',
+      'Published budget',
+      'Business email',
+      'Email source URL',
+      'Business phone',
+      'Phone source URL',
+      'Business WhatsApp',
+      'WhatsApp source URL',
+      'Enquiry URL',
+      'Contact verified date',
+      'Score breakdown',
+      'Score total',
+      'Priority or hold',
+      'Confidence',
+      'Recommended offer',
+      'Discovery question',
+      'Outreach draft — NOT SENT',
+      'Unknowns and limitations',
+      'Review status',
+      'Owner',
+      'Team notes',
+      'Company key',
+      'Record key',
+      'Previous signal key'
+    ];
+    const row1 = [
+      '2026-11-26',
+      'TASK-001',
+      'RUN-99',
+      'Apex Tech Bengaluru',
+      'IT Services',
+      'Rohan HR',
+      'Whitefield, Bengaluru',
+      'https://example.com/id',
+      'Corporate Offsite',
+      '2026-11-25',
+      '2026-12-12',
+      'https://example.com/ev',
+      'Annual employee day for 220 staff needing branded polos',
+      '220 cotton polos with embroidered left-chest logo',
+      '220 pcs',
+      'Rs 1,10,000',
+      'rohan@apextech.example',
+      'https://example.com/email',
+      '+919000007910',
+      'https://example.com/phone',
+      '+919000007910',
+      'https://example.com/wa',
+      'https://example.com/enq',
+      '2026-11-25',
+      'fit:40+urg:30',
+      '88',
+      'High',
+      '0.92',
+      'Corporate Polo Catalogue + Sample Visit',
+      'Which colours and sizes do you need for the 220 staff polos?',
+      'Hi Rohan draft not sent',
+      'Exact size split pending',
+      'Approved',
+      'Sales Owner',
+      'Decision maker prefers morning calls',
+      'cmp_apex',
+      'rec_apex_1',
+      'prev_0'
+    ];
+    const tsv = [headers.join('\t'), row1.join('\t')].join('\n');
+
+    const imported = parseBulkCampaignContacts({
+      sourceType: 'google_sheets',
+      fileName: 'CTW_Signal_Leads.tsv',
+      rawText: tsv,
+      phoneDirectory: []
+    });
+    expect(imported.invalidEntries).toHaveLength(0);
+    expect(imported.validContacts).toHaveLength(1);
+    const c = imported.validContacts[0]!;
+    expect(c.name).toBe('Rohan HR');
+    expect(c.company).toBe('Apex Tech Bengaluru');
+    expect(c.phoneE164).toBe('+919000007910');
+    expect(c.email).toBe('rohan@apextech.example');
+    expect(c.serviceRequired).toBe('Corporate Polo Catalogue + Sample Visit');
+    expect(c.customerRequirement).toContain('Annual employee day for 220 staff');
+    expect(c.customFields?.published_quantity).toBe('220 pcs');
+    expect(c.customFields?.published_budget).toBe('Rs 1,10,000');
+    expect(c.customFields?.verified_location).toBe('Whitefield, Bengaluru');
+    expect(c.customFields?.t_shirt_hypothesis).toContain('220 cotton polos');
+    expect(c.customFields?.discovery_question).toContain('220 staff polos');
+    expect(c.customFields?.event_date_or_deadline).toBe('2026-12-12');
+    expect(c.customFields?.team_notes).toBe('Decision maker prefers morning calls');
+    // Internal URLs & IDs must NOT clutter customFields
+    expect(c.customFields?.task_id).toBeUndefined();
+    expect(c.customFields?.identity_source_url).toBeUndefined();
+    expect(c.customFields?.phone_source_url).toBeUndefined();
+
+    const plan = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction: 'Act as the owner of Custom Team Wear (Bengaluru). Follow up leads using their Google Sheet details.',
+      importResult: imported,
+      channels: ['phone']
+    });
+    const greeting = buildCampaignOutboundGreeting(plan, c);
+    // Researched signal prospect must NOT falsely claim they submitted an enquiry!
+    expect(greeting).toBe(
+      'Hello Rohan HR, I am Thaara from Custom Team Wear, reaching out briefly to connect with you. Is now a good time to talk?'
+    );
+    expect(greeting).not.toMatch(/follow up on your enquiry|submitted/i);
+    const purpose = buildPersonalizedLeadCallPurpose(plan, c);
+    expect(purpose).toContain('Researched business prospect (NOT a submitted enquiry form)');
+    expect(purpose).toContain('NEVER claim they submitted an enquiry');
+    expect(purpose).toContain('Business: Apex Tech Bengaluru');
+    expect(purpose).toContain('Service enquired: Corporate Polo Catalogue + Sample Visit');
+    expect(purpose).toContain('Published Quantity: 220 pcs');
+    expect(purpose).toContain('Published Budget: Rs 1,10,000');
+    expect(purpose).toContain('Verified Location: Whitefield, Bengaluru');
+    expect(purpose).toContain('Event Date Or Deadline: 2026-12-12');
+    expect(purpose).toContain('T Shirt Hypothesis: 220 cotton polos with embroidered left-chest logo');
+    expect(purpose).toContain('Discovery Question: Which colours and sizes do you need for the 220 staff polos?');
+    expect(purpose).not.toContain('TASK-001');
+    expect(purpose).not.toContain('https://example.com/phone');
+  });
+
+  it('47. Multi-business outbound isolation (SmileCare Dental genuine enquiry vs Vertex Logistics researched prospect) preserves consent/DND safeguards and prevents cross-row leakage', async () => {
+    const { buildCampaignOutboundGreeting, buildPersonalizedLeadCallPurpose } = await import(
+      '../src/services/bulk-campaign.js'
+    );
+    const scope = {
+      workspaceId: '75d2f889-d3eb-4acc-861a-fada4691ecce',
+      userId: '4b4cbc9c-df01-4cc2-8565-8a23a3435b9d',
+      role: 'owner' as const
+    };
+
+    // Business A: SmileCare Dental Clinic — genuine Meta lead form enquiry + DND & no-consent rows
+    const dentalCsv = [
+      'Name,Phone,Consent,DND,Lead Source,Treatment,Preferred Slot,Branch',
+      'Ananya,+919000001111,Yes,No,Meta Lead Form,Teeth Whitening,Saturday 11 AM,Indiranagar',
+      'Kiran,+919000002222,No,No,Meta Lead Form,Dental Implant,Sunday 4 PM,Koramangala',
+      'Deepak,+919000003333,Yes,Yes,Meta Lead Form,Root Canal,Monday 10 AM,Jayanagar'
+    ].join('\n');
+    const dentalImport = parseBulkCampaignContacts({
+      sourceType: 'google_sheets',
+      fileName: 'SmileCare_Leads.csv',
+      rawText: dentalCsv,
+      phoneDirectory: []
+    });
+    const dentalPlan = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction: 'Act as the owner of SmileCare Dental Clinic. Follow up Meta leads politely and book appointments.',
+      importResult: dentalImport,
+      channels: ['phone']
+    });
+    // Safeguards: only Ananya is eligible; Kiran is unauthorized (missing consent); Deepak is unauthorized (DND)!
+    const ananyaRow = dentalPlan.contacts.find(r => r.contact.name === 'Ananya');
+    const kiranRow = dentalPlan.contacts.find(r => r.contact.name === 'Kiran');
+    const deepakRow = dentalPlan.contacts.find(r => r.contact.name === 'Deepak');
+    expect(ananyaRow?.category).toBe('eligible');
+    expect(kiranRow?.category).toBe('unauthorized');
+    expect(kiranRow?.categoryReason).toMatch(/consent/i);
+    expect(deepakRow?.category).toBe('unauthorized');
+    expect(deepakRow?.categoryReason).toMatch(/dnd|do not disturb|opt/i);
+
+    const ananya = dentalImport.validContacts[0]!;
+    const dentalGreeting = buildCampaignOutboundGreeting(dentalPlan, ananya);
+    expect(dentalGreeting).toBe(
+      'Hello Ananya, I am Thaara from SmileCare Dental Clinic, calling to follow up on your enquiry. Is this a good time to talk?'
+    );
+    expect(dentalGreeting).not.toMatch(/Quantum\s*Weave|Custom\s+Team/i);
+    const dentalPurpose = buildPersonalizedLeadCallPurpose(dentalPlan, ananya);
+    expect(dentalPurpose).toContain('Genuine lead-form enquiry submitted by this customer');
+    expect(dentalPurpose).toContain('Treatment: Teeth Whitening');
+    expect(dentalPurpose).toContain('Preferred Slot: Saturday 11 AM');
+    expect(dentalPurpose).toContain('Branch: Indiranagar');
+    expect(dentalPurpose).not.toContain('Koramangala');
+    expect(dentalPurpose).not.toContain('Dental Implant');
+
+    // Business B: Vertex Logistics — researched prospect list (NOT an enquiry form!)
+    const logisticsTsv = [
+      'Company\tBuyer or channel\tBusiness phone\tConsent\tSignal type\tVerified location\tPublished budget\tObserved facts',
+      'BlueLine Pharma\tSuresh Ops\t+919000004444\tYes\tCold Storage Expansion\tPeenya, Bengaluru\tRs 8 Lakhs/month\tOpening 2 new cold-chain depots in Q1',
+      'GreenFresh Foods\tLata Supply\t+919000005555\tYes\tFleet Hiring Signal\tHosur Road\tRs 4 Lakhs/month\tNeeds 6 refrigerated vans daily'
+    ].join('\n');
+    const logisticsImport = parseBulkCampaignContacts({
+      sourceType: 'google_sheets',
+      fileName: 'Vertex_Prospects.tsv',
+      rawText: logisticsTsv,
+      phoneDirectory: []
+    });
+    const logisticsPlan = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction:
+        'Act as the founder of Vertex Cold Logistics. Reach out to researched prospect companies to explore cold-chain partnerships.',
+      importResult: logisticsImport,
+      channels: ['phone']
+    });
+    const suresh = logisticsImport.validContacts[0]!;
+    const logisticsGreeting = buildCampaignOutboundGreeting(logisticsPlan, suresh);
+    expect(logisticsGreeting).toBe(
+      'Hello Suresh Ops, I am Thaara from Vertex Cold Logistics, reaching out briefly to connect with you. Is now a good time to talk?'
+    );
+    expect(logisticsGreeting).not.toMatch(/enquiry|Quantum\s*Weave|Custom\s+Team/i);
+    const logisticsPurpose = buildPersonalizedLeadCallPurpose(logisticsPlan, suresh);
+    expect(logisticsPurpose).toContain('Researched business prospect (NOT a submitted enquiry form)');
+    expect(logisticsPurpose).toContain('Business: BlueLine Pharma');
+    expect(logisticsPurpose).toContain('Verified Location: Peenya, Bengaluru');
+    expect(logisticsPurpose).toContain('Published Budget: Rs 8 Lakhs/month');
+    expect(logisticsPurpose).toContain('Opening 2 new cold-chain depots in Q1');
+    expect(logisticsPurpose).not.toContain('GreenFresh Foods');
+    expect(logisticsPurpose).not.toContain('Hosur Road');
+  });
 });

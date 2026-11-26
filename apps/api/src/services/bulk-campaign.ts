@@ -1083,54 +1083,75 @@ export function parseBulkCampaignContacts(input: {
   }
 
   const delimiter: ',' | '\t' = lines[0]!.includes('\t') ? '\t' : ',';
-  const firstCols = splitDelimitedLine(lines[0]!, delimiter).map(h => h.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
-  const hasHeader = firstCols.some(h =>
-    [
-      'name',
-      'full_name',
-      'contact_name',
-      'customer_name',
-      'lead_name',
-      'patient_name',
-      'client_name',
-      'phone',
-      'mobile',
-      'phone_number',
-      'mobile_number',
-      'contact_number',
-      'whatsapp',
-      'whatsapp_number',
-      'country_code',
-      'email',
-      'company',
-      'business_name',
-      'service_required',
-      'service',
-      'customer_requirement',
-      'requirement',
-      'enquiry_date',
-      'lead_source',
-      'whatsapp_consent',
-      'phone_consent',
-      'call_consent',
-      'calling_consent',
-      'consent',
-      'consent_given',
-      'opt_in',
-      'marketing_consent',
-      'consent_source',
-      'consent_evidence',
-      'consent_recorded_at',
-      'consent_timestamp',
-      'consent_date',
-      'lead_id',
-      'source_lead_id',
-      'created_time',
-      'ad_name',
-      'form_name',
-      'email_consent',
-      'dnd'
-    ].includes(h)
+  const firstCols = splitDelimitedLine(lines[0]!, delimiter).map(h =>
+    h
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+  );
+  const isUrlOrMetaHeader = (h: string) =>
+    /(?:_url|_link|_source_url|_key|^url$|^task_id$|^run_id$|_consent$|_verified|_status$)/i.test(h);
+  const hasHeader = firstCols.some(
+    h =>
+      [
+        'name',
+        'full_name',
+        'contact_name',
+        'customer_name',
+        'lead_name',
+        'patient_name',
+        'client_name',
+        'buyer_or_channel',
+        'contact_person',
+        'phone',
+        'mobile',
+        'phone_number',
+        'mobile_number',
+        'contact_number',
+        'business_phone',
+        'work_phone',
+        'whatsapp',
+        'whatsapp_number',
+        'business_whatsapp',
+        'country_code',
+        'email',
+        'business_email',
+        'work_email',
+        'company',
+        'business_name',
+        'business_category',
+        'service_required',
+        'service',
+        'customer_requirement',
+        'requirement',
+        'observed_facts',
+        'recommended_offer',
+        'published_quantity',
+        'published_budget',
+        'enquiry_date',
+        'lead_source',
+        'whatsapp_consent',
+        'phone_consent',
+        'call_consent',
+        'calling_consent',
+        'consent',
+        'consent_given',
+        'opt_in',
+        'marketing_consent',
+        'consent_source',
+        'consent_evidence',
+        'consent_recorded_at',
+        'consent_timestamp',
+        'consent_date',
+        'lead_id',
+        'source_lead_id',
+        'created_time',
+        'ad_name',
+        'form_name',
+        'email_consent',
+        'dnd'
+      ].includes(h) ||
+      (!isUrlOrMetaHeader(h) && /(?:^|_)(?:phone|mobile|whatsapp|email)(?:$|_)/.test(h))
   );
 
   const seenLeadIds = new Set<string>();
@@ -1165,25 +1186,103 @@ export function parseBulkCampaignContacts(input: {
       const cols = splitDelimitedLine(rawLine, delimiter);
       const usedIndexes = new Set<number>();
       const getCol = (...names: string[]) => {
-        const colIdx = firstCols.findIndex(h => names.includes(h));
+        for (const n of names) {
+          const colIdx = firstCols.indexOf(n);
+          if (colIdx >= 0) {
+            usedIndexes.add(colIdx);
+            const val = (cols[colIdx] ?? '').trim();
+            if (val) return val;
+          }
+        }
+        return '';
+      };
+      const getColMatching = (predicate: (h: string) => boolean) => {
+        const colIdx = firstCols.findIndex((h, i) => !usedIndexes.has(i) && predicate(h));
         if (colIdx >= 0) usedIndexes.add(colIdx);
         return colIdx >= 0 ? (cols[colIdx] ?? '').trim() : '';
       };
-      name = getCol('name', 'full_name', 'contact_name', 'customer', 'customer_name', 'lead_name', 'patient_name', 'client_name');
-      company = getCol('company', 'company_name', 'business', 'business_name', 'organization', 'org', 'clinic', 'firm');
-      serviceRequired = getCol('service_required', 'service', 'service_interested', 'interested_in', 'product', 'category', 'looking_for', 'solution');
-      customerRequirement = getCol('customer_requirement', 'requirement', 'requirements', 'enquiry', 'inquiry', 'notes', 'message', 'details', 'pain_point', 'challenge', 'query', 'comments');
-      enquiryDate = getCol('enquiry_date', 'inquiry_date', 'submitted_at', 'created_time', 'date', 'lead_date', 'timestamp');
-      leadSource = getCol('lead_source', 'source', 'campaign_name', 'ad_name', 'form_name', 'channel', 'utm_source');
-      sourceLeadId = getCol('source_lead_id', 'lead_id', 'meta_lead_id');
+      name = getCol(
+        'name',
+        'full_name',
+        'contact_name',
+        'customer',
+        'customer_name',
+        'lead_name',
+        'patient_name',
+        'client_name',
+        'contact_person',
+        'buyer_name',
+        'buyer_or_channel'
+      );
+      company = getCol('company', 'company_name', 'business', 'business_name', 'organization', 'organisation', 'org', 'clinic', 'firm');
+      if (!name && company) {
+        name = company;
+      }
+      serviceRequired = getCol(
+        'service_required',
+        'service',
+        'service_interested',
+        'interested_in',
+        'recommended_offer',
+        'product',
+        'category',
+        'business_category',
+        'looking_for',
+        'solution'
+      );
+      customerRequirement = getCol(
+        'customer_requirement',
+        'requirement',
+        'requirements',
+        'observed_facts',
+        'enquiry',
+        'inquiry',
+        'notes',
+        'team_notes',
+        'message',
+        'details',
+        'pain_point',
+        'challenge',
+        'query',
+        'comments'
+      );
+      enquiryDate = getCol('enquiry_date', 'inquiry_date', 'submitted_at', 'created_time', 'signal_posting_date', 'date', 'lead_date', 'timestamp');
+      leadSource = getCol('lead_source', 'source', 'signal_type', 'campaign_name', 'ad_name', 'form_name', 'channel', 'utm_source');
+      sourceLeadId = getCol('source_lead_id', 'lead_id', 'meta_lead_id', 'record_key');
       const countryCode = getCol('country_code', 'cc', 'dial_code');
-      const basePhone = getCol('phone', 'mobile', 'phone_number', 'mobile_number', 'number', 'contact_number', 'whatsapp_no', 'tel', 'cell');
+      const basePhone =
+        getCol(
+          'phone',
+          'mobile',
+          'phone_number',
+          'mobile_number',
+          'business_phone',
+          'work_phone',
+          'contact_phone',
+          'direct_phone',
+          'lead_phone',
+          'customer_phone',
+          'number',
+          'contact_number',
+          'whatsapp_no',
+          'tel',
+          'cell'
+        ) ||
+        getColMatching(h => !isUrlOrMetaHeader(h) && /(?:^|_)(?:phone|mobile|tel|contact_no)(?:$|_)/.test(h));
       rawPhone =
         basePhone && countryCode && !basePhone.trim().startsWith('+')
           ? `${countryCode.trim().startsWith('+') ? countryCode.trim() : `+${countryCode.replace(/\D/g, '')}`}${basePhone.replace(/\D/g, '')}`
           : basePhone;
-      rawWhatsapp = getCol('whatsapp', 'whatsapp_number') || rawPhone;
-      rawEmail = getCol('email', 'email_address');
+      rawWhatsapp =
+        getCol('whatsapp', 'whatsapp_number', 'business_whatsapp', 'whatsapp_no') ||
+        getColMatching(h => !isUrlOrMetaHeader(h) && /whatsapp/.test(h)) ||
+        rawPhone;
+      if (!rawPhone && rawWhatsapp) {
+        rawPhone = rawWhatsapp;
+      }
+      rawEmail =
+        getCol('email', 'email_address', 'business_email', 'work_email', 'contact_email', 'customer_email') ||
+        getColMatching(h => !isUrlOrMetaHeader(h) && /(?:^|_)email(?:$|_)/.test(h));
       rawLang = getCol('language', 'preferred_language', 'lang', 'spoken_language') || 'en-IN';
       waConsentCol = parseBooleanFlag(getCol('whatsapp_consent', 'wa_consent'));
       phoneConsentCol = parseBooleanFlag(
@@ -1211,8 +1310,17 @@ export function parseBulkCampaignContacts(input: {
       for (let ci = 0; ci < firstCols.length && ci < cols.length; ci++) {
         if (usedIndexes.has(ci)) continue;
         const headerKey = firstCols[ci]!.slice(0, 64);
+        // Skip internal tracking IDs, raw source URLs, and score/status housekeeping columns so customer-relevant lead fields always fit
+        if (
+          !headerKey ||
+          /(?:_url$|_link$|_key$|^task_id$|^run_id$|^run_date|^score_|^confidence$|^review_status$|^priority_or_hold$|^contact_verified_date$|^outreach_draft|^unknowns_and_limitations$|^owner$)/i.test(
+            headerKey
+          )
+        ) {
+          continue;
+        }
         const val = (cols[ci] ?? '').replace(/[\r\n\t]+/g, ' ').replace(/^[=+\-@]+/, '').trim().slice(0, 300);
-        if (headerKey && val && Object.keys(customFields).length < 10) {
+        if (val && Object.keys(customFields).length < 30) {
           customFields[headerKey] = val;
         }
       }
@@ -2997,7 +3105,7 @@ export class MockBulkCampaignPhoneAdapter implements BulkCampaignPhoneAdapter {
         purpose,
         language: payload.language,
         maxDurationSeconds: payload.maxDurationSeconds ?? 180,
-        aiDisclosure: buildMockAiDisclosure(payload.language),
+        aiDisclosure: payload.openingGreeting?.trim().slice(0, 300) || buildMockAiDisclosure(payload.language),
         consentReference: `consent_${contact.contactId}_r${contact.revision}`,
         idempotencyKey: crypto.randomUUID(),
         mode: 'simulation',
@@ -3043,7 +3151,7 @@ export class MockBulkCampaignPhoneAdapter implements BulkCampaignPhoneAdapter {
         purpose,
         language: payload.language,
         maxDurationSeconds: payload.maxDurationSeconds ?? 180,
-        aiDisclosure: buildMockAiDisclosure(payload.language),
+        aiDisclosure: payload.openingGreeting?.trim().slice(0, 300) || buildMockAiDisclosure(payload.language),
         consentReference: `consent_${oneCallId.slice(0, 24)}`,
         idempotencyKey: crypto.randomUUID(),
         mode: 'simulation',
@@ -3157,7 +3265,8 @@ export class MockBulkCampaignPhoneAdapter implements BulkCampaignPhoneAdapter {
         !req.draft.newRecipient.consentConfirmed ||
         req.draft.newRecipient.eligibility !== 'eligible' ||
         req.draft.providerBindingHash !== MOCK_PROVIDER_BINDING_HASH ||
-        req.draft.aiDisclosure !== buildMockAiDisclosure(req.draft.language)
+        !req.draft.aiDisclosure?.trim() ||
+        req.draft.aiDisclosure.length > 300
       ) {
         throw new Error('PHONE_CALLING_DENIED: Unsaved campaign contact consent or provider binding invalid.');
       }
@@ -3172,7 +3281,8 @@ export class MockBulkCampaignPhoneAdapter implements BulkCampaignPhoneAdapter {
         contact.revision !== req.draft.contactRevision ||
         computeContactBindingHash(contact) !== req.draft.contactBindingHash ||
         req.draft.providerBindingHash !== MOCK_PROVIDER_BINDING_HASH ||
-        req.draft.aiDisclosure !== buildMockAiDisclosure(req.draft.language)
+        !req.draft.aiDisclosure?.trim() ||
+        req.draft.aiDisclosure.length > 300
       ) {
         throw new Error('PHONE_CALLING_DENIED: Contact or provider binding hash mismatch.');
       }
@@ -3564,10 +3674,138 @@ export function mapPhoneStateToCampaignCallStatus(state: PhoneCallingState): Bul
  * campaign contacts (`PhoneCallingPrepare.newRecipient` -> `onecall_`) within the daily quota (`5/day` default, `20/day` max)
  * without altering the permanent address book.
  */
+export function extractCampaignBrandName(campaign: Pick<BulkCampaignState, 'title' | 'instruction' | 'knowledgeContext'>): string | null {
+  const instr = (campaign.instruction ?? '').trim();
+  if (/\bcustom\s+team\s+wear\b/i.test(instr)) return 'Custom Team Wear';
+  if (/\bcustom\s+teamwear\b/i.test(instr)) return 'Custom Teamwear';
+  const brandMatch = instr.match(
+    /(?:(?:owner\/?senior\s+sales\s+(?:advisor|executive)|senior\s+sales\s+(?:advisor|executive)|sales\s+(?:advisor|executive)|ai\s+voice\s+sales\s+executive|owner|founder|agent|assistant|representative|team)\s+(?:for|of)|calling\s+(?:on\s+behalf\s+of|for|from)|from)\s+([A-Z][A-Za-z0-9\s&.-]{2,48}?)(?:\s*\(|[.,!?\n]|$)/
+  );
+  if (brandMatch?.[1]?.trim()) {
+    return brandMatch[1].trim().replace(/\s+/g, ' ');
+  }
+  const titleBase = (campaign.title ?? '')
+    .replace(/\s*[—–-]\s*(?:Enquiry Qualification|Campaign|Outreach|Follow-?up).*$/i, '')
+    .replace(/\s+Campaign$/i, '')
+    .trim();
+  if (
+    titleBase &&
+    !/^(?:Business Outreach|Customer Feedback|Recruitment Screening|Appointment Confirmation|AI Webinar|Bulk Campaign)/i.test(
+      titleBase
+    )
+  ) {
+    return titleBase.slice(0, 60);
+  }
+  return null;
+}
+
+export function isResearchedProspectContact(
+  campaign: Pick<BulkCampaignState, 'instruction' | 'sheetMonitor'>,
+  contact?: Pick<BulkCampaignImportedContact, 'leadSource' | 'customerRequirement' | 'customFields'>
+): boolean {
+  const cf = contact?.customFields ?? {};
+  const cfKeys = Object.keys(cf);
+  const hasResearchSignalFields = cfKeys.some(k =>
+    /^(?:signal_type|signal_posting_date|observed_facts|t_shirt_hypothesis|hypothesis|recommended_offer|discovery_question|verified_location|published_quantity|published_budget|event_date_or_deadline|business_category)$/i.test(
+      k
+    )
+  );
+  if (hasResearchSignalFields) return true;
+  const src = (contact?.leadSource ?? '').toLowerCase();
+  if (
+    src &&
+    /\b(?:signal|research|hiring|offsite|public|directory|linkedin|news|press|prospect|scraped|outbound\s+list)\b/i.test(
+      src
+    ) &&
+    !/\b(?:meta\s+lead|lead\s+ad|lead\s+form|website\s+form|web\s+form|inbound|enquiry\s+form)\b/i.test(src)
+  ) {
+    return true;
+  }
+  const instr = (campaign.instruction ?? '').toLowerCase();
+  if (
+    /\b(?:prospect\s+list|researched\s+prospect|cold\s+outreach|signal\s+lead|hiring\s+signal)\b/i.test(instr) &&
+    !/\b(?:meta\s+lead|submitted\s+(?:an?\s+)?(?:enquiry|form))\b/i.test(instr)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function buildCampaignOutboundGreeting(
+  campaign: Pick<BulkCampaignState, 'title' | 'instruction' | 'knowledgeContext' | 'sheetMonitor'>,
+  contact?: Pick<BulkCampaignImportedContact, 'name' | 'preferredLanguage' | 'leadSource' | 'customerRequirement' | 'customFields'>,
+  languageOverride?: PhoneCallingLanguage
+): string {
+  const lang = languageOverride ?? contact?.preferredLanguage ?? 'en-IN';
+  const brand = extractCampaignBrandName(campaign);
+  const rawName = contact?.name?.trim() ?? '';
+  const hasRealName = Boolean(rawName) && !/^(?:contact|lead|row)\s+\d+$/i.test(rawName);
+  const safeName = hasRealName ? rawName.replace(/[^A-Za-z0-9\u0900-\u0DFF\s.'-]/g, '').trim().slice(0, 40) : '';
+  const isProspect = isResearchedProspectContact(campaign, contact);
+
+  if (lang === 'kn-IN') {
+    const greet = safeName ? `ನಮಸ್ಕಾರ ${safeName}` : 'ನಮಸ್ಕಾರ';
+    if (isProspect) {
+      return brand
+        ? `${greet}, ನಾನು ${brand} ಇಂದ ತಾರಾ, ಒಂದು ಸಣ್ಣ ಪರಿಚಯಕ್ಕಾಗಿ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. ಈಗ ಮಾತನಾಡಲು ಅನುಕೂಲವೇ?`.slice(0, 300)
+        : `${greet}, ನಾನು ತಾರಾ, ಒಂದು ಸಣ್ಣ ಮಾತುಕತೆಗಾಗಿ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. ಈಗ ಮಾತನಾಡಲು ಅನುಕೂಲವೇ?`.slice(0, 300);
+    }
+    return brand
+      ? `${greet}, ನಾನು ${brand} ಇಂದ ತಾರಾ, ನಿಮ್ಮ ವಿಚಾರಣೆ ಕುರಿತು ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. ಈಗ ಮಾತನಾಡಲು ಅನುಕೂಲವೇ?`.slice(0, 300)
+      : `${greet}, ನಾನು ತಾರಾ, ನಿಮ್ಮ ವಿಚಾರಣೆ ಕುರಿತು ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. ಈಗ ಮಾತನಾಡಲು ಅನುಕೂಲವೇ?`.slice(0, 300);
+  }
+  if (lang === 'kn-en') {
+    const greet = safeName ? `Namaskara ${safeName}` : 'Namaskara';
+    if (isProspect) {
+      return brand
+        ? `${greet}, naanu ${brand} inda Thaara, ondu quick update ge call maadtiddini. Eega maataadoke convenient aagutta?`.slice(
+            0,
+            300
+          )
+        : `${greet}, naanu Thaara, ondu quick update ge call maadtiddini. Eega maataadoke convenient aagutta?`.slice(
+            0,
+            300
+          );
+    }
+    return brand
+      ? `${greet}, naanu ${brand} inda Thaara, nimma enquiry follow-up ge call maadtiddini. Eega maataadoke convenient aagutta?`.slice(
+          0,
+          300
+        )
+      : `${greet}, naanu Thaara, nimma enquiry follow-up ge call maadtiddini. Eega maataadoke convenient aagutta?`.slice(
+          0,
+          300
+        );
+  }
+  const greet = safeName ? `Hello ${safeName}` : 'Hello';
+  if (isProspect) {
+    return brand
+      ? `${greet}, I am Thaara from ${brand}, reaching out briefly to connect with you. Is now a good time to talk?`.slice(
+          0,
+          300
+        )
+      : `${greet}, I am Thaara, reaching out briefly to connect with you. Is now a good time to talk?`.slice(0, 300);
+  }
+  return brand
+    ? `${greet}, I am Thaara from ${brand}, calling to follow up on your enquiry. Is this a good time to talk?`.slice(
+        0,
+        300
+      )
+    : `${greet}, I am Thaara calling to follow up on your enquiry. Is this a good time to talk?`.slice(0, 300);
+}
+
+function formatCustomFieldLabel(key: string): string {
+  return key
+    .replace(/_+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, ch => ch.toUpperCase());
+}
+
 /**
- * Builds a strictly bounded (<=1,000 chars) call_purpose for Sarvam combining:
- * 1) Owner-approved campaign instructions & verified PDF knowledge brief
- * 2) This specific recipient's untrusted lead context (never mixed across rows)
+ * Builds a bounded (<=10,000 chars) call_purpose for Sarvam combining:
+ * 1) Campaign brand identity + short human owner-style reply rules
+ * 2) This specific recipient's untrusted Google Sheet / CSV lead context (all columns, never mixed across rows)
+ * 3) Owner-approved campaign instructions & verified PDF knowledge brief
  */
 export function buildPersonalizedLeadCallPurpose(
   campaign: BulkCampaignState,
@@ -3582,37 +3820,81 @@ export function buildPersonalizedLeadCallPurpose(
       questions: campaign.callScript.questions
     });
 
-  if (!contact) return basePurpose.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
+  const brand = extractCampaignBrandName(campaign);
+  const isQuantumWeave =
+    campaign.knowledgeContext?.extractedFacts.campaignType === 'services' ||
+    /\bquantum\s*weave\b/i.test(campaign.instruction ?? '');
+  const identityPrefix =
+    !isQuantumWeave && brand
+      ? `Outbound Identity: You are Thaara from ${brand}. Introduce yourself ONLY as Thaara from ${brand} (never say Quantum Weave). `
+      : '';
+  const stylePrefix =
+    'Human Style: Talk like the owner—warm, natural, human. Keep every reply short and sweet (1-2 brief sentences, under 25 words per turn). Never give long paragraph answers or read long lists; give 2-3 quick options and ask one short question at a time.';
 
-  const hasLeadEnquiryContext = Boolean(
-    contact.company?.trim() ||
-      contact.serviceRequired?.trim() ||
-      contact.customerRequirement?.trim() ||
-      contact.leadSource?.trim() ||
-      contact.enquiryDate?.trim()
-  );
-  if (!hasLeadEnquiryContext) return basePurpose.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
-
-  const hasPlaceholderName = /^contact\s+\d+$/i.test(contact.name.trim());
   const leadParts: string[] = [];
-  if (!hasPlaceholderName && contact.name.trim()) leadParts.push(`Lead: ${contact.name.trim()}`);
-  if (contact.company?.trim()) leadParts.push(`Business: ${contact.company.trim()}`);
-  if (contact.serviceRequired?.trim()) leadParts.push(`Service enquired: ${contact.serviceRequired.trim()}`);
-  if (contact.customerRequirement?.trim()) leadParts.push(`Requirement: ${contact.customerRequirement.trim()}`);
-  if (contact.leadSource?.trim()) leadParts.push(`Source: ${contact.leadSource.trim()}`);
-  if (contact.enquiryDate?.trim()) leadParts.push(`Date: ${contact.enquiryDate.trim()}`);
+  if (contact) {
+    const hasPlaceholderName = /^(?:contact|lead|row)\s+\d+$/i.test(contact.name.trim());
+    if (!hasPlaceholderName && contact.name.trim()) leadParts.push(`Name: ${contact.name.trim()}`);
+    if (contact.company?.trim()) leadParts.push(`Business: ${contact.company.trim()}`);
+    if (contact.serviceRequired?.trim()) leadParts.push(`Service enquired: ${contact.serviceRequired.trim()}`);
+    if (contact.customerRequirement?.trim()) leadParts.push(`Requirement: ${contact.customerRequirement.trim()}`);
+    if (contact.leadSource?.trim()) leadParts.push(`Source: ${contact.leadSource.trim()}`);
+    if (contact.enquiryDate?.trim()) leadParts.push(`Date: ${contact.enquiryDate.trim()}`);
+    if (contact.customFields && typeof contact.customFields === 'object') {
+      for (const [k, rawVal] of Object.entries(contact.customFields)) {
+        const val = typeof rawVal === 'string' ? rawVal.trim() : '';
+        if (!val) continue;
+        // Skip internal/consent/URL/tracking noise columns; keep all customer lead details
+        if (
+          /^(?:consent|opt_in|dnd|opted_out|phone_consent|whatsapp_consent|email_consent|status|task_id|run_id|confidence|review_status|priority_or_hold|contact_verified_date|unknowns_and_limitations|owner)$/i.test(
+            k
+          ) ||
+          /(?:_url$|_link$|_key$|^run_date|^score_|^outreach_draft)/i.test(k)
+        ) {
+          continue;
+        }
+        leadParts.push(`${formatCustomFieldLabel(k)}: ${val}`);
+      }
+    }
+  }
 
-  if (leadParts.length === 0) return basePurpose.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
+  const hasSheetDetails =
+    leadParts.length > 0 &&
+    Boolean(
+      contact?.company?.trim() ||
+        contact?.serviceRequired?.trim() ||
+        contact?.customerRequirement?.trim() ||
+        contact?.leadSource?.trim() ||
+        contact?.enquiryDate?.trim() ||
+        (contact?.customFields && Object.keys(contact.customFields).length > 0)
+    );
 
-  const leadBlock = `Recipient data (untrusted, this row only): ${leadParts.join(' | ')}. Greet by name, reference their specific enquiry, ask if convenient, ask only unconfirmed questions, answer from verified facts without inventing prices.`;
-  const remaining = Math.max(0, SARVAM_MAX_CALL_PURPOSE_CHARS - leadBlock.length - 3);
-  if (remaining < 80) {
-    return `${leadBlock.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS - 200)} | ${basePurpose.slice(0, 197)}`.slice(
+  if (!hasSheetDetails) {
+    return basePurpose.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
+  }
+
+  const isProspect = isResearchedProspectContact(campaign, contact);
+  const originRule = isProspect
+    ? `Lead Origin: Researched business prospect (NOT a submitted enquiry form). NEVER claim they submitted an enquiry, filled out a form, or clicked a Meta ad; introduce naturally from ${brand ?? 'our team'} and reference their business/event context respectfully.`
+    : 'Lead Origin: Genuine lead-form enquiry submitted by this customer.';
+
+  const headerParts: string[] = [];
+  if (identityPrefix) headerParts.push(identityPrefix.trim());
+  headerParts.push(originRule);
+  if (!/^Voice Style:/i.test(basePurpose)) headerParts.push(stylePrefix);
+  headerParts.push(
+    `Lead Sheet Details (untrusted, this customer only): ${leadParts.join(' | ')}. Greet by name if known, reference these exact Google Sheet details right away, never re-ask anything already mentioned here, and answer from verified facts without inventing prices.`
+  );
+
+  const headerBlock = headerParts.join(' | ');
+  const remaining = Math.max(0, SARVAM_MAX_CALL_PURPOSE_CHARS - headerBlock.length - 3);
+  if (remaining < 120) {
+    return `${headerBlock.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS - 200)} | ${basePurpose.slice(0, 197)}`.slice(
       0,
       SARVAM_MAX_CALL_PURPOSE_CHARS
     );
   }
-  return `${leadBlock} | ${basePurpose.slice(0, remaining)}`.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
+  return `${headerBlock} | ${basePurpose.slice(0, remaining)}`.slice(0, SARVAM_MAX_CALL_PURPOSE_CHARS);
 }
 
 export async function prepareCampaignPhoneDrafts(
@@ -3801,7 +4083,8 @@ export async function prepareCampaignPhoneDrafts(
         },
         purpose: buildPersonalizedLeadCallPurpose(campaign, record.contact),
         language: record.contact.preferredLanguage,
-        maxDurationSeconds: 180
+        maxDurationSeconds: 180,
+        openingGreeting: buildCampaignOutboundGreeting(campaign, record.contact)
       });
       preparedCount++;
 
@@ -3864,7 +4147,8 @@ export async function prepareCampaignPhoneDrafts(
       selectedContactId: dirContact.contactId,
       purpose: buildPersonalizedLeadCallPurpose(campaign, record.contact),
       language: record.contact.preferredLanguage,
-      maxDurationSeconds: 180
+      maxDurationSeconds: 180,
+      openingGreeting: buildCampaignOutboundGreeting(campaign, record.contact)
     });
     preparedCount++;
 
@@ -6543,7 +6827,8 @@ export function createScopedPhoneCampaignAdapter(options: {
         ...(payload.selectedContactId ? { selectedContactId: payload.selectedContactId } : {}),
         ...(payload.newRecipient ? { newRecipient: payload.newRecipient } : {}),
         purpose: payload.purpose,
-        language: payload.language
+        language: payload.language,
+        ...(payload.openingGreeting ? { openingGreeting: payload.openingGreeting } : {})
       };
       const isUnsavedConsented = Boolean(
         payload.newRecipient?.consentConfirmed === true &&
@@ -7740,7 +8025,12 @@ export async function prepareBulkCampaignPilotCall(
     contactQuery: chosen.displayName,
     selectedContactId: chosen.contactId,
     purpose: callPurpose,
-    language
+    language,
+    openingGreeting: buildCampaignOutboundGreeting(
+      campaign,
+      { name: chosen.displayName, preferredLanguage: language },
+      language
+    )
   });
 
   const now = new Date().toISOString();
@@ -8359,7 +8649,8 @@ export async function executeBulkCampaignN8nPhoneJob(
               }
             }),
         purpose: callPurpose,
-        language
+        language,
+        openingGreeting: buildCampaignOutboundGreeting(campaign, contact, language)
       });
       await input.phoneAdapter.approveCallDraft({
         approvalId: prepared.approvalId,

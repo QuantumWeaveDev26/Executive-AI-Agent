@@ -772,10 +772,19 @@ export function buildSarvamBoundedFactBrief(input: {
   chunks?: BulkCampaignKnowledgeChunk[];
 }): string {
   const parts: string[] = [];
-  const cleanGoal = (input.instruction || input.eventDetails || 'Customer outreach').replace(/\s+/g, ' ').trim();
-  parts.push(`Goal: ${cleanGoal.slice(0, 2000)}`);
-
   const { facts } = input;
+  const isQuantumWeave =
+    facts.campaignType === 'services' || /quantum\s*weave/i.test(input.instruction);
+  const cleanGoal = (input.instruction || input.eventDetails || 'Customer outreach').replace(/\s+/g, ' ').trim();
+  parts.push(
+    'Voice Style: Speak like the owner—warm, natural, human. Keep every reply short and sweet (1-2 brief sentences, under 25 words per turn). Never give long paragraph answers or read out full lists; share 2-3 quick examples and ask one short question at a time.'
+  );
+  if (!isQuantumWeave) {
+    parts.push(
+      'Outbound Identity: Introduce yourself strictly from the company/brand named in Goal below (never mention Quantum Weave).'
+    );
+  }
+  parts.push(`Goal: ${cleanGoal.slice(0, 2000)}`);
   if (facts.dateAndTime) parts.push(`When: ${facts.dateAndTime.slice(0, 160)}`);
   if (facts.speakers.length > 0) parts.push(`Speaker/Host: ${facts.speakers.slice(0, 4).join('; ').slice(0, 240)}`);
   if (facts.agendaTopics.length > 0) {
@@ -826,8 +835,6 @@ export function buildSarvamBoundedFactBrief(input: {
       }
     }
   }
-  const isQuantumWeave =
-    facts.campaignType === 'services' || /quantum\s*weave/i.test(input.instruction);
   parts.push(
     isQuantumWeave
       ? 'Rule: Answer ONLY from verified facts & Quantum Weave KB; if unconfirmed, say so & offer callback.'

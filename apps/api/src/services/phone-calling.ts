@@ -143,7 +143,7 @@ export class PhoneCallingService{
    throw new AppError('This agent enforces a different maximum call length. Prepare a request using its configured limit.','PHONE_DURATION_MISMATCH',400);
   // Who Thaara speaks for comes from the server-side account, never from the request.
   const onBehalfOf=safeOnBehalfOf(await this.options.store.ownerName?.(scope));
-  const draft:PhoneCallingDraft={draftId:randomUUID(),...(isNew?{newRecipient:{...(previewApprovalId?{previewApprovalId}:{}),phoneE164:number!,consentConfirmed,eligibility:eligible?'eligible' as const:'unverified' as const}}:{}),contactId:contact.id,contactRevision:contact.revision,contactBindingHash:isNew?computeCanonicalParameterHash({workspaceId:scope.workspaceId,userId:scope.userId,phoneE164:number!,displayName:sanitizePhoneMetadataText(contact.displayName,128),purpose:sanitizePhoneMetadataText(request.purpose,10000),consentConfirmed}):binding(contact),recipient:{displayName:sanitizePhoneMetadataText(contact.displayName,128),maskedPhone:maskPhoneCallNumber(contact.phoneE164)},purpose:sanitizePhoneMetadataText(request.purpose,10000),language:request.language,maxDurationSeconds:request.maxDurationSeconds??cap??120,aiDisclosure:buildAiDisclosure(request.language,onBehalfOf),consentReference:contact.consent.reference,idempotencyKey:randomUUID(),mode:this.live?'live':'simulation',...(this.live?.provider.configurationFingerprint?{providerBindingHash:this.live.provider.configurationFingerprint}:{}),...(onBehalfOf?{onBehalfOf}:{})};
+  const draft:PhoneCallingDraft={draftId:randomUUID(),...(isNew?{newRecipient:{...(previewApprovalId?{previewApprovalId}:{}),phoneE164:number!,consentConfirmed,eligibility:eligible?'eligible' as const:'unverified' as const}}:{}),contactId:contact.id,contactRevision:contact.revision,contactBindingHash:isNew?computeCanonicalParameterHash({workspaceId:scope.workspaceId,userId:scope.userId,phoneE164:number!,displayName:sanitizePhoneMetadataText(contact.displayName,128),purpose:sanitizePhoneMetadataText(request.purpose,10000),consentConfirmed}):binding(contact),recipient:{displayName:sanitizePhoneMetadataText(contact.displayName,128),maskedPhone:maskPhoneCallNumber(contact.phoneE164)},purpose:sanitizePhoneMetadataText(request.purpose,10000),language:request.language,maxDurationSeconds:request.maxDurationSeconds??cap??120,aiDisclosure:request.openingGreeting?.trim()?sanitizePhoneMetadataText(request.openingGreeting,300):buildAiDisclosure(request.language,onBehalfOf),consentReference:contact.consent.reference,idempotencyKey:randomUUID(),mode:this.live?'live':'simulation',...(this.live?.provider.configurationFingerprint?{providerBindingHash:this.live.provider.configurationFingerprint}:{}),...(onBehalfOf?{onBehalfOf}:{})};
   if(!Value.Check(PhoneCallingDraftSchema,draft)||!draft.purpose.trim())throw deny();
   // No adapter is called by preparation. Approval binds all displayed details and the current contact fingerprint.
   await this.scope(scope);
@@ -186,7 +186,8 @@ export class PhoneCallingService{
   if(this.live?.provider.enforcedMaxDurationSeconds!==undefined&&draft.maxDurationSeconds!==this.live.provider.enforcedMaxDurationSeconds)throw deny();
   if(!this.policy.evaluate(scope,{actionName:PHONE_AI_CALL_ACTION,parameters:draft,idempotencyKey:draft.idempotencyKey},a,scope.userId).allowed)throw deny();
   const c=await this.draftContact(scope,draft,a.expiresAt);
-  if(!c||c.revision!==draft.contactRevision||this.draftBinding(scope,c,draft)!==draft.contactBindingHash||draft.aiDisclosure!==buildAiDisclosure(draft.language,draft.onBehalfOf)||(draft.onBehalfOf!==undefined&&safeOnBehalfOf(draft.onBehalfOf)!==draft.onBehalfOf)||draft.recipient.maskedPhone!==maskPhoneCallNumber(c.phoneE164))throw deny();
+  const validDisclosure=draft.aiDisclosure===buildAiDisclosure(draft.language,draft.onBehalfOf)||(draft.aiDisclosure.trim().length>=10&&draft.aiDisclosure.length<=300&&/\b(?:thaara|ತಾರಾ)\b/i.test(draft.aiDisclosure));
+  if(!c||c.revision!==draft.contactRevision||this.draftBinding(scope,c,draft)!==draft.contactBindingHash||!validDisclosure||(draft.onBehalfOf!==undefined&&safeOnBehalfOf(draft.onBehalfOf)!==draft.onBehalfOf)||draft.recipient.maskedPhone!==maskPhoneCallNumber(c.phoneE164))throw deny();
   this.consent(c);return {draft,contact:c};
  }
  /**
@@ -205,7 +206,8 @@ export class PhoneCallingService{
   if(this.live?.provider.enforcedMaxDurationSeconds!==undefined&&draft.maxDurationSeconds!==this.live.provider.enforcedMaxDurationSeconds)throw deny();
   if(!this.policy.evaluate(scope,{actionName:PHONE_AI_CALL_ACTION,parameters:draft,idempotencyKey:draft.idempotencyKey},{...a,status:'approved',approverUserId:scope.userId},scope.userId).allowed)throw deny();
   const c=await this.draftContact(scope,draft,a.expiresAt);
-  if(draft.mode!=='live'||!c||c.revision!==draft.contactRevision||this.draftBinding(scope,c,draft)!==draft.contactBindingHash||draft.aiDisclosure!==buildAiDisclosure(draft.language,draft.onBehalfOf))throw deny();
+  const validDisclosure=draft.aiDisclosure===buildAiDisclosure(draft.language,draft.onBehalfOf)||(draft.aiDisclosure.trim().length>=10&&draft.aiDisclosure.length<=300&&/\b(?:thaara|ತಾರಾ)\b/i.test(draft.aiDisclosure));
+  if(draft.mode!=='live'||!c||c.revision!==draft.contactRevision||this.draftBinding(scope,c,draft)!==draft.contactBindingHash||!validDisclosure)throw deny();
   this.consent(c);
   await this.options.store.confirmOwnRequest(scope,approvalId);
   return this.placeCall(scope,approvalId);
