@@ -6822,27 +6822,65 @@ export function createScopedPhoneCampaignAdapter(options: {
 
     async prepareDraft(payload: PhoneCallingPrepare) {
       // Omit hardcoded maxDurationSeconds when delegating to PhoneCallingService so live agents with enforced caps never fail PHONE_DURATION_MISMATCH
+      let effectiveContactQuery = payload.contactQuery;
+      let effectiveSelectedContactId = payload.selectedContactId;
+      let effectiveNewRecipient = payload.newRecipient;
+
+      // If an unsaved-contact prepare is requested for an exact E.164 phone number that ALREADY exists in PhoneContactDirectory
+      // (e.g., sheet says "vishak" while directory saved "Vishak sir"), resolve to the saved directory contact so PhoneCallingService
+      // applies its saved-contact consent check instead of rejecting `newRecipient && !isNew` with "Phone calling operation denied."
+      if (
+        !effectiveSelectedContactId &&
+        effectiveNewRecipient &&
+        /^\+91[6-9][0-9]{9}$/.test(effectiveContactQuery)
+      ) {
+        try {
+          const resolved = await phoneCalling.resolve(scope, effectiveContactQuery);
+          if (resolved.status === 'matched' && resolved.candidates.length === 1) {
+            effectiveSelectedContactId = resolved.candidates[0]!.id;
+            effectiveContactQuery = resolved.candidates[0]!.displayName;
+            effectiveNewRecipient = undefined;
+          } else if (resolved.status === 'ambiguous' && resolved.candidates.length > 0) {
+            const dirListing = await this.listDirectoryContacts();
+            const candidateIds = new Set(resolved.candidates.map(c => c.id));
+            const consentedMatch = dirListing.contacts.find(
+              dc =>
+                candidateIds.has(dc.contactId) &&
+                !dc.archived &&
+                dc.consent.callingAllowed &&
+                !dc.consent.expired
+            );
+            const fallbackCandidate = resolved.candidates[0]!;
+            effectiveSelectedContactId = consentedMatch?.contactId ?? fallbackCandidate.id;
+            effectiveContactQuery = consentedMatch?.displayName ?? fallbackCandidate.displayName;
+            effectiveNewRecipient = undefined;
+          }
+        } catch {
+          // If directory resolve is unavailable, fall through to normal phoneCalling.prepare handling
+        }
+      }
+
       const cleanPayload: PhoneCallingPrepare = {
-        contactQuery: payload.contactQuery,
-        ...(payload.selectedContactId ? { selectedContactId: payload.selectedContactId } : {}),
-        ...(payload.newRecipient ? { newRecipient: payload.newRecipient } : {}),
+        contactQuery: effectiveContactQuery,
+        ...(effectiveSelectedContactId ? { selectedContactId: effectiveSelectedContactId } : {}),
+        ...(effectiveNewRecipient ? { newRecipient: effectiveNewRecipient } : {}),
         purpose: payload.purpose,
         language: payload.language,
         ...(payload.openingGreeting ? { openingGreeting: payload.openingGreeting } : {})
       };
       const isUnsavedConsented = Boolean(
-        payload.newRecipient?.consentConfirmed === true &&
-          !payload.selectedContactId &&
-          /^\+91[6-9][0-9]{9}$/.test(payload.contactQuery)
+        effectiveNewRecipient?.consentConfirmed === true &&
+          !effectiveSelectedContactId &&
+          /^\+91[6-9][0-9]{9}$/.test(effectiveContactQuery)
       );
       const releaseLease = isUnsavedConsented
-        ? phoneCalling.authorizeCampaignRecipient(scope, payload.contactQuery)
+        ? phoneCalling.authorizeCampaignRecipient(scope, effectiveContactQuery)
         : null;
       try {
         const prepared = await phoneCalling.prepare(scope, cleanPayload);
         localPreparedDrafts.set(prepared.approvalId, structuredClone(prepared.draft));
         if (isUnsavedConsented) {
-          unsavedPhonesByApprovalId.set(prepared.approvalId, payload.contactQuery);
+          unsavedPhonesByApprovalId.set(prepared.approvalId, effectiveContactQuery);
         }
         return prepared;
       } catch (err) {
@@ -7652,32 +7690,13 @@ export async function reconcileBulkCampaignOutcomes(
     reconciledContacts.push(next);
   }
 
-  const byContactId = new Map(reconciledContacts.map(c => [c.contact.contactId, c]));
-  const reconciledJobs = (campaign.n8nJobs ?? []).map(job => {
-    if (job.channel !== 'phone_call' || !Array.isArray(job.recipientQueue)) return job;
-    let changed = false;
-    const nextQueue = job.recipientQueue.map(item => {
-      const c = byContactId.get(item.contactId);
-      if (!c || c.phoneStatus === 'attempted' || c.phoneStatus === 'pending' || c.phoneStatus === 'queued') {
-        return item;
-      }
-      const nextStatus: BulkCampaignN8nBatchRecipient['status'] =
-        c.phoneStatus === 'failed' ? 'failed' : c.phoneStatus === 'skipped' ? 'skipped' : 'completed';
-      const nextProviderId = c.phoneProviderCallId ?? c.phoneCallId ?? item.providerId ?? null;
-      const nextOutcome = c.phoneTranscriptSummary ?? c.phoneProviderReportText ?? item.outcome ?? null;
-      if (item.status !== nextStatus || item.providerId !== nextProviderId || item.outcome !== nextOutcome) {
-        changed = true;
-        return { ...item, status: nextStatus, providerId: nextProviderId, outcome: nextOutcome, updatedAt: nowIso };
-      }
-      return item;
-    });
-    if (!changed) return job;
-    return {
-      ...job,
-      recipientQueue: nextQueue,
-      outcomeSummary: nextQueue[nextQueue.length - 1]?.outcome ?? job.outcomeSummary
-    };
-  });
+  const finalized = syncReconciledN8nJobsAndMonitor(
+    {
+      ...campaign,
+      contacts: reconciledContacts
+    },
+    nowIso
+  );
 
   const stillRunning =
     campaign.status === 'running' &&
@@ -7695,8 +7714,302 @@ export async function reconcileBulkCampaignOutcomes(
     liveCallingEnabled: liveCallingFlag,
     liveSendingEnabled: liveSendingFlag,
     contacts: reconciledContacts,
-    ...(campaign.n8nJobs ? { n8nJobs: reconciledJobs } : {}),
+    ...(finalized.n8nJobs ? { n8nJobs: finalized.n8nJobs } : {}),
+    ...(finalized.sheetMonitor ? { sheetMonitor: finalized.sheetMonitor } : {}),
     status: campaign.status === 'running' && !stillRunning ? 'completed' : campaign.status
+  };
+}
+
+/**
+ * Synchronizes `n8nJobs[].recipientQueue` against terminal contact outcomes and closes any
+ * `running` multi-contact batch job whose queue has zero remaining work (preventing zombie
+ * `running` jobs from blocking `pendingDispatchContactIds` in automatic lead follow-up).
+ */
+export function syncReconciledN8nJobsAndMonitor(
+  campaign: BulkCampaignState,
+  nowIso = new Date().toISOString()
+): {
+  n8nJobs?: BulkCampaignN8nExecutionJob[];
+  sheetMonitor?: BulkCampaignState['sheetMonitor'];
+  changed: boolean;
+} {
+  let changed = false;
+  const byContactId = new Map(campaign.contacts.map(c => [c.contact.contactId, c]));
+  const reconciledJobs = campaign.n8nJobs
+    ? campaign.n8nJobs.map(job => {
+        if (job.channel !== 'phone_call' || !Array.isArray(job.recipientQueue)) return job;
+        let jobChanged = false;
+        const maxRetries = job.batchConfig?.maxRetries ?? 1;
+        const nextQueue = job.recipientQueue.map(item => {
+          const c = byContactId.get(item.contactId);
+          if (!c || c.phoneStatus === 'attempted' || c.phoneStatus === 'pending' || c.phoneStatus === 'queued') {
+            return item;
+          }
+          const nextStatus: BulkCampaignN8nBatchRecipient['status'] =
+            c.phoneStatus === 'failed' ? 'failed' : c.phoneStatus === 'skipped' ? 'skipped' : 'completed';
+          const nextAttempts =
+            nextStatus === 'failed' ? Math.max(item.attempts, maxRetries + 1) : item.attempts;
+          const nextProviderId = c.phoneProviderCallId ?? c.phoneCallId ?? item.providerId ?? null;
+          const nextOutcome = c.phoneTranscriptSummary ?? c.phoneProviderReportText ?? item.outcome ?? null;
+          if (
+            item.status !== nextStatus ||
+            item.attempts !== nextAttempts ||
+            item.providerId !== nextProviderId ||
+            item.outcome !== nextOutcome
+          ) {
+            jobChanged = true;
+            return {
+              ...item,
+              status: nextStatus,
+              attempts: nextAttempts,
+              providerId: nextProviderId,
+              outcome: nextOutcome,
+              updatedAt: nowIso
+            };
+          }
+          return item;
+        });
+
+        const succeededCount = nextQueue.filter(q => q.status === 'completed').length;
+        const failedCount = nextQueue.filter(q => q.status === 'failed').length;
+        const skippedCount = nextQueue.filter(q => q.status === 'skipped').length;
+        const processedCount = succeededCount + failedCount + skippedCount;
+        const hasRemainingWork = nextQueue.some(
+          q =>
+            q.status === 'pending' ||
+            q.status === 'claimed' ||
+            q.status === 'dispatched' ||
+            (q.status === 'failed' && q.attempts <= maxRetries)
+        );
+        const shouldFinalize =
+          job.mode === 'multi_contact_batch' &&
+          job.status === 'running' &&
+          nextQueue.length > 0 &&
+          !hasRemainingWork;
+
+        if (
+          !jobChanged &&
+          !shouldFinalize &&
+          job.succeededCount === succeededCount &&
+          job.failedCount === failedCount &&
+          job.skippedCount === skippedCount &&
+          job.processedCount === processedCount
+        ) {
+          return job;
+        }
+        changed = true;
+        return {
+          ...job,
+          ...(shouldFinalize
+            ? {
+                status:
+                  succeededCount === 0 && (failedCount > 0 || skippedCount > 0)
+                    ? ('failed' as const)
+                    : ('completed' as const),
+                completedAt: job.completedAt ?? nowIso
+              }
+            : {}),
+          recipientQueue: nextQueue,
+          processedCount,
+          succeededCount,
+          failedCount,
+          skippedCount,
+          outcomeSummary: nextQueue[nextQueue.length - 1]?.outcome ?? job.outcomeSummary
+        };
+      })
+    : undefined;
+
+  let nextSheetMonitor = campaign.sheetMonitor;
+  if (
+    campaign.mode === 'automatic_lead_followup' &&
+    campaign.sheetMonitor?.status === 'processing_leads'
+  ) {
+    const anyActiveBatchJob = (reconciledJobs ?? []).some(
+      j => j.mode === 'multi_contact_batch' && (j.status === 'queued' || j.status === 'running')
+    );
+    if (!anyActiveBatchJob) {
+      changed = true;
+      nextSheetMonitor = {
+        ...campaign.sheetMonitor,
+        status: 'active_monitoring' as const
+      };
+    }
+  }
+
+  return {
+    ...(reconciledJobs ? { n8nJobs: reconciledJobs } : {}),
+    ...(nextSheetMonitor ? { sheetMonitor: nextSheetMonitor } : {}),
+    changed
+  };
+}
+
+/**
+ * Safely merges provider-reconciled call/WhatsApp outcomes into the freshest persisted campaign
+ * state without overwriting concurrent n8n batch queue progress, job completion status,
+ * newly synced Google Sheet contacts, `pendingDispatchContactIds`, or owner stop/pause actions.
+ */
+export function mergeReconciledCampaignOutcomes(
+  latest: BulkCampaignState,
+  reconciled: BulkCampaignState
+): { campaign: BulkCampaignState; changed: boolean } {
+  const recByContactId = new Map(reconciled.contacts.map(r => [r.contact.contactId, r]));
+  let changed = false;
+
+  const phoneRank = (s: BulkCampaignContactRecord['phoneStatus']): number => {
+    switch (s) {
+      case 'pending':
+      case 'queued':
+      case 'awaiting_approval':
+        return 0;
+      case 'attempted':
+        return 1;
+      case 'not_answered':
+      case 'failed':
+      case 'skipped':
+      case 'cancelled':
+      case 'answered':
+        return 2;
+      default:
+        return 0;
+    }
+  };
+
+  const mergedContacts = latest.contacts.map(cur => {
+    const rec = recByContactId.get(cur.contact.contactId);
+    if (!rec) return cur;
+
+    let rowChanged = false;
+    let next: BulkCampaignContactRecord = cur;
+
+    const sameCallOrFresh =
+      !cur.phoneCallId ||
+      !rec.phoneCallId ||
+      cur.phoneCallId === rec.phoneCallId ||
+      (cur.phoneProviderCallId && rec.phoneProviderCallId && cur.phoneProviderCallId === rec.phoneProviderCallId);
+
+    if (sameCallOrFresh) {
+      const nextPhoneStatus =
+        phoneRank(rec.phoneStatus) > phoneRank(cur.phoneStatus) ? rec.phoneStatus : cur.phoneStatus;
+      if (nextPhoneStatus !== cur.phoneStatus) {
+        next = { ...next, phoneStatus: nextPhoneStatus };
+        rowChanged = true;
+      }
+      if (!cur.phoneProviderCallId && rec.phoneProviderCallId) {
+        next = { ...next, phoneProviderCallId: rec.phoneProviderCallId };
+        rowChanged = true;
+      }
+      if (typeof cur.phoneDurationSeconds !== 'number' && typeof rec.phoneDurationSeconds === 'number') {
+        next = { ...next, phoneDurationSeconds: rec.phoneDurationSeconds };
+        rowChanged = true;
+      }
+      if (rec.phoneRecordState && rec.phoneRecordState !== cur.phoneRecordState && phoneRank(rec.phoneStatus) >= phoneRank(cur.phoneStatus)) {
+        next = { ...next, phoneRecordState: rec.phoneRecordState };
+        rowChanged = true;
+      }
+      if (!cur.phoneTranscriptSummary && rec.phoneTranscriptSummary) {
+        next = { ...next, phoneTranscriptSummary: rec.phoneTranscriptSummary };
+        rowChanged = true;
+      }
+      if (!cur.phoneProviderReportText && rec.phoneProviderReportText) {
+        next = { ...next, phoneProviderReportText: rec.phoneProviderReportText };
+        rowChanged = true;
+      }
+      if (!cur.aiInterpretation && rec.aiInterpretation) {
+        next = { ...next, aiInterpretation: rec.aiInterpretation };
+        rowChanged = true;
+      }
+      if (!cur.preferredCallbackTime && rec.preferredCallbackTime) {
+        next = { ...next, preferredCallbackTime: rec.preferredCallbackTime };
+        rowChanged = true;
+      }
+      if (!cur.followUpRequired && rec.followUpRequired) {
+        next = {
+          ...next,
+          followUpRequired: true,
+          ...(rec.followUpReason ? { followUpReason: rec.followUpReason } : {})
+        };
+        rowChanged = true;
+      }
+      if (
+        (cur.attendanceOutcome === 'pending' || cur.attendanceOutcome === 'no_response') &&
+        rec.attendanceOutcome !== cur.attendanceOutcome &&
+        rec.attendanceOutcome !== 'pending'
+      ) {
+        next = { ...next, attendanceOutcome: rec.attendanceOutcome };
+        rowChanged = true;
+      }
+      if (rec.contact.optedOut && !cur.contact.optedOut) {
+        next = {
+          ...next,
+          contact: {
+            ...next.contact,
+            optedOut: true,
+            consent: { ...next.contact.consent, phone: false, whatsapp: false, email: false }
+          }
+        };
+        rowChanged = true;
+      }
+    }
+
+    if (!cur.whatsappCustomerReply && rec.whatsappCustomerReply) {
+      next = { ...next, whatsappCustomerReply: rec.whatsappCustomerReply };
+      rowChanged = true;
+    }
+    if (!cur.whatsappProviderMessageId && rec.whatsappProviderMessageId) {
+      next = { ...next, whatsappProviderMessageId: rec.whatsappProviderMessageId };
+      rowChanged = true;
+    }
+    if (
+      (cur.whatsappStatus === 'queued' || cur.whatsappStatus === 'sent' || cur.whatsappStatus === 'unverified') &&
+      rec.whatsappStatus !== cur.whatsappStatus
+    ) {
+      next = { ...next, whatsappStatus: rec.whatsappStatus };
+      rowChanged = true;
+    }
+
+    if (rowChanged) {
+      changed = true;
+      return { ...next, updatedAt: reconciled.updatedAt };
+    }
+    return cur;
+  });
+
+  const jobSync = syncReconciledN8nJobsAndMonitor(
+    { ...latest, contacts: mergedContacts },
+    reconciled.updatedAt
+  );
+  if (jobSync.changed) {
+    changed = true;
+  }
+
+  const stillRunning =
+    latest.status === 'running' &&
+    mergedContacts.some(
+      r =>
+        r.phoneStatus === 'attempted' ||
+        r.whatsappStatus === 'queued' ||
+        r.whatsappStatus === 'unverified' ||
+        r.whatsappStatus === 'sent'
+    );
+  const nextStatus = latest.status === 'running' && !stillRunning ? 'completed' : latest.status;
+  if (nextStatus !== latest.status) {
+    changed = true;
+  }
+
+  if (!changed) {
+    return { campaign: latest, changed: false };
+  }
+
+  return {
+    campaign: {
+      ...latest,
+      updatedAt: reconciled.updatedAt,
+      contacts: mergedContacts,
+      ...(jobSync.n8nJobs ? { n8nJobs: jobSync.n8nJobs } : {}),
+      ...(jobSync.sheetMonitor ? { sheetMonitor: jobSync.sheetMonitor } : {}),
+      status: nextStatus
+    },
+    changed: true
   };
 }
 
@@ -8728,11 +9041,40 @@ export async function executeBulkCampaignN8nPhoneJob(
           failureReason: 'DAILY_CALL_LIMIT_REACHED'
         };
       }
-      queue[qIdx] = { ...item, status: 'failed', failureReason: msg.slice(0, 300), updatedAt: now };
+      const maxRetries = job.batchConfig?.maxRetries ?? 1;
+      const isPermanentPolicyDenial =
+        /operation denied|consent|dnd|opt.?out|choose exactly one matching contact|duration_mismatch|not configured|forbidden/i.test(
+          msg
+        );
+      const nextAttempts = isPermanentPolicyDenial ? Math.max(item.attempts, maxRetries + 1) : item.attempts;
+      const retriesExhausted = nextAttempts > maxRetries;
+      queue[qIdx] = {
+        ...item,
+        status: 'failed',
+        attempts: nextAttempts,
+        failureReason: msg.slice(0, 300),
+        updatedAt: now
+      };
       const nextJobs = [...jobs];
       nextJobs[idx] = { ...job, recipientQueue: queue };
+      const nextContacts = campaign.contacts.map(r =>
+        r.contact.contactId === contact.contactId
+          ? {
+              ...r,
+              phoneError: msg.slice(0, 500),
+              ...(retriesExhausted && (r.phoneStatus === 'pending' || r.phoneStatus === 'attempted')
+                ? {
+                    phoneStatus: 'failed' as const,
+                    attendanceOutcome: 'failed' as const,
+                    interactionTimestamp: now
+                  }
+                : {}),
+              updatedAt: now
+            }
+          : r
+      );
       return {
-        campaign: { ...campaign, updatedAt: now, n8nJobs: nextJobs },
+        campaign: { ...campaign, updatedAt: now, contacts: nextContacts, n8nJobs: nextJobs },
         ok: false,
         failureReason: msg
       };
@@ -8945,11 +9287,37 @@ export async function executeBulkCampaignN8nWhatsAppJob(
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'WHATSAPP_BATCH_EXECUTION_FAILED';
       const now = new Date().toISOString();
-      queue[qIdx] = { ...item, status: 'failed', failureReason: msg.slice(0, 300), updatedAt: now };
+      const maxRetries = job.batchConfig?.maxRetries ?? 1;
+      const isPermanentPolicyDenial =
+        /operation denied|consent|dnd|opt.?out|not configured|forbidden/i.test(msg);
+      const nextAttempts = isPermanentPolicyDenial ? Math.max(item.attempts, maxRetries + 1) : item.attempts;
+      const retriesExhausted = nextAttempts > maxRetries;
+      queue[qIdx] = {
+        ...item,
+        status: 'failed',
+        attempts: nextAttempts,
+        failureReason: msg.slice(0, 300),
+        updatedAt: now
+      };
       const nextJobs = [...jobs];
       nextJobs[idx] = { ...job, recipientQueue: queue };
+      const nextContacts = campaign.contacts.map(r =>
+        r.contact.contactId === contact.contactId
+          ? {
+              ...r,
+              whatsappError: msg.slice(0, 500),
+              ...(retriesExhausted && (r.whatsappStatus === 'pending' || r.whatsappStatus === 'queued')
+                ? {
+                    whatsappStatus: 'failed' as const,
+                    interactionTimestamp: now
+                  }
+                : {}),
+              updatedAt: now
+            }
+          : r
+      );
       return {
-        campaign: { ...campaign, updatedAt: now, n8nJobs: nextJobs },
+        campaign: { ...campaign, updatedAt: now, contacts: nextContacts, n8nJobs: nextJobs },
         ok: false,
         failureReason: msg
       };
@@ -9213,10 +9581,21 @@ export function completeBulkCampaignN8nJob(
         }
       : {})
   };
+  const anyActiveBatchJob = nextJobs.some(
+    j => j.mode === 'multi_contact_batch' && (j.status === 'queued' || j.status === 'running')
+  );
+  const nextSheetMonitor =
+    campaign.mode === 'automatic_lead_followup' &&
+    campaign.sheetMonitor &&
+    !anyActiveBatchJob &&
+    campaign.sheetMonitor.status === 'processing_leads'
+      ? { ...campaign.sheetMonitor, status: 'active_monitoring' as const }
+      : campaign.sheetMonitor;
   return {
     ...campaign,
     updatedAt: now,
-    n8nJobs: nextJobs
+    n8nJobs: nextJobs,
+    ...(nextSheetMonitor ? { sheetMonitor: nextSheetMonitor } : {})
   };
 }
 
@@ -9283,7 +9662,7 @@ export async function submitBulkCampaignMultiContactN8nJob(
     throw new Error('DUPLICATE_BATCH_JOB: An active multi-contact n8n batch job already exists for this channel.');
   }
 
-  const batchSize = Math.max(1, Math.min(100, input.batchConfig?.batchSize ?? campaign.limits.maxCalls ?? 10));
+  const batchSize = Math.max(1, Math.min(1000, input.batchConfig?.batchSize ?? campaign.limits.maxCalls ?? 10));
   const maxConcurrency = Math.max(1, Math.min(5, input.batchConfig?.maxConcurrency ?? campaign.limits.maxConcurrency ?? 1));
   const rateLimitPerMinute = Math.max(1, Math.min(30, input.batchConfig?.rateLimitPerMinute ?? campaign.limits.rateLimitPerMinute ?? 5));
   const maxRetries = Math.max(0, Math.min(2, input.batchConfig?.maxRetries ?? 0));
@@ -9614,6 +9993,7 @@ export function recordBatchContactOutcomeForN8nJob(
   if (qIdx === -1) return campaign;
 
   const existingItem = queue[qIdx]!;
+  const maxRetries = job.batchConfig?.maxRetries ?? 1;
   const unbackedPhoneCompletion =
     job.channel === 'phone_call' &&
     input.status === 'completed' &&
@@ -9626,6 +10006,23 @@ export function recordBatchContactOutcomeForN8nJob(
         input.callOutcome !== 'failed' &&
         input.callOutcome !== 'opted_out'));
   if (unbackedPhoneCompletion) {
+    // If dispatch already failed and exhausted retries, ensure the contact row truthfully shows Failed instead of Pending.
+    if (existingItem.status === 'failed' && existingItem.attempts > maxRetries) {
+      const now = new Date().toISOString();
+      const updatedContacts = campaign.contacts.map(r =>
+        r.contact.contactId === input.contactId && (r.phoneStatus === 'pending' || r.phoneStatus === 'attempted')
+          ? {
+              ...r,
+              phoneStatus: 'failed' as const,
+              ...(existingItem.failureReason ? { phoneError: existingItem.failureReason.slice(0, 500) } : {}),
+              attendanceOutcome: 'failed' as const,
+              interactionTimestamp: now,
+              updatedAt: now
+            }
+          : r
+      );
+      return { ...campaign, updatedAt: now, contacts: updatedContacts };
+    }
     return campaign;
   }
   const now = new Date().toISOString();
@@ -9638,8 +10035,13 @@ export function recordBatchContactOutcomeForN8nJob(
     updatedAt: now
   };
 
-  const maxRetries = job.batchConfig?.maxRetries ?? 1;
-  const remaining = queue.some(q => q.status === 'pending' || q.status === 'claimed' || (q.status === 'failed' && q.attempts <= maxRetries));
+  const remaining = queue.some(
+    q =>
+      q.status === 'pending' ||
+      q.status === 'claimed' ||
+      q.status === 'dispatched' ||
+      (q.status === 'failed' && q.attempts <= maxRetries)
+  );
   const succeededCount = queue.filter(q => q.status === 'completed').length;
   const failedCount = queue.filter(q => q.status === 'failed').length;
   const skippedCount = queue.filter(q => q.status === 'skipped').length;
@@ -9698,6 +10100,7 @@ export function recordBatchContactOutcomeForN8nJob(
               ? { phoneDurationSeconds: Math.max(0, Math.round(input.durationSeconds)) }
               : {}),
             ...(input.outcome ? { phoneTranscriptSummary: input.outcome } : {}),
+            ...(input.failureReason ? { phoneError: input.failureReason.slice(0, 500) } : {}),
             ...(input.callOutcome === 'callback_requested' ? { followUpRequired: true } : {})
           }
         : {

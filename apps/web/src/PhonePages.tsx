@@ -95,7 +95,11 @@ export function PhoneCallPage({ initialState }: PhoneCallPageProps) {
 
   const call = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!who.trim() || !ask.trim() || state.busy) return;
+    if (state.busy) return;
+    if (!who.trim() || !ask.trim()) {
+      patch({ error: 'Enter a saved contact name or mobile number and what Thaara should ask.' });
+      return;
+    }
     patch({ busy: true, error: null, candidates: [], approvalId: null });
     try {
       const found = await resolvePhoneCallingContact(who);
@@ -119,14 +123,14 @@ export function PhoneCallPage({ initialState }: PhoneCallPageProps) {
       <form onSubmit={(e) => void call(e)} className="phone-simple-form">
         <label>
           Who should Thaara call?
-          <input value={who} maxLength={128} onChange={(e) => setWho(e.target.value)} placeholder="Contact name" data-testid="phone-who" />
+          <input value={who} maxLength={128} onChange={(e) => setWho(e.target.value)} placeholder="Contact name or mobile number" data-testid="phone-who" />
         </label>
         <label>
           What should Thaara ask?
           <textarea value={ask} maxLength={1000} onChange={(e) => setAsk(e.target.value)} rows={3} data-testid="phone-ask" />
         </label>
         <div className="phone-simple-actions">
-          <button type="submit" className="btn btn-primary" disabled={state.busy || !who.trim() || !ask.trim()} data-testid="phone-call">
+          <button type="submit" className="btn btn-primary" disabled={state.busy} data-testid="phone-call">
             {state.busy ? 'Preparing…' : 'Call'}
           </button>
           <button type="button" className="btn btn-secondary" onClick={cancel} data-testid="phone-cancel">Cancel</button>

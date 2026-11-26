@@ -805,4 +805,47 @@ describe('Thaara n8n Callback Email & Call History Integration (Tests A–I)', (
       await app.close();
     }
   });
+
+  it('accepts outbound bulk-campaign calls whose agentVariables.call_purpose exceeds 1,000 characters (up to 12,000)', async () => {
+    const { app } = await createTestHarness();
+    try {
+      const longCallPurpose =
+        'CUSTOM TEAM WEAR CAMPAIGN BRIEF: ' + 'Product catalog, sizing chart, pricing tiers, and lead sheet notes. '.repeat(145);
+      expect(longCallPurpose.length).toBeGreaterThan(8000);
+      expect(longCallPurpose.length).toBeLessThan(12000);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/connectors/phone/n8n/calls/sync',
+        headers: { 'x-thaara-phone-sync-token': VALID_SYNC_TOKEN },
+        payload: {
+          calls: [
+            {
+              attemptId: 'att-long-purpose-10k',
+              interactionId: '20261126/long-purpose-01',
+              direction: 'outbound',
+              connectivityStatus: 'connected',
+              durationSeconds: 45,
+              endDatetime: '2026-11-26T08:00:00Z',
+              userContact: '+919700011122',
+              recordingAvailable: true,
+              appVersion: 34,
+              agentVariables: {
+                user_name: 'krishna',
+                call_purpose: longCallPurpose
+              },
+              messages: [
+                { role: 'assistant', content: 'Hello krishna, I am Thaara from Custom Team Wear.' },
+                { role: 'user', content: 'Yes, tell me about custom jerseys.' }
+              ]
+            }
+          ]
+        }
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({ status: 'synced', received: 1, created: 1, outboundCount: 1 });
+    } finally {
+      await app.close();
+    }
+  });
 });

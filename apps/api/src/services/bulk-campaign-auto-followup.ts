@@ -16,6 +16,7 @@ import {
   evaluateContactEligibility,
   parseBulkCampaignContacts,
   submitBulkCampaignMultiContactN8nJob,
+  syncReconciledN8nJobsAndMonitor,
   type BulkCampaignN8nTrigger,
   type BulkCampaignState
 } from './bulk-campaign.js';
@@ -804,8 +805,9 @@ export async function processExistingSheetBacklogForCampaign(
         }
       };
     } else if (primaryChannel && input.liveMultiContactEnabled) {
-      const dispatchIds = [...pendingSet].slice(0, remainingLimit);
-      const remainingPending = [...pendingSet].slice(remainingLimit);
+      const effectiveCap = Math.min(remainingLimit, 1000);
+      const dispatchIds = [...pendingSet].slice(0, effectiveCap);
+      const remainingPending = [...pendingSet].slice(effectiveCap);
       const dispatchCampaign: BulkCampaignState = {
         ...nextCampaign,
         standingAuthorization: { ...auth, approvedMaterialHash: nextCampaign.materialHash },
@@ -827,7 +829,7 @@ export async function processExistingSheetBacklogForCampaign(
         n8nTrigger: input.n8nTrigger,
         onlyContactIds: dispatchIds,
         batchConfig: {
-          batchSize: Math.min(100, dispatchIds.length),
+          batchSize: Math.min(1000, dispatchIds.length),
           maxConcurrency: auth.maxConcurrency,
           rateLimitPerMinute: auth.rateLimitPerMinute,
           maxRetries: auth.retryOnNoAnswer ? Math.max(0, auth.maxAttemptsPerLead - 1) : 0
@@ -964,18 +966,29 @@ export async function syncGoogleSheetLeadsForCampaign(
     if (eligibleRecordById.has(r.contact.contactId)) pendingToDispatch.add(r.contact.contactId);
   }
 
+  const jobNormalization = syncReconciledN8nJobsAndMonitor(
+    { ...campaign, contacts: combinedContacts },
+    nowIso
+  );
+  const normalizedJobs = jobNormalization.n8nJobs ?? campaign.n8nJobs;
+  const campaignWithNormalizedJobs: BulkCampaignState = {
+    ...campaign,
+    contacts: combinedContacts,
+    ...(normalizedJobs ? { n8nJobs: normalizedJobs } : {})
+  };
+
   const primaryChannel: BulkCampaignN8nChannel | null = campaign.channels.includes('phone')
     ? 'phone_call'
     : campaign.channels.includes('whatsapp')
       ? 'whatsapp'
       : null;
-  const activeBatchJob = primaryChannel ? getActiveN8nBatchChannelJob(campaign, primaryChannel) : undefined;
+  const activeBatchJob = primaryChannel ? getActiveN8nBatchChannelJob(campaignWithNormalizedJobs, primaryChannel) : undefined;
 
   const existingDiscovered = monitor.existingLeadsDiscoveredCount ?? 0;
   const nextNewLeadsCount = (monitor.newLeadsReceivedCount ?? 0) + brandNewContacts.length;
 
   let nextCampaign: BulkCampaignState = {
-    ...campaign,
+    ...campaignWithNormalizedJobs,
     updatedAt: nowIso,
     contacts: combinedContacts,
     sheetMonitor: {
@@ -1072,8 +1085,9 @@ export async function syncGoogleSheetLeadsForCampaign(
     } else if (remainingLimit <= 0) {
       skippedReason = 'DAILY_LIMIT_REACHED';
     } else if (primaryChannel && input.liveMultiContactEnabled) {
-      const dispatchIds = [...pendingToDispatch].slice(0, remainingLimit);
-      const remainingPending = [...pendingToDispatch].slice(remainingLimit);
+      const effectiveCap = Math.min(remainingLimit, 1000);
+      const dispatchIds = [...pendingToDispatch].slice(0, effectiveCap);
+      const remainingPending = [...pendingToDispatch].slice(effectiveCap);
       const dispatchCampaign: BulkCampaignState = {
         ...nextCampaign,
         standingAuthorization: { ...auth, approvedMaterialHash: nextCampaign.materialHash },
@@ -1095,7 +1109,7 @@ export async function syncGoogleSheetLeadsForCampaign(
         n8nTrigger: input.n8nTrigger,
         onlyContactIds: dispatchIds,
         batchConfig: {
-          batchSize: Math.min(100, dispatchIds.length),
+          batchSize: Math.min(1000, dispatchIds.length),
           maxConcurrency: auth.maxConcurrency,
           rateLimitPerMinute: auth.rateLimitPerMinute,
           maxRetries: auth.retryOnNoAnswer ? Math.max(0, auth.maxAttemptsPerLead - 1) : 0

@@ -43,6 +43,7 @@ import {
   isInternalKnowledgeGovernanceText,
   listEligiblePilotContacts,
   listEligibleWhatsAppPilotContacts,
+  mergeReconciledCampaignOutcomes,
   MockBulkCampaignEmailAdapter,
   MockBulkCampaignPhoneAdapter,
   MockBulkCampaignWhatsAppAdapter,
@@ -200,6 +201,27 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
     typeof (app as { requireAuth?: unknown }).requireAuth === 'function'
       ? { preHandler: [app.requireAuth] }
       : {};
+
+  // Per-campaign in-process lock so overlapping GET polling, 60s sheet syncs, and n8n batch callbacks
+  // never overwrite each other's PostgreSQL campaign state snapshots.
+  const campaignLocks = new Map<string, Promise<void>>();
+  async function withCampaignLock<T>(campaignId: string, work: () => Promise<T>): Promise<T> {
+    const prev = campaignLocks.get(campaignId) ?? Promise.resolve();
+    let release!: () => void;
+    const next = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    campaignLocks.set(campaignId, next);
+    await prev;
+    try {
+      return await work();
+    } finally {
+      release();
+      if (campaignLocks.get(campaignId) === next) {
+        campaignLocks.delete(campaignId);
+      }
+    }
+  }
 
   async function resolveWorkspaceRuntime(scope: AuthenticatedScope, forDemo = false) {
     if (!hasRealConnectors) {
@@ -360,7 +382,12 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
               phoneAdapter: rt.phoneAdapter,
               whatsappDurable: options.whatsappDurable
             });
-            sliced[i] = await workspaceStore.saveScoped(scope, rec, options.db);
+            sliced[i] = await withCampaignLock(c.campaignId, async () => {
+              const latestState = (await workspaceStore.getScoped(scope, c.campaignId, options.db)) ?? c;
+              const merged = mergeReconciledCampaignOutcomes(latestState, rec);
+              if (!merged.changed) return latestState;
+              return workspaceStore.saveScoped(scope, merged.campaign, options.db);
+            });
           } catch {
             // Preserve stored campaign if reconciliation fails
           }
@@ -402,7 +429,7 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       existing.contacts.some(c => Boolean(c.phoneCallId && !c.phoneCallId.startsWith('sim_')));
     if (hasBatchOrLiveCalls && hasRealConnectors) {
       try {
-        existing = await reconcileBulkCampaignOutcomes(existing, {
+        const reconciled = await reconcileBulkCampaignOutcomes(existing, {
           scope,
           phoneCalling: options.phoneCalling,
           phoneN8nSync: options.phoneN8nSync,
@@ -412,7 +439,13 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
             c => c.phoneStatus === 'attempted' && Boolean(c.phoneCallId && !c.phoneCallId.startsWith('sim_'))
           )
         });
-        existing = await workspaceStore.saveScoped(scope, existing, options.db);
+        const baseExisting = existing;
+        existing = await withCampaignLock(campaignId, async () => {
+          const latestState = (await workspaceStore.getScoped(scope, campaignId, options.db)) ?? baseExisting;
+          const merged = mergeReconciledCampaignOutcomes(latestState, reconciled);
+          if (!merged.changed) return latestState;
+          return workspaceStore.saveScoped(scope, merged.campaign, options.db);
+        });
       } catch {
         // Return stored state if live reconciliation fails
       }
@@ -1348,7 +1381,12 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
         whatsappDurable: options.whatsappDurable,
         refreshProviderResults: Boolean(body.refreshProviderResults)
       });
-      const saved = await workspaceStore.saveScoped(scope, reconciled, options.db);
+      const saved = await withCampaignLock(campaignId, async () => {
+        const latestState = (await workspaceStore.getScoped(scope, campaignId, options.db)) ?? existing;
+        const merged = mergeReconciledCampaignOutcomes(latestState, reconciled);
+        if (!merged.changed) return latestState;
+        return workspaceStore.saveScoped(scope, merged.campaign, options.db);
+      });
       return formatCampaignEnvelope(saved, {
         liveCallingEnabled: rt.liveCallingEnabled,
         liveSendingEnabled: rt.liveSendingEnabled
@@ -1779,26 +1817,30 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       workspaceId?: string;
       campaignId?: string;
     };
-    const campaign = await workspaceStore.findByN8nJobIdScoped(jobId, {
+    const initialCampaign = await workspaceStore.findByN8nJobIdScoped(jobId, {
       workspaceId: body.workspaceId,
       campaignId: body.campaignId,
       db: options.db
     });
-    if (!campaign) return { proceed: false, reason: 'JOB_NOT_FOUND' };
-    const scope = await resolveMachineJobScope(campaign, jobId);
-    const matchedJob = (campaign.n8nJobs ?? []).find(j => j.jobId === jobId);
+    if (!initialCampaign) return { proceed: false, reason: 'JOB_NOT_FOUND' };
+    const scope = await resolveMachineJobScope(initialCampaign, jobId);
+    const matchedJob = (initialCampaign.n8nJobs ?? []).find(j => j.jobId === jobId);
     if (matchedJob?.mode === 'multi_contact_batch') {
       const rtBatch =
         hasRealConnectors || Boolean(options.phoneFallbackDirectory)
           ? await resolveWorkspaceRuntime(scope, false)
           : null;
-      const batchOut = claimNextBatchContactForN8nJob(campaign, {
-        jobId,
-        executionToken: body.executionToken ?? '',
-        channel: body.channel ?? 'phone_call',
-        ...(rtBatch ? { phoneDirectory: rtBatch.phoneDirectory } : {})
+      const batchOut = await withCampaignLock(initialCampaign.campaignId, async () => {
+        const fresh = (await workspaceStore.getScoped(scope, initialCampaign.campaignId, options.db)) ?? initialCampaign;
+        const out = claimNextBatchContactForN8nJob(fresh, {
+          jobId,
+          executionToken: body.executionToken ?? '',
+          channel: body.channel ?? 'phone_call',
+          ...(rtBatch ? { phoneDirectory: rtBatch.phoneDirectory } : {})
+        });
+        await workspaceStore.saveScoped(scope, out.campaign, options.db);
+        return out;
       });
-      await workspaceStore.saveScoped(scope, batchOut.campaign, options.db);
       return {
         proceed: batchOut.proceed,
         hasMore: batchOut.hasMore,
@@ -1817,13 +1859,17 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       };
     }
     const rt = await resolveWorkspaceRuntime(scope, false);
-    const out = claimNextBulkCampaignN8nJob(campaign, {
-      jobId,
-      executionToken: body.executionToken ?? '',
-      channel: body.channel ?? 'phone_call',
-      phoneDirectory: rt.phoneDirectory
+    const out = await withCampaignLock(initialCampaign.campaignId, async () => {
+      const fresh = (await workspaceStore.getScoped(scope, initialCampaign.campaignId, options.db)) ?? initialCampaign;
+      const res = claimNextBulkCampaignN8nJob(fresh, {
+        jobId,
+        executionToken: body.executionToken ?? '',
+        channel: body.channel ?? 'phone_call',
+        phoneDirectory: rt.phoneDirectory
+      });
+      await workspaceStore.saveScoped(scope, res.campaign, options.db);
+      return res;
     });
-    await workspaceStore.saveScoped(scope, out.campaign, options.db);
     return {
       proceed: out.proceed,
       ...(out.reason ? { reason: out.reason } : {}),
@@ -1882,7 +1928,50 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       ...(authoritativePhoneDirectory !== undefined ? { phoneDirectory: authoritativePhoneDirectory } : {}),
       ...(body.contactId ? { contactId: body.contactId } : {})
     });
-    await workspaceStore.saveScoped(scope, out.campaign, options.db);
+    await withCampaignLock(campaign.campaignId, async () => {
+      const fresh = (await workspaceStore.getScoped(scope, campaign.campaignId, options.db)) ?? out.campaign;
+      if (job?.mode !== 'multi_contact_batch') {
+        await workspaceStore.saveScoped(scope, out.campaign, options.db);
+        return;
+      }
+      const updatedJob = (out.campaign.n8nJobs ?? []).find(j => j.jobId === jobId);
+      const targetContactId =
+        body.contactId ??
+        (job.recipientQueue ?? []).find(q => q.status === 'claimed')?.contactId;
+      const updatedQueueItem = targetContactId
+        ? updatedJob?.recipientQueue?.find(q => q.contactId === targetContactId)
+        : undefined;
+      const updatedContactRow = targetContactId
+        ? out.campaign.contacts.find(r => r.contact.contactId === targetContactId)
+        : undefined;
+      const mergedJobs = (fresh.n8nJobs ?? []).map(j => {
+        if (j.jobId !== jobId || !updatedJob) return j;
+        const nextQueue =
+          updatedQueueItem && Array.isArray(j.recipientQueue)
+            ? j.recipientQueue.map(q => (q.contactId === updatedQueueItem.contactId ? updatedQueueItem : q))
+            : j.recipientQueue;
+        return {
+          ...j,
+          ...(updatedJob.status === 'paused'
+            ? { status: 'paused' as const, failureReason: updatedJob.failureReason }
+            : {}),
+          ...(nextQueue ? { recipientQueue: nextQueue } : {})
+        };
+      });
+      const mergedContacts = updatedContactRow
+        ? fresh.contacts.map(r => (r.contact.contactId === updatedContactRow.contact.contactId ? updatedContactRow : r))
+        : fresh.contacts;
+      await workspaceStore.saveScoped(
+        scope,
+        {
+          ...fresh,
+          updatedAt: out.campaign.updatedAt,
+          contacts: mergedContacts,
+          n8nJobs: mergedJobs
+        },
+        options.db
+      );
+    });
     return {
       ok: out.ok,
       ...(out.callId ? { callId: out.callId } : {}),
@@ -1909,7 +1998,13 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
       phoneAdapter: rt.phoneAdapter,
       ...(body.contactId ? { contactId: body.contactId } : {})
     });
-    await workspaceStore.saveScoped(scope, out.campaign, options.db);
+    await withCampaignLock(campaign.campaignId, async () => {
+      const fresh = (await workspaceStore.getScoped(scope, campaign.campaignId, options.db)) ?? out.campaign;
+      const merged = mergeReconciledCampaignOutcomes(fresh, out.campaign);
+      if (merged.changed) {
+        await workspaceStore.saveScoped(scope, merged.campaign, options.db);
+      }
+    });
     return {
       status: out.status,
       durationSeconds: out.durationSeconds,
@@ -2009,22 +2104,25 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
     });
     if (!campaign) return { ok: false, reason: 'JOB_NOT_FOUND' };
     const scope = await resolveMachineJobScope(campaign, jobId);
-    const existingJob = (campaign.n8nJobs ?? []).find(j => j.jobId === jobId);
-    const effectiveStatus =
-      existingJob?.mode === 'multi_contact_batch' &&
-      existingJob.status === 'failed' &&
-      existingJob.succeededCount === 0 &&
-      (body.status ?? 'completed') === 'completed'
-        ? 'failed'
-        : (body.status ?? 'completed');
-    const updated = completeBulkCampaignN8nJob(campaign, {
-      jobId,
-      status: effectiveStatus,
-      outcomeSummary: body.outcomeSummary,
-      failureReason: body.failureReason ?? existingJob?.failureReason ?? undefined,
-      n8nExecutionId: body.n8nExecutionId
+    await withCampaignLock(campaign.campaignId, async () => {
+      const fresh = (await workspaceStore.getScoped(scope, campaign.campaignId, options.db)) ?? campaign;
+      const existingJob = (fresh.n8nJobs ?? []).find(j => j.jobId === jobId);
+      const effectiveStatus =
+        existingJob?.mode === 'multi_contact_batch' &&
+        existingJob.status === 'failed' &&
+        existingJob.succeededCount === 0 &&
+        (body.status ?? 'completed') === 'completed'
+          ? 'failed'
+          : (body.status ?? 'completed');
+      const updated = completeBulkCampaignN8nJob(fresh, {
+        jobId,
+        status: effectiveStatus,
+        outcomeSummary: body.outcomeSummary,
+        failureReason: body.failureReason ?? existingJob?.failureReason ?? undefined,
+        n8nExecutionId: body.n8nExecutionId
+      });
+      await workspaceStore.saveScoped(scope, updated, options.db);
     });
-    await workspaceStore.saveScoped(scope, updated, options.db);
     return { ok: true };
   });
 
@@ -2051,19 +2149,22 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
     });
     if (!campaign || !body.contactId || !body.status) return { ok: false };
     const scope = await resolveMachineJobScope(campaign, jobId);
-    const updated = recordBatchContactOutcomeForN8nJob(campaign, {
-      jobId,
-      contactId: body.contactId,
-      status: body.status,
-      providerId: body.providerId,
-      thaaraCallId: body.thaaraCallId,
-      durationSeconds: body.durationSeconds,
-      callOutcome: body.callOutcome,
-      outcome: body.outcome,
-      failureReason: body.failureReason,
-      optOutDetected: body.optOutDetected
+    await withCampaignLock(campaign.campaignId, async () => {
+      const fresh = (await workspaceStore.getScoped(scope, campaign.campaignId, options.db)) ?? campaign;
+      const updated = recordBatchContactOutcomeForN8nJob(fresh, {
+        jobId,
+        contactId: body.contactId!,
+        status: body.status!,
+        providerId: body.providerId,
+        thaaraCallId: body.thaaraCallId,
+        durationSeconds: body.durationSeconds,
+        callOutcome: body.callOutcome,
+        outcome: body.outcome,
+        failureReason: body.failureReason,
+        optOutDetected: body.optOutDetected
+      });
+      await workspaceStore.saveScoped(scope, updated, options.db);
     });
-    await workspaceStore.saveScoped(scope, updated, options.db);
     return { ok: true };
   });
 
@@ -2631,18 +2732,25 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
         csvText = liveRead.csvText;
       } catch (err) {
         const msg = (err as Error).message;
-        const failedCamp = await workspaceStore.saveScoped(scope, recordSheetSyncFailure(existing, msg), options.db);
+        const failedCamp = await withCampaignLock(campaignId, async () => {
+          const fresh = (await workspaceStore.getScoped(scope, campaignId, options.db)) ?? existing;
+          return workspaceStore.saveScoped(scope, recordSheetSyncFailure(fresh, msg), options.db);
+        });
         return { syncResult: { newRowsDetected: 0, newEligibleCount: 0, newBlockedCount: 0, batchSubmitted: false, error: msg }, ...formatCampaignEnvelope(failedCamp, { liveCallingEnabled: rt.liveCallingEnabled, liveSendingEnabled: rt.liveSendingEnabled, phoneDirectory: rt.phoneDirectory }) };
       }
     }
-    const syncRes = await syncGoogleSheetLeadsForCampaign(existing, {
-      scope,
-      csvText,
-      phoneDirectory: rt.phoneDirectory,
-      liveMultiContactEnabled: rt.n8nLiveEnabled,
-      n8nTrigger
+    const { syncRes, saved } = await withCampaignLock(campaignId, async () => {
+      const fresh = (await workspaceStore.getScoped(scope, campaignId, options.db)) ?? existing;
+      const res = await syncGoogleSheetLeadsForCampaign(fresh, {
+        scope,
+        csvText,
+        phoneDirectory: rt.phoneDirectory,
+        liveMultiContactEnabled: rt.n8nLiveEnabled,
+        n8nTrigger
+      });
+      const persisted = await workspaceStore.saveScoped(scope, res.campaign, options.db);
+      return { syncRes: res, saved: persisted };
     });
-    const saved = await workspaceStore.saveScoped(scope, syncRes.campaign, options.db);
     return {
       syncResult: {
         newRowsDetected: syncRes.newRowsDetected,
@@ -2881,19 +2989,35 @@ export async function bulkCampaignRoutes(app: FastifyInstance, options: BulkCamp
           csvText = liveRead.csvText;
         } catch (err) {
           const reasonCode = err instanceof GoogleSheetsAccessError ? err.code : 'SHEET_READ_ERROR';
-          await workspaceStore.saveScoped(scope, recordSheetSyncFailure(camp, (err as Error).message), options.db);
+          await withCampaignLock(camp.campaignId, async () => {
+            const fresh = (await workspaceStore.getScoped(scope, camp.campaignId, options.db)) ?? camp;
+            await workspaceStore.saveScoped(scope, recordSheetSyncFailure(fresh, (err as Error).message), options.db);
+          });
           results.push({ campaignId: camp.campaignId, newRowsDetected: 0, newEligibleCount: 0, batchSubmitted: false, skippedReason: reasonCode });
           continue;
         }
       }
-      const syncRes = await syncGoogleSheetLeadsForCampaign(camp, {
-        scope,
-        csvText,
-        phoneDirectory: rt.phoneDirectory,
-        liveMultiContactEnabled: rt.n8nLiveEnabled || Boolean(options.allowBatchOfflineTest),
-        n8nTrigger
+      const syncRes = await withCampaignLock(camp.campaignId, async () => {
+        const fresh = (await workspaceStore.getScoped(scope, camp.campaignId, options.db)) ?? camp;
+        if (
+          fresh.mode !== 'automatic_lead_followup' ||
+          !fresh.sheetMonitor ||
+          fresh.sheetMonitor.status === 'paused' ||
+          fresh.sheetMonitor.status === 'stopped'
+        ) {
+          return null;
+        }
+        const res = await syncGoogleSheetLeadsForCampaign(fresh, {
+          scope,
+          csvText,
+          phoneDirectory: rt.phoneDirectory,
+          liveMultiContactEnabled: rt.n8nLiveEnabled || Boolean(options.allowBatchOfflineTest),
+          n8nTrigger
+        });
+        await workspaceStore.saveScoped(scope, res.campaign, options.db);
+        return res;
       });
-      await workspaceStore.saveScoped(scope, syncRes.campaign, options.db);
+      if (!syncRes) continue;
       results.push({
         campaignId: camp.campaignId,
         newRowsDetected: syncRes.newRowsDetected,

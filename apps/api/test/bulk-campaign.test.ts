@@ -48,10 +48,12 @@ import {
   isChannelAllowlistedForLive,
   listEligiblePilotContacts,
   listEligibleWhatsAppPilotContacts,
+  mergeReconciledCampaignOutcomes,
   pollBulkCampaignN8nWhatsAppJob,
   prepareBulkCampaignPilotCall,
   refreshBulkCampaignPilotResult,
   submitBulkCampaignN8nJob,
+  syncReconciledN8nJobsAndMonitor,
   type BulkCampaignWhatsAppAdapter,
   extractWebinarCampaignDetails,
   getBulkCampaignWorkspaceContext,
@@ -9570,5 +9572,236 @@ describe('Thaara Bulk Campaign Agent — Complete User Journey & Verified Phone 
     expect(logisticsPurpose).toContain('Opening 2 new cold-chain depots in Q1');
     expect(logisticsPurpose).not.toContain('GreenFresh Foods');
     expect(logisticsPurpose).not.toContain('Hosur Road');
+  });
+
+  it('76. BULK PENDING CONTACTS FIX: resolves saved directory phone collision regardless of name mismatch, never stalls queue on permanent policy denial, preserves completed jobs across concurrent reconcile, and unblocks pendingDispatchContactIds', async () => {
+    const scope = {
+      workspaceId: '75d2f889-d3eb-4acc-861a-fada4691ecce',
+      userId: '4b4cbc9c-df01-4cc2-8565-8a23a3435b9d',
+      role: 'owner' as const,
+      sessionTokenHash: 'a'.repeat(64)
+    };
+
+    // 1. Directory has "Vishak sir" (+919900115677) with active consent & "Revoked Contact" (+919900119999) with callingAllowed=false
+    const rawContacts = [
+      {
+        workspaceId: scope.workspaceId,
+        userId: scope.userId,
+        id: 'pc-vishak-sir',
+        revision: 1,
+        displayName: 'Vishak sir',
+        aliases: [],
+        phoneE164: '+919900115677',
+        consent: {
+          callingAllowed: true,
+          reference: 'consent-vishak-1',
+          expiresAt: '2027-12-31T00:00:00.000Z'
+        }
+      },
+      {
+        workspaceId: scope.workspaceId,
+        userId: scope.userId,
+        id: 'pc-revoked',
+        revision: 1,
+        displayName: 'Revoked Contact',
+        aliases: [],
+        phoneE164: '+919900119999',
+        consent: {
+          callingAllowed: false,
+          reference: 'consent-revoked-1',
+          expiresAt: '2027-12-31T00:00:00.000Z'
+        }
+      }
+    ];
+    const dirViews: PhoneContactView[] = rawContacts.map(c => ({
+      contactId: c.id,
+      revision: c.revision,
+      displayName: c.displayName,
+      aliases: [],
+      maskedPhone: `+91 ******${c.phoneE164.slice(-4)}`,
+      archived: false,
+      consent: {
+        callingAllowed: c.consent.callingAllowed,
+        source: 'recipient_written',
+        recordedAt: '2026-01-01T00:00:00.000Z',
+        expiresAt: c.consent.expiresAt,
+        expired: false
+      }
+    }));
+
+    // 1a. parseBulkCampaignContacts does NOT false-match a different 10-digit number sharing last-4 digits;
+    //     exact E.164 resolution happens authoritatively inside createScopedPhoneCampaignAdapter.prepareDraft.
+    const parsed = parseBulkCampaignContacts({
+      sourceType: 'google_sheets',
+      fileName: 'thaara_test1.csv',
+      rawText: [
+        'name,phone,phone_consent',
+        'vishak,+919900115677,yes',
+        'Vishak Unrelated,+919800005677,yes',
+        'naveen,+919900115125,yes'
+      ].join('\n'),
+      phoneDirectory: dirViews
+    });
+    const unrelatedSameLast4 = parsed.validContacts.find(c => c.name === 'Vishak Unrelated');
+    expect(unrelatedSameLast4?.phoneDirectoryContactId).toBeUndefined();
+
+    // 1b. createScopedPhoneCampaignAdapter.prepareDraft resolves exact E.164 saved contact EVEN when sheet name differs completely
+    //     and caller passes newRecipient without selectedContactId (eliminating "Phone calling operation denied.")
+    const approvals = new Map<string, any>();
+    const phoneCalling = new PhoneCallingService({
+      contacts: { async list() { return rawContacts; } },
+      store: {
+        async assertScope() {},
+        async createPrepared(_s, draft) {
+          const approvalId = `appr_${approvals.size + 1}`;
+          const expiresAt = '2027-12-31T00:00:00.000Z';
+          approvals.set(approvalId, {
+            id: approvalId,
+            requesterUserId: scope.userId,
+            actionName: 'phone.ai.call',
+            status: 'pending',
+            expiresAt,
+            actionParams: draft
+          });
+          return { approvalId, expiresAt };
+        },
+        async approval(_s, id) { return approvals.get(id); },
+        async listOpen() { return []; },
+        async recordAudit() {}
+      },
+      simulation: { enabled: true },
+      now: () => Date.parse('2026-11-26T06:00:00.000Z') // 11:30 IST (inside calling window)
+    });
+
+    const adapter = createScopedPhoneCampaignAdapter({
+      scope,
+      phoneCalling,
+      phoneFallbackDirectory: { async list() { return rawContacts; } },
+      liveCallingEnabled: false
+    });
+
+    const preparedSavedMismatch = await adapter.prepareDraft({
+      contactQuery: '+919900115677',
+      newRecipient: { displayName: 'Completely Different Name', consentConfirmed: true },
+      purpose: 'Follow up on Custom Team Wear enquiry.',
+      language: 'en-IN'
+    });
+    expect(preparedSavedMismatch.draft.contactId).toBe('pc-vishak-sir');
+    expect(preparedSavedMismatch.draft.newRecipient).toBeUndefined();
+
+    // 1c. Safeguard preserved: revoked saved contact (+919900119999) is STILL rejected (never bypasses consent!)
+    await expect(
+      adapter.prepareDraft({
+        contactQuery: '+919900119999',
+        newRecipient: { displayName: 'Different Name For Revoked', consentConfirmed: true },
+        purpose: 'Should be rejected due to revoked saved consent.',
+        language: 'en-IN'
+      })
+    ).rejects.toThrow();
+
+    // 2. Permanent policy denial in executeBulkCampaignN8nPhoneJob immediately marks contact Failed (never Pending)
+    //    and advances claimNextBatchContactForN8nJob directly to the next contact ("naveen")
+    const batchImport = parseBulkCampaignContacts({
+      sourceType: 'csv',
+      rawText: [
+        'name,phone,phone_consent',
+        'vishak,+919900115677,yes',
+        'naveen,+919900115125,yes'
+      ].join('\n'),
+      phoneDirectory: []
+    });
+    const plan = createBulkCampaignPlan({
+      workspaceId: scope.workspaceId,
+      userId: scope.userId,
+      instruction: 'Call consented Custom Team Wear leads.',
+      importResult: batchImport,
+      channels: ['phone']
+    });
+    const approved = approveBulkCampaign(plan, {
+      userId: scope.userId,
+      role: 'owner',
+      expectedMaterialHash: plan.materialHash
+    });
+    const submitted = await submitBulkCampaignMultiContactN8nJob(approved, {
+      scope,
+      channel: 'phone_call',
+      liveMultiContactEnabled: true,
+      batchConfig: { batchSize: 10, maxRetries: 1, maxConcurrency: 2, rateLimitPerMinute: 5 }
+    });
+    const claimed1 = claimNextBatchContactForN8nJob(submitted.campaign, {
+      jobId: submitted.job.jobId,
+      executionToken: submitted.executionToken,
+      channel: 'phone_call'
+    });
+    expect(claimed1.proceed).toBe(true);
+    expect(claimed1.displayName).toBe('vishak');
+
+    const failingAdapter = {
+      ...new MockBulkCampaignPhoneAdapter({ liveCallingEnabled: true }),
+      async prepareDraft() {
+        throw new Error('Phone calling operation denied.');
+      },
+      async placeSinglePilotCall() {
+        throw new Error('Should not be called');
+      }
+    };
+    const execFail = await executeBulkCampaignN8nPhoneJob(claimed1.campaign, {
+      jobId: submitted.job.jobId,
+      scope,
+      phoneAdapter: failingAdapter,
+      contactId: claimed1.contactId
+    });
+    expect(execFail.ok).toBe(false);
+    const vishakRow = execFail.campaign.contacts.find(r => r.contact.name === 'vishak');
+    expect(vishakRow?.phoneStatus).toBe('failed');
+    expect(vishakRow?.phoneError).toContain('Phone calling operation denied.');
+    // Immediately moves on to "naveen" without retrying permanent policy denial!
+    const claimed2 = claimNextBatchContactForN8nJob(execFail.campaign, {
+      jobId: submitted.job.jobId,
+      executionToken: submitted.executionToken,
+      channel: 'phone_call'
+    });
+    expect(claimed2.proceed).toBe(true);
+    expect(claimed2.displayName).toBe('naveen');
+
+    // 3. mergeReconciledCampaignOutcomes never reverts a completed n8n job back to running,
+    //    and syncReconciledN8nJobsAndMonitor closes zombie running jobs whose queue has zero remaining work
+    const completedLatest = completeBulkCampaignN8nJob(execFail.campaign, {
+      jobId: submitted.job.jobId,
+      status: 'completed',
+      outcomeSummary: 'Done'
+    });
+    const merged = mergeReconciledCampaignOutcomes(completedLatest, execFail.campaign);
+    expect(merged.campaign.n8nJobs?.[0]?.status).toBe('completed');
+
+    const zombieCampaign = {
+      ...execFail.campaign,
+      mode: 'automatic_lead_followup' as const,
+      sheetMonitor: {
+        spreadsheetId: 'sheet_1',
+        spreadsheetName: 'Test Sheet',
+        tabName: 'Sheet1',
+        status: 'processing_leads' as const,
+        pollIntervalSeconds: 60,
+        lastCheckpointRowNumber: 2,
+        knownRowKeys: [],
+        consecutiveErrors: 0,
+        leadsReceivedCount: 2,
+        leadsEligibleCount: 2,
+        leadsQueuedCount: 2,
+        leadsConsentBlockedCount: 0,
+        followUpsScheduledCount: 0,
+        pendingDispatchContactIds: ['c_future_1']
+      },
+      n8nJobs: (execFail.campaign.n8nJobs ?? []).map(j => ({
+        ...j,
+        status: 'running' as const,
+        recipientQueue: (j.recipientQueue ?? []).map(q => ({ ...q, status: 'completed' as const, attempts: 1 }))
+      }))
+    };
+    const syncedZombie = syncReconciledN8nJobsAndMonitor(zombieCampaign, '2026-11-26T08:30:00.000Z');
+    expect(syncedZombie.changed).toBe(true);
+    expect(syncedZombie.n8nJobs?.[0]?.status).toBe('completed');
+    expect(syncedZombie.sheetMonitor?.status).toBe('active_monitoring');
   });
 });

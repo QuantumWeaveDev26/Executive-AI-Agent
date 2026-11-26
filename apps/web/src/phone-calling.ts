@@ -70,7 +70,7 @@ export function isPhoneCallingDraft(v: unknown): v is PhoneCallingDraft {
     && Number.isSafeInteger(v.contactRevision) && (v.contactRevision as number) >= 1
     && typeof v.contactBindingHash === 'string' && /^[a-f0-9]{64}$/.test(v.contactBindingHash)
     && obj(r) && exactKeys(r, ['displayName', 'maskedPhone']) && text(r.displayName, 128) && typeof r.maskedPhone === 'string' && MASKED.test(r.maskedPhone)
-    && text(v.purpose, 1000) && language(v.language) && Number.isSafeInteger(v.maxDurationSeconds)
+    && text(v.purpose, 10000) && language(v.language) && Number.isSafeInteger(v.maxDurationSeconds)
     && (v.maxDurationSeconds as number) >= 30 && (v.maxDurationSeconds as number) <= 300
     && text(v.aiDisclosure, 300) && (v.mode === 'simulation' || v.mode === 'live');
 }
@@ -171,7 +171,7 @@ export async function preparePhoneCall(input: PhoneCallingPrepare): Promise<Phon
   const body: PhoneCallingPrepare = { contactQuery: input.contactQuery.trim(), purpose: input.purpose.trim(), language: input.language };
   if (input.selectedContactId !== undefined) body.selectedContactId = input.selectedContactId;
   if (input.maxDurationSeconds !== undefined) body.maxDurationSeconds = input.maxDurationSeconds;
-  if (!text(body.contactQuery, 128) || !text(body.purpose, 1000) || !language(body.language)) throw new Error('Enter a contact, a purpose and a language.');
+  if (!text(body.contactQuery, 128) || !text(body.purpose, 10000) || !language(body.language)) throw new Error('Enter a contact, a purpose and a language.');
   const result = await request<unknown>(`${BASE}/drafts`, { method: 'POST', body: JSON.stringify(body) });
   return checked(result, (v) => isPhoneCallingPrepared(v, body), 'call draft');
 }

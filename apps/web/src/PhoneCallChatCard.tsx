@@ -59,9 +59,17 @@ export function PhoneCallChatCard({ approvalId, initialState }: PhoneCallChatCar
     let polls = 0, timer: ReturnType<typeof setTimeout> | undefined;
     const load = async () => {
       try {
-        const [requests, history] = await Promise.all([loadPhoneCallingRequests(controller.signal), loadPhoneCallingHistory(controller.signal)]);
+        const [reqRes, histRes] = await Promise.allSettled([
+          loadPhoneCallingRequests(controller.signal),
+          loadPhoneCallingHistory(controller.signal)
+        ]);
         if (controller.signal.aborted) return;
-        const call = history.calls.find((c) => (c.approvalId === approvalId || c.draft.newRecipient?.previewApprovalId === approvalId)) ?? null;
+        if (reqRes.status === 'rejected' && histRes.status === 'rejected') {
+          throw reqRes.reason;
+        }
+        const requests = reqRes.status === 'fulfilled' ? reqRes.value : [];
+        const calls = histRes.status === 'fulfilled' ? histRes.value.calls : [];
+        const call = calls.find((c) => (c.approvalId === approvalId || c.draft.newRecipient?.previewApprovalId === approvalId)) ?? null;
         setState((s) => ({ ...s, loaded: true, request: requests.find((r) => (r.approvalId === approvalId || r.draft.newRecipient?.previewApprovalId === approvalId)) ?? null, call }));
         if (call && !isTerminalCallState(call.state) && ++polls < POLL_LIMIT) timer = setTimeout(() => void load(), POLL_MS);
       } catch {

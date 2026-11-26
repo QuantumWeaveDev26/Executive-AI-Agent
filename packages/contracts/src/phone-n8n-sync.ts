@@ -85,7 +85,7 @@ export const PhoneN8nSyncedCallInputSchema = Type.Object({
   agentVariables: Type.Optional(Type.Union([
     Type.Object({
       user_name: Type.Optional(Type.Union([Type.String({ maxLength: 240 }), Type.Null()])),
-      call_purpose: Type.Optional(Type.Union([Type.String({ maxLength: 1000 }), Type.Null()])),
+      call_purpose: Type.Optional(Type.Union([Type.String({ maxLength: 12000 }), Type.Null()])),
       call_summary: Type.Optional(Type.Union([Type.String({ maxLength: 2000 }), Type.Null()])),
       business_name: Type.Optional(Type.Union([Type.String({ maxLength: 400 }), Type.Null()])),
       service_needed: Type.Optional(Type.Union([Type.String({ maxLength: 400 }), Type.Null()])),

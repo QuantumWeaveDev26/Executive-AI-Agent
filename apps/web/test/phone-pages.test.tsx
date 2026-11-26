@@ -37,6 +37,7 @@ describe('Phone page', () => {
     expect(html).toContain('Who should Thaara call?');
     expect(html).toContain('What should Thaara ask?');
     expect(html).toContain('data-testid="phone-call"');
+    expect(html).not.toMatch(/disabled=""[^>]*data-testid="phone-call"/);
     expect(html).toContain('data-testid="phone-cancel"');
     for (const gone of ['Language', 'AI calling', 'Connection', 'Refresh', 'simulat']) expect(html).not.toContain(gone);
   });

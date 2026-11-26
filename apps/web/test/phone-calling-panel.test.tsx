@@ -125,6 +125,17 @@ describe('Step 110 phone AI calling client (synthetic server responses only)', (
     await expect(pc.loadPhoneCallingHistory()).resolves.toMatchObject({ calls: [{ id: 'call-1' }] });
     vi.stubGlobal('fetch', respond({ calls: [record], durable: true, liveCallingEnabled: false }));
     await expect(pc.loadPhoneCallingHistory()).resolves.toMatchObject({ durable: true });
+    // Bulk campaign outbound calls carry up to 10,000-char grounded briefs in draft.purpose and must load in Outbound Call History
+    const bulkRecord = {
+      ...record,
+      id: 'call-bulk-10k',
+      draft: {
+        ...draft,
+        purpose: ('CUSTOM TEAM WEAR CAMPAIGN BRIEF: ' + 'Product catalog, sizing, pricing, and lead notes. '.repeat(120)).slice(0, 9500)
+      }
+    };
+    vi.stubGlobal('fetch', respond({ calls: [bulkRecord], durable: true, liveCallingEnabled: false }));
+    await expect(pc.loadPhoneCallingHistory()).resolves.toMatchObject({ calls: [{ id: 'call-bulk-10k' }], durable: true });
     vi.stubGlobal('fetch', respond({ calls: [record], durable: 'yes', liveCallingEnabled: false }));
     await expect(pc.loadPhoneCallingHistory()).rejects.toThrow();
     for (const bad of [{ ...record, verified: true }, { ...record, providerCallId: 'real' }, { ...record, report: { ...report, simulated: false } }, { ...record, state: 'connected' }]) {

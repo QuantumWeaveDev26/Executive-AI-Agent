@@ -693,7 +693,7 @@ export type BulkCampaignN8nBatchRecipient = Static<typeof BulkCampaignN8nBatchRe
 
 export const BulkCampaignN8nBatchConfigSchema = Type.Object(
   {
-    batchSize: Type.Integer({ minimum: 1, maximum: 100 }),
+    batchSize: Type.Integer({ minimum: 1, maximum: 1000 }),
     maxConcurrency: Type.Integer({ minimum: 1, maximum: 5 }),
     rateLimitPerMinute: Type.Integer({ minimum: 1, maximum: 30 }),
     maxRetries: Type.Integer({ minimum: 0, maximum: 2 })
@@ -714,7 +714,7 @@ export const BulkCampaignN8nExecutionJobSchema = Type.Object(
     targetDisplayName: Type.String({ minLength: 1, maxLength: 128 }),
     targetMaskedPhone: Type.String({ minLength: 4, maxLength: 40 }),
     batchConfig: Type.Optional(BulkCampaignN8nBatchConfigSchema),
-    recipientQueue: Type.Optional(Type.Array(BulkCampaignN8nBatchRecipientSchema, { maxItems: 100 })),
+    recipientQueue: Type.Optional(Type.Array(BulkCampaignN8nBatchRecipientSchema, { maxItems: 1000 })),
     totalContacts: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
     processedCount: Type.Optional(Type.Integer({ minimum: 0, maximum: 100 })),
     succeededCount: Type.Optional(Type.Integer({ minimum: 0, maximum: 100 })),
